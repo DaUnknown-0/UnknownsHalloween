@@ -2,7 +2,7 @@ name: Build & Release
 
 # Pushe einen Tag wie "v1.0.0" (stable) oder "v1.0.0.3" (Testversion), um automatisch zu bauen und
 # ein Release mit der UnknownsHalloween.dll als Asset zu erstellen. Gebaut wird gegen TOR und gegen
-# das neueste stabile Release von Unknown's Collection (beide nur als Referenz, nicht im Asset).
+# das neueste Release von Unknown's Collection (beide nur als Referenz, nicht im Asset).
 on:
   push:
     tags:
@@ -55,7 +55,11 @@ jobs:
           curl -fL --retry 3 -o "$TOR" "$URL"
           echo "TOR_DLL=$TOR" >> "$GITHUB_ENV"
           mkdir -p "$RUNNER_TEMP/uc"
-          gh release download --repo DaUnknown-0/UnknownsCollection --pattern UnknownsCollection.dll --dir "$RUNNER_TEMP/uc"
+          # Neuestes UC-Release INKLUSIVE Testversionen: die Rolle nutzt UC-API, die das letzte stabile
+          # Release noch nicht hat (z. B. UCPromotion.IsLover).
+          UC_TAG=$(gh release list --repo DaUnknown-0/UnknownsCollection --limit 1 --json tagName -q '.[0].tagName')
+          echo "Unknown's Collection: $UC_TAG"
+          gh release download "$UC_TAG" --repo DaUnknown-0/UnknownsCollection --pattern UnknownsCollection.dll --dir "$RUNNER_TEMP/uc"
           echo "UC_DLL=$RUNNER_TEMP/uc/UnknownsCollection.dll" >> "$GITHUB_ENV"
 
       - name: Build
