@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <Version>0.1.0</Version>
+        <Description>Unknown's Halloween - add-on for Unknown's Collection: four full-body Halloween costume hats (Freddy, Jason, Xenomorph, Ghostface) with idle/walk animation and kill cutscenes, plus the Xenomorph role (neutral killer). Built for AU 2024.11.26 / BepInEx 6.0.0-be.697 / Reactor 2.3.1.</Description>
+        <Authors>DaUnknown-0</Authors>
+        <LangVersion>latest</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <PlatformTarget>AnyCPU</PlatformTarget>
+        <Platforms>AnyCPU</Platforms>
+        <AssemblyName>UnknownsHalloween</AssemblyName>
+        <RootNamespace>UnknownsHalloween</RootNamespace>
+        <DebugType>none</DebugType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Same stack as UnknownsCollection (the proven combination for this game install). -->
+        <PackageReference Include="AmongUs.GameLibs.Steam" Version="2024.10.29" />
+        <PackageReference Include="BepInEx.IL2CPP.MSBuild" Version="2.1.0-rc.1" />
+        <PackageReference Include="BepInEx.Unity.IL2CPP" Version="6.0.0-be.697" />
+        <PackageReference Include="Reactor" Version="2.3.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Costume hats (hw_*), the role icon (hw_xenomorph_icon) and the kill-cutscene frames (hk_*).
+             Explicit LogicalName so the lookup never depends on the root-namespace default. -->
+        <EmbeddedResource Include="Resources\hats\*.png" LogicalName="UnknownsHalloween.Resources.hats.%(Filename)%(Extension)" />
+    </ItemGroup>
+
+    <!-- DLL locations: default to the local builds, overridable via -p:TheOtherRolesDll=... / -p:UnknownsCollectionDll=... -->
+    <PropertyGroup>
+        <TheOtherRolesDll Condition="'$(TheOtherRolesDll)' == ''">..\TheOtherRoles-main\TheOtherRoles-main\TheOtherRoles\bin\Debug\net6.0\TheOtherRoles.dll</TheOtherRolesDll>
+        <UnknownsCollectionDll Condition="'$(UnknownsCollectionDll)' == ''">..\UnknownsCollection\bin\Debug\net6.0\UnknownsCollection.dll</UnknownsCollectionDll>
+    </PropertyGroup>
+
+    <!-- Hard dependencies: TOR (CustomOption, RoleInfo, Helpers, ...) and Unknown's Collection
+         (UCRpc, UCFx, UCPromotion, UCRoleDraft, the hat bounce helper, ...). -->
+    <ItemGroup>
+        <Reference Include="TheOtherRoles">
+            <HintPath>$(TheOtherRolesDll)</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="UnknownsCollection">
+            <HintPath>$(UnknownsCollectionDll)</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+
+    <Target Name="CopyCustomContent" AfterTargets="Build" Condition="Exists('$(AmongUsLatest)/BepInEx/plugins/')">
+        <Message Text="Copying UnknownsHalloween to BepInEx plugins" />
+        <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(AmongUsLatest)/BepInEx/plugins/" />
+    </Target>
+</Project>

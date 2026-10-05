@@ -1,0 +1,109 @@
+// Unknown's Halloween - Copyright (C) 2026 DaUnknown-0
+// Licensed under GPL-3.0-or-later. See LICENSE for details.
+// Based on The Other Roles (https://github.com/TheOtherRolesAU/TheOtherRoles), GPL-3.0.
+
+/*
+ * UNKNOWN'S HALLOWEEN - add-on for Unknown's Collection.
+ *
+ *   - HalloweenCostumes.cs: four full-body costume hats (Freddy, Jason, Xenomorph, Ghostface) with
+ *     idle/walk animation and a kill cutscene per costume.
+ *   - Xenomorph.cs: the Xenomorph role (neutral killer, transformation on a button).
+ *
+ * Split out of Unknown's Collection on 2026-10-05 so the costumes of third-party characters live in a
+ * repository of their own: whatever happens to this repo never touches Unknown's Collection.
+ * Everything still runs on UC's infrastructure (RPC channel 230, option tabs, draft, guesser,
+ * tick/reset hooks), hence the hard dependency. Nothing in Unknown's Collection mentions this mod;
+ * the hooks into UC are reflection and Harmony postfixes from this side.
+ *
+ * Family plumbing like the other mods: Mod Manager registration (AppDomain), self-updater
+ * (HalloweenUpdater), version line in the shared "Unknown's Collective" readout. The version is
+ * stamped from the git tag by the release workflow.
+ */
+
+using BepInEx;
+using BepInEx.Configuration;
+using BepInEx.Logging;
+using BepInEx.Unity.IL2CPP;
+using HarmonyLib;
+using UnityEngine;
+
+namespace UnknownsHalloween;
+
+[BepInPlugin(PluginGuid, PluginName, PluginVersion)]
+[BepInProcess("Among Us.exe")]
+[BepInDependency("me.eisbison.theotherroles", BepInDependency.DependencyFlags.HardDependency)]
+[BepInDependency("com.tormod.unknownscollection", BepInDependency.DependencyFlags.HardDependency)]
+public class HalloweenPlugin : BasePlugin
+{
+    public const string PluginGuid = "com.daunknown.unknownshalloween";
+    public const string PluginName = "Unknown's Halloween";
+    public const string PluginVersion = "0.1.0";
+    public static readonly System.Version Version = System.Version.Parse(PluginVersion);
+
+    public static ManualLogSource Logger { get; private set; }
+    public static ConfigEntry<bool> CfgEnabled;
+
+    public override void Load()
+    {
+        Logger = Log;
+        CfgEnabled = Config.Bind("General", "Enabled", true, "Master switch of Unknown's Halloween.");
+
+        // Mod Manager (hosted by Forgotten Fixes / UsefulTORStuff): AppDomain registry, no compile-time
+        // reference. Before the Enabled gate, so a disabled mod still shows up there.
+        try
+        {
+            var modData = new System.Collections.Generic.Dictionary<string, object>
+            {
+                { "Guid", PluginGuid },
+                { "Name", PluginName },
+                { "Version", Version },
+                { "RepositoryOwner", HalloweenUpdater.RepositoryOwner },
+                { "RepositoryName", HalloweenUpdater.RepositoryName },
+                { "ButtonColor", new Color(1f, 0.46f, 0.09f) },
+                { "Enabled", CfgEnabled },
+                { "RuntimeEnabled", CfgEnabled.Value },
+            };
+            System.AppDomain.CurrentDomain.SetData($"ModManager.RegisteredMod.{PluginGuid}", modData);
+        }
+        catch (System.Exception ex)
+        {
+            Logger.LogError($"[Halloween] Failed to register in Mod Manager: {ex}");
+        }
+
+        AddComponent<HalloweenUpdater>();
+
+        if (!CfgEnabled.Value)
+        {
+            Logger.LogInfo($"[Halloween] {PluginName} {PluginVersion}: Enabled=false - patches NOT applied.");
+            return;
+        }
+
+        // PatchAll runs the HarmonyPrepare hooks that set the costumes and the role up
+        // (HalloweenCostumes.KillHook.Prepare, Xenomorph.ResetPatch.Prepare).
+        new Harmony(PluginGuid).PatchAll();
+        Logger.LogInfo($"[Halloween] {PluginName} {PluginVersion} loaded.");
+    }
+}
+
+// Version line in the top-corner PingTracker readout, folded into the shared "Unknown's
+// Collective" line alongside this project family's other mods (see UnknownsCollective.cs).
+[HarmonyPatch(typeof(PingTracker), nameof(PingTracker.Update))]
+internal static class HalloweenVersionDisplayPatch
+{
+    private static string cachedLine;
+
+    [HarmonyPriority(Priority.Low)]
+    public static void Postfix(PingTracker __instance)
+    {
+        if (__instance == null || __instance.text == null) return;
+        string text = __instance.text.text;
+        if (string.IsNullOrEmpty(text)) return;
+
+        cachedLine ??= $"<color=#FF7518>{HalloweenPlugin.PluginName}</color> v{VersionDisplay.Format(HalloweenPlugin.Version)}";
+        UnknownsCollective.Contribute(HalloweenPlugin.PluginGuid, cachedLine);
+        text = UnknownsCollective.Render(__instance.text, text);
+        // TMP rebuilds its mesh on every assignment, even with an identical string
+        if (!string.Equals(__instance.text.text, text, System.StringComparison.Ordinal))
+            __instance.text.text = text;
+    }
+}
