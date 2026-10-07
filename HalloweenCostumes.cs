@@ -909,6 +909,9 @@ namespace UnknownsHalloween {
         private static int diagStep;
         private static float diagAt = -1f;
 
+        // The corpse probe (HalloweenCorpse.ProbeSteps) walks the player through the same hook.
+        internal static void DiagSetWalk(float dir) => diagWalk = dir;
+
         private static void DiagShot(string name) {
             try {
                 ScreenCapture.CaptureScreenshot(Path.Combine(diagDir, name + ".png"));
@@ -994,11 +997,17 @@ namespace UnknownsHalloween {
             Add(0.6f, () => { Log("reverted"); DiagShot("role_reverted"); });
             foreach (var c in DiagMode == "role" ? new Costume[0] : Costumes) {
                 var cc = c;
-                Add(0.55f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag preview: " + Preview(cc.KillKey)));
-                Add(0.55f, () => DiagShot(cc.Key + "_kill_1"));
-                Add(0.75f, () => DiagShot(cc.Key + "_kill_2"));
-                Add(0.9f, () => DiagShot(cc.Key + "_kill_3"));
-                Add(1.0f, () => DiagShot(cc.Key + "_kill_4"));
+                var keys = new List<string> { cc.KillKey };
+                if (cc.Alt != null) foreach (var alt in cc.Alt) keys.Add(alt.Key);
+                foreach (var key in keys) {
+                    var kk = key;
+                    Add(0.55f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag preview: " + Preview(kk)));
+                    Add(0.55f, () => DiagShot(kk + "_kill_1"));
+                    Add(0.75f, () => DiagShot(kk + "_kill_2"));
+                    Add(0.9f, () => DiagShot(kk + "_kill_3"));
+                    Add(1.0f, () => DiagShot(kk + "_kill_4"));
+                    Add(1.0f, () => DiagShot(kk + "_kill_5"));
+                }
             }
             Add(1.0f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag: all done"));
             Add(0f, () => Application.Quit());

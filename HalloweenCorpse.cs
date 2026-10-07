@@ -47,70 +47,107 @@ namespace UnknownsHalloween {
             };
         }
 
-        private static Sprite CorpseSprite() {
-            if (sprite != null || spriteTried) return sprite;
-            spriteTried = true;
+        private static Sprite LoadSprite(string resName, Vector2 pivotPx) {
             try {
-                using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("UnknownsHalloween.Resources.hats." + ResName);
-                if (stream == null) return null;
+                using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("UnknownsHalloween.Resources.hats." + resName);
+                if (stream == null) { Log("resource missing: " + resName); return null; }
                 var data = new byte[stream.Length];
                 int read = 0;
                 while (read < data.Length) { int n = stream.Read(data, read, data.Length - read); if (n <= 0) break; read += n; }
                 var tex = new Texture2D(2, 2, TextureFormat.ARGB32, false);
                 if (!ImageConversion.LoadImage(tex, data, false)) return null;
                 tex.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
-                sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(33.5f / tex.width, 77f / tex.height), 100f);
-                sprite.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
-            } catch (Exception e) { Log("sprite load failed: " + e.Message); }
+                var sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(pivotPx.x / tex.width, pivotPx.y / tex.height), 100f);
+                sp.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
+                return sp;
+            } catch (Exception e) { Log("sprite load failed (" + resName + "): " + e.Message); return null; }
+        }
+
+        private static Sprite CorpseSprite() {
+            if (sprite != null || spriteTried) return sprite;
+            spriteTried = true;
+            sprite = LoadSprite(ResName, new Vector2(33.5f, 77f));
             return sprite;
         }
 
         // ---- walking (2026-10-07) ----
         //
-        // Standing, the costume is the one static corpse sprite. While the player runs, the REAL body
-        // stays visible instead, cut off at the hip by a sprite mask, and only the top of the corpse
-        // (bone, rim, flesh disc) rides on top of it: the legs then run exactly like the crewmate's,
-        // in the player's colour and skin-less. The cut line is CutY px from the bottom of
-        // hw_corpse.png; the cap is the same texture above that line with the same pivot, so it lands
-        // where the full sprite's top would be. The body bobs by up to ~7 % of its height inside the
-        // run sprites (see HalloweenCostumes), which the flesh disc covers.
-        private const float CutY = 67f;
+        // Standing, the costume is the one static corpse sprite. While the player runs, the lower
+        // part of the REAL run sprite is shown instead (a second renderer with a cropped copy of the
+        // body's current sprite, same player material, same flip and sorting), and on top of it sits
+        // the cap: bone, rim and flesh disc of the corpse (hw_corpse_cap.png, the disc stretched
+        // 1.2x so it covers the live body, which is wider than the corpse's torso; pivot bottom
+        // centre). The legs then run exactly like the crewmate's, in the player's colour. The body
+        // bobs by up to ~7 % of its height inside the run sprites, which the disc covers.
+        // Tried first on 2026-10-07: a SpriteMask on the body (the player shader ignores mask
+        // interaction), then the corpse's own top as cap at several cut heights (24 px: a box on
+        // tiny feet; 50 px: a slab; 70 px: the belly peeked out beside the disc).
+        private const string CapResName = "hw_corpse_cap.png";
         private static Sprite capSprite;
+        private static bool capTried;
 
         private static Sprite CapSprite() {
-            if (capSprite != null) return capSprite;
-            var sp = CorpseSprite();
-            if (sp == null) return null;
-            try {
-                var tex = sp.texture;
-                float h = tex.height - CutY;
-                capSprite = Sprite.Create(tex, new Rect(0, CutY, tex.width, h), new Vector2(33.5f / tex.width, (77f - CutY) / h), 100f);
-                capSprite.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
-            } catch (Exception e) { Log("cap sprite failed: " + e.Message); }
+            if (capSprite != null || capTried) return capSprite;
+            capTried = true;
+            capSprite = LoadSprite(CapResName, new Vector2(90f, 0f));
             return capSprite;
         }
 
-        private static void EnsureMask(Hidden h, SpriteRenderer front, SpriteRenderer body) {
-            if (h.Mask == null) {
-                var go = new GameObject("CorpseWalkMask") { layer = front.gameObject.layer };
-                go.transform.SetParent(front.transform, false);
-                var m = go.AddComponent<SpriteMask>();
-                m.sprite = UnknownsCollection.UCAssets.OverlayWhite;
-                m.isCustomRangeActive = true;
-                h.Mask = m;
+        // Where the run sprite is cut, in BODY-local units (pivot of the run sprites is 106 px above
+        // their 179 px bottom, probe 2026-10-07): -0.40 = 66 px up = the hips. The cap's bottom edge
+        // sits exactly on this line, centred over the run sprite.
+        private const float CutLocalY = -0.40f;
+
+        // body run sprite -> its part below the cut line (same atlas texture, same pivot point)
+        private static readonly Dictionary<int, Sprite> legCache = new();
+        private static bool legsLogged;
+
+        // horizontal centre of the run sprite relative to its pivot, body-local units (unflipped)
+        private static float CentreOf(Sprite src) {
+            try { return (src.textureRect.width / 2f - (src.pivot.x - src.textureRectOffset.x)) / src.pixelsPerUnit; } catch { return 0f; }
+        }
+
+        private static Sprite LegsOf(Sprite src) {
+            int id = src.GetInstanceID();
+            if (legCache.TryGetValue(id, out var sp) && sp != null) return sp;
+            try {
+                var r = src.textureRect;                 // the sprite's pixels inside the atlas
+                var off = src.textureRectOffset;         // textureRect's offset inside the (untrimmed) sprite rect
+                float ppu = src.pixelsPerUnit;
+                float px = src.pivot.x - off.x, py = src.pivot.y - off.y;   // pivot relative to textureRect
+                // 4 px higher than the cap's bottom edge, so the two overlap instead of showing a seam
+                float cutPx = Mathf.Clamp(py + (CutLocalY + 0.04f) * ppu, 2f, r.height - 2f);
+                var rect = new Rect(r.x, r.y, r.width, cutPx);
+                sp = Sprite.Create(src.texture, rect, new Vector2(px / r.width, py / cutPx), ppu);
+                sp.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
+                if (legCache.Count > 64) legCache.Clear();
+                legCache[id] = sp;
+                if (!legsLogged) {
+                    legsLogged = true;
+                    Log(FormattableString.Invariant($"legs: '{src.name}' rect {r.x:F0} {r.y:F0} {r.width:F0}x{r.height:F0} offset {off.x:F1} {off.y:F1} pivot {src.pivot.x:F1} {src.pivot.y:F1} ppu {ppu:F0} cut {cutPx:F1} px (cutLocal {CutLocalY:F3})"));
+                }
+            } catch (Exception e) { Log("legs sprite failed: " + e.Message); return null; }
+            return sp;
+        }
+
+        private static SpriteRenderer EnsureLegs(Hidden h, SpriteRenderer body) {
+            if (h.Legs == null) {
+                var go = new GameObject("CorpseLegs") { layer = body.gameObject.layer };
+                go.transform.SetParent(body.transform.parent, false);
+                h.Legs = go.AddComponent<SpriteRenderer>();
             }
-            var mk = h.Mask;
-            if (!mk.gameObject.activeSelf) mk.gameObject.SetActive(true);
-            // only the body's own sorting slot, so no other masked renderer nearby is touched
-            mk.frontSortingLayerID = body.sortingLayerID;
-            mk.backSortingLayerID = body.sortingLayerID;
-            mk.frontSortingOrder = body.sortingOrder;
-            mk.backSortingOrder = body.sortingOrder - 1;
-            if (mk.sprite == null) return;
-            // front-layer units = sprite px / 100: a 3 x 2 unit field whose TOP edge is the cut line
-            float u = Mathf.Max(0.0001f, mk.sprite.bounds.size.x), v = Mathf.Max(0.0001f, mk.sprite.bounds.size.y);
-            mk.transform.localScale = new Vector3(3f / u, 2f / v, 1f);
-            mk.transform.localPosition = new Vector3(0f, (CutY - 77f) / 100f - 1f, 0f);
+            var sr = h.Legs;
+            var t = sr.transform;
+            t.localPosition = body.transform.localPosition;
+            t.localRotation = body.transform.localRotation;
+            t.localScale = h.BodyScale;                  // the body itself is scaled to zero meanwhile
+            if (sr.sharedMaterial != body.sharedMaterial) sr.sharedMaterial = body.sharedMaterial;
+            sr.flipX = body.flipX;
+            sr.sortingLayerID = body.sortingLayerID;
+            sr.sortingOrder = body.sortingOrder;
+            sr.color = body.color;
+            if (!sr.enabled) sr.enabled = true;
+            return sr;
         }
 
         // What was hidden or moved on one player, to put back when the costume comes off.
@@ -118,9 +155,7 @@ namespace UnknownsHalloween {
             public Transform Body, Skin, Visor, Front;
             public Vector3 BodyScale, SkinScale, VisorScale, FrontScale, FrontPos;
             public float Lossy;
-            public SpriteRenderer BodySr;
-            public SpriteMaskInteraction BodyMask;
-            public SpriteMask Mask;
+            public SpriteRenderer Legs;
         }
         private static readonly Dictionary<int, Hidden> hidden = new();
         private static readonly Dictionary<int, (CosmeticsLayer co, PlayerControl pc)> owners = new();
@@ -145,8 +180,7 @@ namespace UnknownsHalloween {
                 if (h.Skin != null) h.Skin.localScale = h.SkinScale;
                 if (h.Visor != null) h.Visor.localScale = h.VisorScale;
                 if (h.Front != null) { h.Front.localScale = h.FrontScale; h.Front.localPosition = h.FrontPos; }
-                if (h.BodySr != null) h.BodySr.maskInteraction = h.BodyMask;
-                if (h.Mask != null) UnityEngine.Object.Destroy(h.Mask.gameObject);
+                if (h.Legs != null) UnityEngine.Object.Destroy(h.Legs.gameObject);
             } catch { }
         }
 
@@ -183,7 +217,6 @@ namespace UnknownsHalloween {
                 h = new Hidden {
                     Body = body.transform, BodyScale = body.transform.localScale,
                     Front = front.transform, FrontScale = front.transform.localScale, FrontPos = front.transform.localPosition,
-                    BodySr = body, BodyMask = body.maskInteraction,
                 };
                 try { if (co.skin != null) { h.Skin = co.skin.transform; h.SkinScale = h.Skin.localScale; } } catch { }
                 try { if (co.visor != null) { h.Visor = co.visor.transform; h.VisorScale = h.Visor.localScale; } } catch { }
@@ -192,7 +225,7 @@ namespace UnknownsHalloween {
                 if (hidden.Count > 256) hidden.Clear();
                 hidden[id] = h;
             }
-            Scale0(h.Skin); Scale0(h.Visor);
+            Scale0(h.Body); Scale0(h.Skin); Scale0(h.Visor);
 
             bool running = false;
             try {
@@ -201,16 +234,14 @@ namespace UnknownsHalloween {
             } catch { }
             var sp = CorpseSprite();
             var cap = running ? CapSprite() : null;
-            if (cap != null) {
-                // walking: the real body runs below the cut line, the cap rides on top
-                if (h.Body.localScale != h.BodyScale) h.Body.localScale = h.BodyScale;
-                EnsureMask(h, front, body);
-                if (body.maskInteraction != SpriteMaskInteraction.VisibleInsideMask) body.maskInteraction = SpriteMaskInteraction.VisibleInsideMask;
+            var legsSprite = cap != null && body.sprite != null ? LegsOf(body.sprite) : null;
+            if (cap != null && legsSprite != null) {
+                // walking: the legs of the real run sprite below the cut line, the cap rides on top
+                var legs = EnsureLegs(h, body);
+                if (legs.sprite != legsSprite) legs.sprite = legsSprite;
                 sp = cap;
-            } else {
-                Scale0(h.Body);
-                if (body.maskInteraction != h.BodyMask) body.maskInteraction = h.BodyMask;
-                if (h.Mask != null && h.Mask.gameObject.activeSelf) h.Mask.gameObject.SetActive(false);
+            } else if (h.Legs != null && h.Legs.enabled) {
+                h.Legs.enabled = false;
             }
             if (sp == null) return true;
             if (front.sprite != sp) front.sprite = sp;
@@ -223,6 +254,12 @@ namespace UnknownsHalloween {
             if (front.transform.localScale != want) front.transform.localScale = want;
             var b = body.transform.position;
             float ox = (flip ? -Offset.x : Offset.x) * h.Lossy, oy = Offset.y * h.Lossy;
+            if (sp == cap) {
+                // walking: cap bottom on the cut line, centred over the run sprite
+                float cx = CentreOf(body.sprite);
+                ox = (flip ? -cx : cx) * h.Lossy;
+                oy = CutLocalY * h.Lossy;
+            }
             front.transform.position = new Vector3(b.x + ox, b.y + oy, front.transform.position.z);
             return true;
         }
@@ -334,6 +371,16 @@ namespace UnknownsHalloween {
             // the costume next to the real corpse: standing, mirrored, taken off again
             Add(0.5f, () => { try { lp.RpcSetHat(UnknownsCollection.UCHats.HatIdOf(HatName)); } catch (Exception e) { Log("hat: " + e.Message); } });
             Add(1.5f, () => shot("costume_idle"));
+            // walking: the real legs under the cap, four shots to the right, one to the left
+            Add(0.4f, () => HalloweenCostumes.DiagSetWalk(1f));
+            for (int k = 0; k < 4; k++) {
+                int kk = k;
+                Add(0.13f, () => shot("costume_walk_" + kk));
+            }
+            Add(0.5f, () => HalloweenCostumes.DiagSetWalk(-1f));
+            Add(0.3f, () => shot("costume_walkleft"));
+            Add(0.3f, () => HalloweenCostumes.DiagSetWalk(0f));
+            Add(0.8f, () => shot("costume_stopped"));
             Add(0.5f, () => { try { lp.MyPhysics.FlipX = true; } catch (Exception e) { Log("flip: " + e.Message); } });
             Add(1.0f, () => shot("costume_flip"));
             Add(0.5f, () => { try { lp.MyPhysics.FlipX = false; lp.RpcSetHat("hat_NoHat"); } catch { } });

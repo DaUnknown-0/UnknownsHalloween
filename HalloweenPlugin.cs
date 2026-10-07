@@ -37,7 +37,7 @@ public class HalloweenPlugin : BasePlugin
 {
     public const string PluginGuid = "com.daunknown.unknownshalloween";
     public const string PluginName = "Unknown's Halloween";
-    public const string PluginVersion = "0.1.0.2";
+    public const string PluginVersion = "0.1.0.3";
     public static readonly System.Version Version = System.Version.Parse(PluginVersion);
 
     public static ManualLogSource Logger { get; private set; }
