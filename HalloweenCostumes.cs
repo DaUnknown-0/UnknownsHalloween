@@ -66,14 +66,39 @@ namespace UnknownsHalloween {
             public int[] Flashes;       // frames on which the red band flashes
             public bool HasLegs;        // walk loop has painted legs -> hide the back layer while running
             public Sprite[] Idle, Walk;
+            public bool HasAccent;      // highlight masks (hw_<Key>_acc_N) that are tinted in the wearer's colour
+            public Sprite[] IdleAcc, WalkAcc;
             public bool FramesTried;
+            public KillScene[] Alt;     // further cutscenes of this costume; one of all is picked at random
+        }
+
+        private sealed class KillScene {
+            public string Key;          // file key (hk_<Key>_...)
+            public int Frames;
+            public int[] Flashes;
+        }
+
+        private static readonly Dictionary<Costume, KillScene> mainScene = new();
+
+        /// <summary>The costume's own cutscene or one of its alternatives. <paramref name="key"/> names
+        /// one exactly (preview); otherwise every kill draws afresh. The cutscene only ever plays on
+        /// the victim's client, so the draw needs no syncing.</summary>
+        private static KillScene PickScene(Costume c, string key = null) {
+            if (!mainScene.TryGetValue(c, out var main))
+                mainScene[c] = main = new KillScene { Key = c.KillKey, Frames = c.KillFrames, Flashes = c.Flashes };
+            if (c.Alt == null || c.Alt.Length == 0) return main;
+            if (key != null) return c.Alt.FirstOrDefault(x => x.Key == key) ?? main;
+            int i = UnityEngine.Random.Range(0, c.Alt.Length + 1);
+            return i == 0 ? main : c.Alt[i - 1];
         }
 
         private static readonly Costume[] Costumes = {
             new Costume { Key = "freddy", KillKey = "freddy", Name = "Halloween Freddy", KillFrames = 46, Flashes = new[] { 14, 20 }, HasLegs = false },
             new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 46, Flashes = new[] { 16, 30 }, HasLegs = false },
-            new Costume { Key = "xenomorph", KillKey = "xeno", Name = "Halloween Xenomorph", KillFrames = 46, Flashes = new[] { 17, 22 }, HasLegs = false },
-            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 48, Flashes = new[] { 14, 17, 20, 31 }, HasLegs = false },
+            new Costume { Key = "xenomorph", KillKey = "xeno", Name = "Halloween Xenomorph", KillFrames = 46, Flashes = new[] { 17, 22 }, HasLegs = false, HasAccent = true,
+                // tail stab (main) or the inner-jaw bite
+                Alt = new[] { new KillScene { Key = "xenobite", Frames = 46, Flashes = new[] { 18, 31 } } } },
+            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 52, Flashes = new[] { 15, 20, 28, 33, 40 }, HasLegs = false, HasAccent = true },
         };
 
         private static readonly Dictionary<string, Costume> ByHatName = new();
@@ -128,11 +153,14 @@ namespace UnknownsHalloween {
                     pending.Add(hat);
                     byName[c.Name] = c;
                 }
+                // the corpse costume (HalloweenCorpse): same registration, own drawing
+                var corpseHat = HalloweenCorpse.MakeHat(Extract);
+                if (corpseHat != null) { pending.Add(corpseHat); OwnFiles.Add(HalloweenCorpse.FileName); }
                 if (pending.Count == 0) return;
                 if (!(bool)mRegister.Invoke(null, new object[] { pending })) return;
                 // Register removes hats that lost a name collision from the list it was handed.
                 foreach (var hat in pending) {
-                    var c = byName[hat.Name];
+                    if (!byName.TryGetValue(hat.Name, out var c)) continue;
                     c.HatId = UCHats.HatIdOf(c.Name);
                     ByHatName[c.Name] = c;
                     ByHatId[c.HatId] = c;
@@ -258,6 +286,58 @@ namespace UnknownsHalloween {
                 }
             }
             c.Walk = walk;
+            if (!c.HasAccent) return;
+            // Optional: without the masks the costume simply shows no player colour.
+            var idleAcc = new Sprite[IdleFrames];
+            for (int i = 0; i < idleAcc.Length; i++)
+                if ((idleAcc[i] = loadHatSprite(Res + $"hw_{c.Key}_acc_{i + 1}.png")) == null) return;
+            var walkAcc = new Sprite[WalkFrames];
+            for (int i = 0; i < walkAcc.Length; i++)
+                if ((walkAcc[i] = loadHatSprite(Res + $"hw_{c.Key}_walk_acc_{i + 1}.png")) == null) return;
+            c.IdleAcc = idleAcc;
+            c.WalkAcc = walkAcc;
+        }
+
+        // ---- accent layer: the costume's highlights in the wearer's colour ----
+        //
+        // Xenomorph and Ghostface are black all over, so the player colour cannot show through
+        // anywhere. Their highlights (tail spikes, ribs, dome reflex, hood rim, cloth folds) are
+        // therefore a second sprite per frame: a white mask whose alpha is the highlight strength.
+        // It sits as a child renderer right in front of the hat's front layer, with the same
+        // material, flip and mask settings, tinted in the body colour of whoever wears the hat.
+        private static readonly Dictionary<int, SpriteRenderer> accents = new();
+
+        private static void HideAccent(HatParent hat) {
+            if (accents.Count == 0 || hat == null) return;
+            if (accents.TryGetValue(hat.GetInstanceID(), out var sr) && sr != null && sr.enabled) sr.enabled = false;
+        }
+
+        private static void ShowAccent(HatParent hat, SpriteRenderer front, Sprite sprite) {
+            int id = hat.GetInstanceID();
+            if (!accents.TryGetValue(id, out var sr) || sr == null) {
+                if (accents.Count > 256) accents.Clear();
+                var go = new GameObject("HalloweenAccent") { layer = front.gameObject.layer };
+                go.transform.SetParent(front.transform, false);
+                go.transform.localPosition = new Vector3(0f, 0f, -0.0002f);
+                sr = go.AddComponent<SpriteRenderer>();
+                accents[id] = sr;
+            }
+            if (sr.sprite != sprite) sr.sprite = sprite;
+            if (sr.sharedMaterial != front.sharedMaterial) sr.sharedMaterial = front.sharedMaterial;
+            sr.flipX = front.flipX;
+            sr.maskInteraction = front.maskInteraction;
+            sr.sortingLayerID = front.sortingLayerID;
+            sr.sortingOrder = front.sortingOrder;
+            if (sr.gameObject.layer != front.gameObject.layer) sr.gameObject.layer = front.gameObject.layer;
+            Color body = Color.white;
+            try {
+                int colorId = hat.matProperties.ColorId;
+                var bodies = Palette.PlayerColors;
+                if (bodies != null && colorId >= 0 && colorId < bodies.Length) body = bodies[colorId];
+            } catch { }
+            // The game drives the front layer's alpha for ghosts and invisibility - follow it.
+            sr.color = new Color(body.r, body.g, body.b, front.color.a);
+            if (!sr.enabled) sr.enabled = true;
         }
 
         // HatParent -> wearing player. Shop previews and the lobby dummy have none (always idle).
@@ -276,61 +356,78 @@ namespace UnknownsHalloween {
         // Runs after TOR's LateUpdatePrefix (which skips the original for cached custom hats), so
         // this is the last writer of the sprite in the frame - same slot UCHats uses for its hats.
         private static void HatLateUpdate(HatParent __instance) {
+            bool accentShown = false;
             try {
-                if (__instance == null) return;
-                var hat = __instance.Hat;
-                if (hat == null || !ByHatName.TryGetValue(hat.name, out var c)) return;
-
-                setBounceNode?.Invoke(__instance);
-
-                var front = __instance.FrontLayer;
-                var back = __instance.BackLayer;
-                if (DiagOn && DiagTick(__instance, front, back)) return;
-                if (front == null || !front.enabled || front.sprite == null) return;
-                // Ladder / corpse pose: SetClimbAnim and SetFloorAnim switch the back layer off and put
-                // their own image on the front layer. Never write over that.
-                if (back == null || !back.enabled) return;
-
-                EnsureFrames(c);
-                if (c.Idle == null) return;
-
-                bool running = false;
-                float cycle = -1f;
-                if (c.Walk != null) {
-                    var pc = OwnerOf(__instance);
-                    if (pc != null) {
-                        try {
-                            var anims = pc.MyPhysics != null ? pc.MyPhysics.Animations : null;
-                            if (anims != null && anims.IsPlayingRunAnimation()) {
-                                running = true;
-                                var animator = anims.Animator != null ? anims.Animator.m_animator : null;
-                                if (animator != null) {
-                                    float t = animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
-                                    cycle = t - Mathf.Floor(t);
-                                }
-                            }
-                        } catch { }
-                    }
-                }
-
-                Sprite frame;
-                if (running) {
-                    int i = cycle >= 0f ? Mathf.FloorToInt(cycle * WalkFrames) : Mathf.FloorToInt(Time.time * HatFps);
-                    frame = c.Walk[((i + WalkPhaseOffset) % WalkFrames + WalkFrames) % WalkFrames];
-                } else {
-                    frame = c.Idle[Mathf.FloorToInt(Time.time * HatFps) % IdleFrames];
-                }
-                if (frame != null && front.sprite != frame) front.sprite = frame;
-
-                // The back layer holds the dark trouser openings of the standing pose. While the
-                // painted legs walk, they would stay behind as fixed blobs on the floor.
-                // (Renderer.forceRenderingOff is stripped from this game build, hence the scale.)
-                SetHidden(back, running && c.HasLegs);
+                if (HalloweenCorpse.Handle(__instance)) { HideAccent(__instance); return; }
+                accentShown = HatLateUpdateCore(__instance);
             } catch (Exception ex) {
-                if (loggedAnimError) return;
-                loggedAnimError = true;
-                HalloweenPlugin.Logger?.LogError($"[Halloween] hat animation failed (logged once): {ex}");
+                if (!loggedAnimError) {
+                    loggedAnimError = true;
+                    HalloweenPlugin.Logger?.LogError($"[Halloween] hat animation failed (logged once): {ex}");
+                }
             }
+            // Any other hat, the ladder and corpse poses, a hidden front layer: no highlights.
+            if (!accentShown) {
+                try { HideAccent(__instance); } catch { }
+            }
+        }
+
+        // Returns whether the accent layer is showing for this hat in this frame.
+        private static bool HatLateUpdateCore(HatParent __instance) {
+            if (__instance == null) return false;
+            var hat = __instance.Hat;
+            if (hat == null || !ByHatName.TryGetValue(hat.name, out var c)) return false;
+
+            setBounceNode?.Invoke(__instance);
+
+            var front = __instance.FrontLayer;
+            var back = __instance.BackLayer;
+            if (DiagOn && DiagTick(__instance, front, back)) return false;
+            if (front == null || !front.enabled || front.sprite == null) return false;
+            // Ladder / corpse pose: SetClimbAnim and SetFloorAnim switch the back layer off and put
+            // their own image on the front layer. Never write over that.
+            if (back == null || !back.enabled) return false;
+
+            EnsureFrames(c);
+            if (c.Idle == null) return false;
+
+            bool running = false;
+            float cycle = -1f;
+            if (c.Walk != null) {
+                var pc = OwnerOf(__instance);
+                if (pc != null) {
+                    try {
+                        var anims = pc.MyPhysics != null ? pc.MyPhysics.Animations : null;
+                        if (anims != null && anims.IsPlayingRunAnimation()) {
+                            running = true;
+                            var animator = anims.Animator != null ? anims.Animator.m_animator : null;
+                            if (animator != null) {
+                                float t = animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
+                                cycle = t - Mathf.Floor(t);
+                            }
+                        }
+                    } catch { }
+                }
+            }
+
+            Sprite frame;
+            if (running) {
+                int i = cycle >= 0f ? Mathf.FloorToInt(cycle * WalkFrames) : Mathf.FloorToInt(Time.time * HatFps);
+                frame = c.Walk[((i + WalkPhaseOffset) % WalkFrames + WalkFrames) % WalkFrames];
+            } else {
+                frame = c.Idle[Mathf.FloorToInt(Time.time * HatFps) % IdleFrames];
+            }
+            if (frame != null && front.sprite != frame) front.sprite = frame;
+
+            // The back layer holds the dark trouser openings of the standing pose. While the
+            // painted legs walk, they would stay behind as fixed blobs on the floor.
+            // (Renderer.forceRenderingOff is stripped from this game build, hence the scale.)
+            SetHidden(back, running && c.HasLegs);
+
+            Sprite[] accStrip = running ? c.WalkAcc : c.IdleAcc;
+            if (accStrip == null || frame == null) return false;
+            ShowAccent(__instance, front, accStrip[Array.IndexOf(running ? c.Walk : c.Idle, frame)]);
+            return true;
         }
 
         // Hides a layer without touching `enabled` (the pose guards read that) or its colour (the
@@ -489,7 +586,7 @@ namespace UnknownsHalloween {
                     if (!__runOriginal || !Enabled || ByHatId.Count == 0) return true;
                     var c = CostumeOfKiller(killer, victim);
                     if (c == null) return true;
-                    queue.Add((c, ColorIdOf(victim), Time.time + 20f));
+                    queue.Add((c, PickScene(c), ColorIdOf(victim), Time.time + 20f));
                     return false;                       // suppress the vanilla overlay
                 } catch (Exception e) {
                     HalloweenPlugin.Logger?.LogError($"[Halloween] kill hook: {e}");
@@ -499,20 +596,24 @@ namespace UnknownsHalloween {
         }
 
         /// <summary>Plays a costume cutscene locally as if the local player had just been killed.
-        /// Returns a short status line. Keys: freddy, jason, xeno / xenomorph, ghost / ghostface.</summary>
+        /// Returns a short status line. Keys: freddy, jason, xeno (tail stab), xenobite, xenomorph (random of both),
+        /// ghost / ghostface.</summary>
         public static string Preview(string key) {
             try {
                 Setup();
                 key = (key ?? string.Empty).Trim().ToLowerInvariant();
                 var c = Costumes.FirstOrDefault(x => x.Key == key || x.KillKey == key
+                                                     || (x.Alt != null && x.Alt.Any(s => s.Key == key))
                                                      || (key.Length >= 3 && x.Key.StartsWith(key)));
-                if (c == null) return "Unbekannt. Moeglich: freddy, jason, xeno, ghost.";
+                if (c == null) return "Unbekannt. Moeglich: freddy, jason, xeno, xenobite, xenomorph (zufaellig), ghost.";
                 if (HudManager.Instance == null) return "Kein HUD - erst in eine Lobby oder Runde gehen.";
                 int color = 0;
                 try { color = PlayerControl.LocalPlayer.Data.DefaultOutfit.ColorId; } catch { }
                 EndSequence();
                 queue.Clear();
-                queue.Add((c, color, Time.time + 20f));
+                // An alternative's own key plays exactly that scene, the costume's main key the main one.
+                var scene = key == c.KillKey || (c.Alt != null && c.Alt.Any(s => s.Key == key)) ? PickScene(c, key) : PickScene(c);
+                queue.Add((c, scene, color, Time.time + 20f));
                 return $"Kill-Szene {c.Name} wird abgespielt.";
             } catch (Exception e) {
                 return "Fehler: " + e.Message;
@@ -521,7 +622,7 @@ namespace UnknownsHalloween {
 
         // ==================== kill cutscene: playback ====================
 
-        private static readonly List<(Costume c, int victimColor, float expires)> queue = new();
+        private static readonly List<(Costume c, KillScene scene, int victimColor, float expires)> queue = new();
         private static readonly string[] Layers = { "back", "vrest", "vbody", "vshade", "front" };
         private const int LayerBody = 2, LayerShade = 3;
         private const float StageWidth = 9.44f;
@@ -530,6 +631,7 @@ namespace UnknownsHalloween {
 
         private static GameObject root;
         private static Costume active;
+        private static KillScene activeScene;
         private static float startTime;
         private static int shownFrame;
         private static SpriteRenderer band;
@@ -546,7 +648,7 @@ namespace UnknownsHalloween {
                 if (root != null) {
                     if (uiBlocked) { EndSequence(); return; }
                     int frame = Mathf.FloorToInt((Time.time - startTime) * KillFps);
-                    if (frame >= active.KillFrames) { EndSequence(); return; }
+                    if (frame >= activeScene.Frames) { EndSequence(); return; }
                     if (frame != shownFrame) ShowFrame(frame);
                     return;
                 }
@@ -555,7 +657,7 @@ namespace UnknownsHalloween {
                 if (hud == null) return;
                 var next = queue[0];
                 queue.RemoveAt(0);
-                Build(hud, next.c, next.victimColor);
+                Build(hud, next.c, next.scene, next.victimColor);
             } catch (Exception e) {
                 if (!loggedKillError) {
                     loggedKillError = true;
@@ -592,12 +694,13 @@ namespace UnknownsHalloween {
             return sr;
         }
 
-        private static void Build(HudManager hud, Costume c, int victimColor) {
+        private static void Build(HudManager hud, Costume c, KillScene scene, int victimColor) {
             int layer = hud.gameObject.layer;
             root = new GameObject("HalloweenKill") { layer = layer };
             root.transform.SetParent(hud.transform, false);
             root.transform.localPosition = new Vector3(0f, 0f, -500f);
             active = c;
+            activeScene = scene;
             startTime = Time.time;
             shownFrame = -1;
 
@@ -637,7 +740,7 @@ namespace UnknownsHalloween {
         private static void ShowFrame(int frame) {
             shownFrame = frame;
             for (int i = 0; i < Layers.Length; i++) {
-                byte[] data = ReadResource(Res + $"hk_{active.KillKey}_{Layers[i]}_{frame + 1:00}.png");
+                byte[] data = ReadResource(Res + $"hk_{activeScene.Key}_{Layers[i]}_{frame + 1:00}.png");
                 if (data == null) continue;
                 if (layerTex[i] == null) {
                     layerTex[i] = new Texture2D(2, 2, TextureFormat.RGBA32, false);
@@ -653,13 +756,14 @@ namespace UnknownsHalloween {
                 if (layerSprite[i] != null) UnityEngine.Object.Destroy(layerSprite[i]);
                 layerSprite[i] = sprite;
             }
-            if (band != null) band.color = Array.IndexOf(active.Flashes, frame) >= 0 ? BandFlash : BandDark;
+            if (band != null) band.color = Array.IndexOf(activeScene.Flashes, frame) >= 0 ? BandFlash : BandDark;
         }
 
         private static void EndSequence() {
             if (root != null) UnityEngine.Object.Destroy(root);
             root = null;
             active = null;
+            activeScene = null;
             band = null;
             for (int i = 0; i < Layers.Length; i++) {
                 layerSr[i] = null;
@@ -678,9 +782,9 @@ namespace UnknownsHalloween {
         // costume artwork is calibrated against. Ends with "[Halloween] diag: all done" and quits.
         // Nothing here runs without the environment variable; no config entry, nothing to forget on.
 
-        // "1" = everything, "role" = only the Xenomorph role steps.
+        // "1" = everything, "role" = only the Xenomorph role steps, "corpse" = the corpse probe (HalloweenCorpse).
         private static readonly string DiagMode = Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "";
-        private static readonly bool DiagOn = DiagMode == "1" || DiagMode == "role";
+        private static readonly bool DiagOn = DiagMode == "1" || DiagMode == "role" || DiagMode == "corpse";
         private static bool diagHideHat;
         private static string diagRectTag;
         private static float diagWalk;
@@ -785,6 +889,13 @@ namespace UnknownsHalloween {
             var steps = new List<(float, Action)>();
             void Add(float wait, Action act) => steps.Add((wait, act));
             var worn = Costumes.Where(c => c.HatId != null).ToList();
+            if (DiagMode == "corpse") {
+                HalloweenCorpse.ProbeSteps(lp, steps, diagDir, DiagShot);
+                Add(1.0f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag: all done"));
+                Add(0f, () => Application.Quit());
+                diagSteps = steps;
+                return;
+            }
 
             Add(0.5f, () => { try { lp.RpcSetColor(10); } catch { } });
             if (DiagMode == "role") worn.Clear();
@@ -883,6 +994,7 @@ namespace UnknownsHalloween {
         }
 
         private static void ResetAll() {
+            HalloweenCorpse.ResetAll();
             EndSequence();
             queue.Clear();
         }
