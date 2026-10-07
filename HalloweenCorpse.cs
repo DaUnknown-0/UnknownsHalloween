@@ -195,7 +195,8 @@ namespace UnknownsHalloween {
             if (sp == null) return true;
             if (front.sprite != sp) front.sprite = sp;
             bool flip = body.flipX;
-            front.flipX = flip;
+            // the corpse sprite faces LEFT (backpack on the right); an unflipped body faces right
+            front.flipX = !flip;
             var par = front.transform.parent;
             float pl = par != null ? Mathf.Abs(par.lossyScale.x) : 1f;
             float k = pl > 1e-5f ? h.Lossy / pl : 1f;
