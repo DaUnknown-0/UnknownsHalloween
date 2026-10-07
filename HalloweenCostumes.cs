@@ -19,7 +19,8 @@
  *
  * Kill cutscenes play ONLY when the killer is wearing the matching costume (current outfit, so a
  * camouflaged or morphed killer never shows it), on a normal field kill that no role cutscene of
- * UCKillOverlay has already claimed. Audience is whoever the vanilla overlay would have shown to.
+ * UCKillOverlay has already claimed, and only if the HOST has them on (options 1793-1797, one per
+ * costume). Audience is whoever the vanilla overlay would have shown to.
  * Each frame is five images: killer (back), the victim split into an untinted part (outline,
  * visor) plus a body mask and a shade mask that are tinted in the victim's colours, and the
  * foreground (blade tip, blood, impact). The victim deliberately does NOT go through the game's
@@ -42,6 +43,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using BepInEx.Unity.IL2CPP.Utils;
+using TheOtherRoles;
 using TheOtherRoles.Modules.CustomHats;
 using UnityEngine;
 using UnknownsCollection;
@@ -94,12 +96,43 @@ namespace UnknownsHalloween {
 
         private static readonly Costume[] Costumes = {
             new Costume { Key = "freddy", KillKey = "freddy", Name = "Halloween Freddy", KillFrames = 46, Flashes = new[] { 14, 20 }, HasLegs = false },
-            new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 46, Flashes = new[] { 16, 30 }, HasLegs = false },
+            new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 46, Flashes = new[] { 16, 30 }, HasLegs = false,
+                // diagonal slash (main) or the one-armed lift with the machete run through (2026-10-07)
+                Alt = new[] { new KillScene { Key = "jasonlift", Frames = 60, Flashes = new[] { 25, 45 } } } },
             new Costume { Key = "xenomorph", KillKey = "xeno", Name = "Halloween Xenomorph", KillFrames = 46, Flashes = new[] { 17, 22 }, HasLegs = false, HasAccent = true,
                 // tail stab (main) or the inner-jaw bite
                 Alt = new[] { new KillScene { Key = "xenobite", Frames = 46, Flashes = new[] { 18, 31 } } } },
-            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 52, Flashes = new[] { 15, 20, 28, 33, 40 }, HasLegs = false, HasAccent = true },
+            // 2026-10-07: rebuilt after the Dead-by-Daylight mori (yank down, three stabs, head hauled up, selfie, rip)
+            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 66, Flashes = new[] { 19, 23, 27, 44, 56 }, HasLegs = false, HasAccent = true },
         };
+
+        // ==================== host options (2026-10-07) ====================
+        //
+        // The host decides for the whole lobby whether the costume cutscenes play at all and which
+        // of them (TOR settings, General tab, block "Unknown's Halloween"). Until now this followed
+        // UC's local "UC Kill Animations" toggle, which is gone. IDs 1793-1797 (the Xenomorph role
+        // holds 1785-1792).
+        public static CustomOption Anims;
+        private static readonly Dictionary<string, CustomOption> perCostume = new();
+
+        private static void CreateOptions() {
+            try {
+                var g = CustomOption.CustomOptionType.General;
+                Anims = CustomOption.Create(1793, g, "Halloween Costume Kill Animations", true, null, true, null, "Unknown's Halloween");
+                int id = 1794;
+                foreach (var c in Costumes)
+                    perCostume[c.Key] = CustomOption.Create(id++, g, "Kill Animation: " + c.Name.Replace("Halloween ", ""), true, Anims);
+            } catch (Exception e) {
+                HalloweenPlugin.Logger?.LogError($"[Halloween] CreateOptions failed: {e}");
+            }
+        }
+
+        private static bool On(CustomOption o, bool fallback) {
+            try { return o == null ? fallback : o.getBool(); } catch { return fallback; }
+        }
+
+        private static bool Enabled => On(Anims, true);
+        private static bool CostumeEnabled(Costume c) => Enabled && (!perCostume.TryGetValue(c.Key, out var o) || On(o, true));
 
         private static readonly Dictionary<string, Costume> ByHatName = new();
         private static readonly Dictionary<string, Costume> ByHatId = new();
@@ -115,6 +148,7 @@ namespace UnknownsHalloween {
         private static void Setup() {
             if (setupDone) return;
             setupDone = true;
+            CreateOptions();
             try {
                 const BindingFlags priv = BindingFlags.NonPublic | BindingFlags.Static;
                 var hats = typeof(UCHats);
@@ -542,10 +576,6 @@ namespace UnknownsHalloween {
 
         // ==================== kill cutscene: selection ====================
 
-        private static bool Enabled {
-            get { try { return UnknownsCollection.UnknownsCollectionPlugin.KillAnimationsUC == null || UnknownsCollection.UnknownsCollectionPlugin.KillAnimationsUC.Value; } catch { return true; } }
-        }
-
         private static Costume CostumeOfKiller(NetworkedPlayerInfo killer, NetworkedPlayerInfo victim) {
             try {
                 // Masked kills arrive as (victim, victim); meeting kills are guesses, not costume kills.
@@ -585,7 +615,7 @@ namespace UnknownsHalloween {
                 try {
                     if (!__runOriginal || !Enabled || ByHatId.Count == 0) return true;
                     var c = CostumeOfKiller(killer, victim);
-                    if (c == null) return true;
+                    if (c == null || !CostumeEnabled(c)) return true;
                     queue.Add((c, PickScene(c), ColorIdOf(victim), Time.time + 20f));
                     return false;                       // suppress the vanilla overlay
                 } catch (Exception e) {
@@ -596,23 +626,25 @@ namespace UnknownsHalloween {
         }
 
         /// <summary>Plays a costume cutscene locally as if the local player had just been killed.
-        /// Returns a short status line. Keys: freddy, jason, xeno (tail stab), xenobite, xenomorph (random of both),
-        /// ghost / ghostface.</summary>
+        /// Returns a short status line. Keys: freddy, jason (slash), jasonlift, jasonrandom, xeno (tail stab),
+        /// xenobite, xenomorph (random of both), ghost / ghostface. "&lt;costume&gt;random" draws like a real kill.</summary>
         public static string Preview(string key) {
             try {
                 Setup();
                 key = (key ?? string.Empty).Trim().ToLowerInvariant();
+                bool random = key.EndsWith("random", StringComparison.Ordinal);
+                if (random) key = key.Substring(0, key.Length - "random".Length);
                 var c = Costumes.FirstOrDefault(x => x.Key == key || x.KillKey == key
                                                      || (x.Alt != null && x.Alt.Any(s => s.Key == key))
                                                      || (key.Length >= 3 && x.Key.StartsWith(key)));
-                if (c == null) return "Unbekannt. Moeglich: freddy, jason, xeno, xenobite, xenomorph (zufaellig), ghost.";
+                if (c == null) return "Unbekannt. Moeglich: freddy, jason, jasonlift, jasonrandom, xeno, xenobite, xenomorph (zufaellig), ghost.";
                 if (HudManager.Instance == null) return "Kein HUD - erst in eine Lobby oder Runde gehen.";
                 int color = 0;
                 try { color = PlayerControl.LocalPlayer.Data.DefaultOutfit.ColorId; } catch { }
                 EndSequence();
                 queue.Clear();
                 // An alternative's own key plays exactly that scene, the costume's main key the main one.
-                var scene = key == c.KillKey || (c.Alt != null && c.Alt.Any(s => s.Key == key)) ? PickScene(c, key) : PickScene(c);
+                var scene = !random && (key == c.KillKey || (c.Alt != null && c.Alt.Any(s => s.Key == key))) ? PickScene(c, key) : PickScene(c);
                 queue.Add((c, scene, color, Time.time + 20f));
                 return $"Kill-Szene {c.Name} wird abgespielt.";
             } catch (Exception e) {

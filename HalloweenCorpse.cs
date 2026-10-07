@@ -3,7 +3,8 @@
 
 /*
  * HalloweenCorpse - a costume that makes the wearer look like the game's own corpse (the lower half
- * with the bone sticking out, User 2026-10-07).
+ * with the bone sticking out, User 2026-10-07). Standing it is the static corpse sprite; walking,
+ * the real legs run under the cap (sprite mask at the hip, see "walking" below).
  *
  * Probe (UC_HALLOWEEN_DIAG=corpse): kills a freeplay dummy and logs how the game draws the corpse
  * relative to the player (renderer offsets, sprite rects, pivots, scale), and saves the raw sprite
@@ -64,11 +65,62 @@ namespace UnknownsHalloween {
             return sprite;
         }
 
+        // ---- walking (2026-10-07) ----
+        //
+        // Standing, the costume is the one static corpse sprite. While the player runs, the REAL body
+        // stays visible instead, cut off at the hip by a sprite mask, and only the top of the corpse
+        // (bone, rim, flesh disc) rides on top of it: the legs then run exactly like the crewmate's,
+        // in the player's colour and skin-less. The cut line is CutY px from the bottom of
+        // hw_corpse.png; the cap is the same texture above that line with the same pivot, so it lands
+        // where the full sprite's top would be. The body bobs by up to ~7 % of its height inside the
+        // run sprites (see HalloweenCostumes), which the flesh disc covers.
+        private const float CutY = 67f;
+        private static Sprite capSprite;
+
+        private static Sprite CapSprite() {
+            if (capSprite != null) return capSprite;
+            var sp = CorpseSprite();
+            if (sp == null) return null;
+            try {
+                var tex = sp.texture;
+                float h = tex.height - CutY;
+                capSprite = Sprite.Create(tex, new Rect(0, CutY, tex.width, h), new Vector2(33.5f / tex.width, (77f - CutY) / h), 100f);
+                capSprite.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
+            } catch (Exception e) { Log("cap sprite failed: " + e.Message); }
+            return capSprite;
+        }
+
+        private static void EnsureMask(Hidden h, SpriteRenderer front, SpriteRenderer body) {
+            if (h.Mask == null) {
+                var go = new GameObject("CorpseWalkMask") { layer = front.gameObject.layer };
+                go.transform.SetParent(front.transform, false);
+                var m = go.AddComponent<SpriteMask>();
+                m.sprite = UnknownsCollection.UCAssets.OverlayWhite;
+                m.isCustomRangeActive = true;
+                h.Mask = m;
+            }
+            var mk = h.Mask;
+            if (!mk.gameObject.activeSelf) mk.gameObject.SetActive(true);
+            // only the body's own sorting slot, so no other masked renderer nearby is touched
+            mk.frontSortingLayerID = body.sortingLayerID;
+            mk.backSortingLayerID = body.sortingLayerID;
+            mk.frontSortingOrder = body.sortingOrder;
+            mk.backSortingOrder = body.sortingOrder - 1;
+            if (mk.sprite == null) return;
+            // front-layer units = sprite px / 100: a 3 x 2 unit field whose TOP edge is the cut line
+            float u = Mathf.Max(0.0001f, mk.sprite.bounds.size.x), v = Mathf.Max(0.0001f, mk.sprite.bounds.size.y);
+            mk.transform.localScale = new Vector3(3f / u, 2f / v, 1f);
+            mk.transform.localPosition = new Vector3(0f, (CutY - 77f) / 100f - 1f, 0f);
+        }
+
         // What was hidden or moved on one player, to put back when the costume comes off.
         private sealed class Hidden {
             public Transform Body, Skin, Visor, Front;
             public Vector3 BodyScale, SkinScale, VisorScale, FrontScale, FrontPos;
             public float Lossy;
+            public SpriteRenderer BodySr;
+            public SpriteMaskInteraction BodyMask;
+            public SpriteMask Mask;
         }
         private static readonly Dictionary<int, Hidden> hidden = new();
         private static readonly Dictionary<int, (CosmeticsLayer co, PlayerControl pc)> owners = new();
@@ -93,6 +145,8 @@ namespace UnknownsHalloween {
                 if (h.Skin != null) h.Skin.localScale = h.SkinScale;
                 if (h.Visor != null) h.Visor.localScale = h.VisorScale;
                 if (h.Front != null) { h.Front.localScale = h.FrontScale; h.Front.localPosition = h.FrontPos; }
+                if (h.BodySr != null) h.BodySr.maskInteraction = h.BodyMask;
+                if (h.Mask != null) UnityEngine.Object.Destroy(h.Mask.gameObject);
             } catch { }
         }
 
@@ -129,6 +183,7 @@ namespace UnknownsHalloween {
                 h = new Hidden {
                     Body = body.transform, BodyScale = body.transform.localScale,
                     Front = front.transform, FrontScale = front.transform.localScale, FrontPos = front.transform.localPosition,
+                    BodySr = body, BodyMask = body.maskInteraction,
                 };
                 try { if (co.skin != null) { h.Skin = co.skin.transform; h.SkinScale = h.Skin.localScale; } } catch { }
                 try { if (co.visor != null) { h.Visor = co.visor.transform; h.VisorScale = h.Visor.localScale; } } catch { }
@@ -137,9 +192,26 @@ namespace UnknownsHalloween {
                 if (hidden.Count > 256) hidden.Clear();
                 hidden[id] = h;
             }
-            Scale0(h.Body); Scale0(h.Skin); Scale0(h.Visor);
+            Scale0(h.Skin); Scale0(h.Visor);
 
+            bool running = false;
+            try {
+                var an = pc != null && pc.MyPhysics != null ? pc.MyPhysics.Animations : null;
+                running = an != null && an.IsPlayingRunAnimation();
+            } catch { }
             var sp = CorpseSprite();
+            var cap = running ? CapSprite() : null;
+            if (cap != null) {
+                // walking: the real body runs below the cut line, the cap rides on top
+                if (h.Body.localScale != h.BodyScale) h.Body.localScale = h.BodyScale;
+                EnsureMask(h, front, body);
+                if (body.maskInteraction != SpriteMaskInteraction.VisibleInsideMask) body.maskInteraction = SpriteMaskInteraction.VisibleInsideMask;
+                sp = cap;
+            } else {
+                Scale0(h.Body);
+                if (body.maskInteraction != h.BodyMask) body.maskInteraction = h.BodyMask;
+                if (h.Mask != null && h.Mask.gameObject.activeSelf) h.Mask.gameObject.SetActive(false);
+            }
             if (sp == null) return true;
             if (front.sprite != sp) front.sprite = sp;
             bool flip = body.flipX;
