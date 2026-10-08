@@ -328,6 +328,10 @@ namespace UnknownsHalloween {
         }
 
         // ---- look: the costume, re-applied when anything resets it (Morphling/Camo ends, light changes) ----
+        // Retry throttle: a costume hat that never shows up (probe mismatch, hat missing) would
+        // otherwise rebuild the cosmetics every frame for the whole transformation.
+        private static float nextLookTry;
+
         private static void TickLook() {
             if (!formActive || xenomorph == null) return;
             if (GlobalCamoActive()) return;
@@ -335,6 +339,8 @@ namespace UnknownsHalloween {
                 var hp = xenomorph.cosmetics != null ? xenomorph.cosmetics.hat : null;
                 bool wearing = hp != null && hp.Hat != null && hp.Hat.ProductId == CostumeHatId;
                 if (lookApplied && wearing) return;
+                if (lookApplied && Time.time < nextLookTry) return;
+                nextLookTry = Time.time + 0.5f;
                 xenomorph.setLook(xenomorph.Data.PlayerName, 6, CostumeHatId, "", "", "");
                 lookApplied = true;
             } catch { lookApplied = true; }   // a broken probe must never turn into a per-frame setLook storm

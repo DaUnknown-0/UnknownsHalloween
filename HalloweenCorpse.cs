@@ -118,6 +118,9 @@ namespace UnknownsHalloween {
             public float Lossy;
         }
         private static readonly Dictionary<int, Hidden> hidden = new();
+        // Front-layer scale from before a death zeroed it: Restore drops the record in the death
+        // branch, and a later capture would otherwise take the 0 as the original (next hat invisible).
+        private static readonly Dictionary<int, Vector3> deadFront = new();
         private static readonly Dictionary<int, (CosmeticsLayer co, PlayerControl pc)> owners = new();
 
         private static (CosmeticsLayer co, PlayerControl pc) OwnerOf(HatParent hat) {
@@ -152,7 +155,12 @@ namespace UnknownsHalloween {
             var (co, pc) = OwnerOf(hat);
             int id = co != null ? co.GetInstanceID() : 0;
             bool isCorpse = hat.Hat != null && hat.Hat.name == HatName;
-            if (!isCorpse) { if (hidden.Count > 0 && id != 0) Restore(id); return false; }
+            if (!isCorpse) {
+                if (hidden.Count > 0 && id != 0) Restore(id);
+                if (deadFront.Count > 0 && deadFront.Remove(id, out var fs) && hat.FrontLayer != null)
+                    hat.FrontLayer.transform.localScale = fs;
+                return false;
+            }
             if (co == null) return true;     // a hat chip without a crewmate: the plain image is fine
 
             var front = hat.FrontLayer;
@@ -167,6 +175,8 @@ namespace UnknownsHalloween {
             } catch { }
             if (front == null || body == null || dead || away || co.CurrentBodyType != PlayerBodyTypes.Normal) {
                 // ghost, ladder, vent, platform, horse/long mode: the plain crewmate, no corpse
+                if (front != null && dead && !deadFront.ContainsKey(id))
+                    deadFront[id] = hidden.TryGetValue(id, out var hd) ? hd.FrontScale : front.transform.localScale;
                 Restore(id);
                 if (front != null && dead) Scale0(front.transform);
                 return true;
@@ -175,7 +185,8 @@ namespace UnknownsHalloween {
             if (!hidden.TryGetValue(id, out var h)) {
                 h = new Hidden {
                     Body = body.transform, BodyScale = body.transform.localScale,
-                    Front = front.transform, FrontScale = front.transform.localScale, FrontPos = front.transform.localPosition,
+                    Front = front.transform, FrontPos = front.transform.localPosition,
+                    FrontScale = deadFront.Remove(id, out var fs0) ? fs0 : front.transform.localScale,
                 };
                 try { if (co.skin != null) { h.Skin = co.skin.transform; h.SkinScale = h.Skin.localScale; } } catch { }
                 try { if (co.visor != null) { h.Visor = co.visor.transform; h.VisorScale = h.Visor.localScale; } } catch { }
@@ -211,6 +222,7 @@ namespace UnknownsHalloween {
         internal static void ResetAll() {
             foreach (var id in new List<int>(hidden.Keys)) Restore(id);
             owners.Clear();
+            deadFront.Clear();
         }
 
 
