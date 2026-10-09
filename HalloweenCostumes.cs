@@ -769,19 +769,34 @@ namespace UnknownsHalloween {
             PlayVanillaStinger(hud);
         }
 
+        // Bytes of the frame each layer currently shows. An identical next file (the layer holds still, 14 % of all
+        // layer frames) keeps texture and sprite instead of decoding the same picture again.
+        private static readonly byte[][] layerData = new byte[5][];
+
         private static void ShowFrame(int frame) {
             shownFrame = frame;
             for (int i = 0; i < Layers.Length; i++) {
                 byte[] data = ReadResource(Res + $"hk_{activeScene.Key}_{Layers[i]}_{frame + 1:00}.png");
                 if (data == null) continue;
+                if (layerData[i] != null && layerSprite[i] != null && data.AsSpan().SequenceEqual(layerData[i])) continue;
                 if (layerTex[i] == null) {
                     layerTex[i] = new Texture2D(2, 2, TextureFormat.RGBA32, false);
                     layerTex[i].hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
                 }
                 if (!ImageConversion.LoadImage(layerTex[i], data, false)) continue;
+                layerData[i] = data;
                 var tex = layerTex[i];
-                var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
-                float fit = StageWidth * 100f / Mathf.Max(1, tex.width);
+                // Cropped frames (tmp/halloween_hats_v2/killcrop.py) carry their place on the stage; the
+                // pivot puts the stage centre where the full frame's centre was, so nothing moves.
+                int stageW = tex.width, stageH = tex.height;
+                var pivot = new Vector2(0.5f, 0.5f);
+                if (TryReadCrop(data, out int cw, out int ch, out int cx, out int cy)) {
+                    stageW = cw; stageH = ch;
+                    pivot = new Vector2((cw * 0.5f - cx) / Mathf.Max(1, tex.width),
+                                        (ch * 0.5f - (ch - cy - tex.height)) / Mathf.Max(1, tex.height));
+                }
+                var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), pivot, 100f);
+                float fit = StageWidth * 100f / Mathf.Max(1, stageW);
                 if (layerSr[i] != null) layerSr[i].transform.localScale = new Vector3(fit, fit, 1f);
                 sprite.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
                 if (layerSr[i] != null) layerSr[i].sprite = sprite;
@@ -791,7 +806,34 @@ namespace UnknownsHalloween {
             if (band != null) band.color = Array.IndexOf(activeScene.Flashes, frame) >= 0 ? BandFlash : BandDark;
         }
 
+        /// <summary>The "hkcrop" text chunk of a cropped kill frame: stage width/height and the top-left corner of
+        /// the cropped picture on it. Read from the PNG bytes up to the first IDAT; false = uncropped file.</summary>
+        private static bool TryReadCrop(byte[] png, out int stageW, out int stageH, out int x, out int y) {
+            stageW = stageH = x = y = 0;
+            try {
+                int p = 8;                                                      // after the PNG signature
+                while (p + 8 <= png.Length) {
+                    int len = (png[p] << 24) | (png[p + 1] << 16) | (png[p + 2] << 8) | png[p + 3];
+                    if (len < 0 || p + 12 + len > png.Length) return false;
+                    bool idat = png[p + 4] == 'I' && png[p + 5] == 'D' && png[p + 6] == 'A' && png[p + 7] == 'T';
+                    if (idat) return false;
+                    bool text = png[p + 4] == 't' && png[p + 5] == 'E' && png[p + 6] == 'X' && png[p + 7] == 't';
+                    if (text) {
+                        string s = System.Text.Encoding.Latin1.GetString(png, p + 8, len);
+                        if (s.StartsWith("hkcrop\0", StringComparison.Ordinal)) {
+                            var v = s.Substring(7).Split(',');
+                            return v.Length == 4 && int.TryParse(v[0], out stageW) && int.TryParse(v[1], out stageH)
+                                && int.TryParse(v[2], out x) && int.TryParse(v[3], out y) && stageW > 0 && stageH > 0;
+                        }
+                    }
+                    p += 12 + len;
+                }
+            } catch { }
+            return false;
+        }
+
         private static void EndSequence() {
+            for (int i = 0; i < layerData.Length; i++) layerData[i] = null;
             if (root != null) UnityEngine.Object.Destroy(root);
             root = null;
             active = null;
