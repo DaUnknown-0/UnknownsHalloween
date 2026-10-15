@@ -8,6 +8,8 @@
  *   - HalloweenCostumes.cs: four full-body costume hats (Freddy, Jason, Xenomorph, Ghostface) with
  *     idle/walk animation and a kill cutscene per costume.
  *   - Xenomorph.cs: the Xenomorph role (neutral killer, transformation on a button).
+ *   - Villa/: the map "Hollowmere Manor" for Unknown's Atlas (soft dependency; registered only when
+ *     Atlas is installed, through Atlas' public AtlasMaps API).
  *
  * Split out of Unknown's Collection on 2026-10-05 so the costumes of third-party characters live in a
  * repository of their own: whatever happens to this repo never touches Unknown's Collection.
@@ -33,12 +35,14 @@ namespace UnknownsHalloween;
 [BepInProcess("Among Us.exe")]
 [BepInDependency("me.eisbison.theotherroles", BepInDependency.DependencyFlags.HardDependency)]
 [BepInDependency("com.tormod.unknownscollection", BepInDependency.DependencyFlags.HardDependency)]
+[BepInDependency(AtlasGuid, BepInDependency.DependencyFlags.SoftDependency)]
 public class HalloweenPlugin : BasePlugin
 {
     public const string PluginGuid = "com.daunknown.unknownshalloween";
     public const string PluginName = "Unknown's Halloween";
-    public const string PluginVersion = "0.1.0.7";
+    public const string PluginVersion = "0.1.0.8";
     public static readonly System.Version Version = System.Version.Parse(PluginVersion);
+    private const string AtlasGuid = "com.daunknown0.atlas";
 
     public static ManualLogSource Logger { get; private set; }
     public static ConfigEntry<bool> CfgEnabled;
@@ -81,8 +85,21 @@ public class HalloweenPlugin : BasePlugin
         // PatchAll runs the HarmonyPrepare hooks that set the costumes and the role up
         // (HalloweenCostumes.KillHook.Prepare, Xenomorph.ResetPatch.Prepare).
         new Harmony(PluginGuid).PatchAll();
-        Logger.LogInfo($"[Halloween] {PluginName} {PluginVersion} loaded.");
+
+        // Hollowmere Manor needs Unknown's Atlas; without it the map simply does not exist.
+        bool atlas = false;
+        try { atlas = BepInEx.Unity.IL2CPP.IL2CPPChainloader.Instance.Plugins.ContainsKey(AtlasGuid); } catch { }
+        if (atlas)
+        {
+            try { RegisterVilla(); }
+            catch (System.Exception ex) { Logger.LogError($"[Halloween] Hollowmere Manor registration failed: {ex}"); }
+        }
+        Logger.LogInfo($"[Halloween] {PluginName} {PluginVersion} loaded{(atlas ? "" : " (Unknown's Atlas missing: no Hollowmere Manor)")}.");
     }
+
+    // Separate method so the Atlas types are only resolved when Atlas is actually installed.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static void RegisterVilla() => HollowmereMap.Register();
 }
 
 // Version line in the top-corner PingTracker readout, folded into the shared "Unknown's

@@ -5,3 +5,7 @@ obj/
 .idea/
 *.dll
 packages.lock.json
+__pycache__/
+# Vorschau- und Arbeitsbilder der Generatoren
+tools/_*/
+tools/_*.png

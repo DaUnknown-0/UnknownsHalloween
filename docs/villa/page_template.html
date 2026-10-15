@@ -1,0 +1,563 @@
+<title>Hollowmere Manor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=Courier+Prime:wght@400;700&display=swap">
+<style>
+/* Layout: Location-Mappe einer Filmproduktion. Kopf mit Logline, dann der Plan als Hauptstück
+   (Plan links, Raumkarte rechts), darunter Idee, Gimmicks, Raumliste, offene Punkte. Bewusst nur dunkel. */
+:root {
+  color-scheme: dark;
+  --ink: #0f0d11;          /* Seitengrund */
+  --night: #17141b;        /* Flächen */
+  --rule: #2c2731;         /* Linien */
+  --paper: #ebe3d4;        /* Text */
+  --dust: #a1978c;         /* Nebentext */
+  --candle: #e8a94c;       /* Akzent: Kerzenlicht */
+  --blood: #c0453c;        /* Türen */
+  --ghost: #79c2b4;        /* Geheimgänge */
+  --vent: #a08ae0;         /* Vents */
+  --wood: #2e2621;         /* Raumboden */
+  --hall: #241f1d;         /* Gänge */
+  --moss: #1c261c;         /* Garten */
+  --wall: #d9cdb8;         /* Wände im Plan */
+  --display: "IM Fell English SC", "IM Fell English", Georgia, serif;
+  --display-i: "IM Fell English", Georgia, serif;
+  --body: "Crimson Pro", Georgia, "Times New Roman", serif;
+  --mono: "Courier Prime", "Courier New", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html { background: var(--ink); }
+body { background: var(--ink); color: var(--paper); font-family: var(--body); font-size: 1.125rem; line-height: 1.55; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: max(16px, 3vw); padding-block: 2.5rem 4rem; }
+a { color: var(--candle); }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; margin: 0; letter-spacing: .01em; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--dust); }
+.slate { display: inline-flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.slate span { border: 1px solid var(--rule); padding: .15rem .5rem; }
+.slate .secret { color: var(--blood); border-color: color-mix(in srgb, var(--blood) 60%, transparent); }
+
+header { display: grid; gap: 1rem; padding-bottom: 2rem; border-bottom: 1px solid var(--rule); }
+header h1 { font-size: clamp(2.8rem, 7vw, 5.2rem); line-height: .95; }
+header h1 em { font-family: var(--display-i); font-style: italic; color: var(--candle); font-size: .42em; display: block; letter-spacing: .02em; margin-top: .4rem; }
+.logline { font-size: clamp(1.15rem, 2.2vw, 1.4rem); max-width: 62ch; margin: 0; }
+.logline b { font-weight: 600; color: var(--candle); }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-top: 1.6rem; }
+.fact { background: var(--ink); padding: .8rem 1rem; display: grid; gap: .15rem; }
+.fact .k { font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--dust); }
+.fact .v { font-family: var(--display); font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.fact .s { font-size: .95rem; color: var(--dust); }
+
+section { padding-top: 2.8rem; }
+section > h2 { font-size: clamp(1.7rem, 3.4vw, 2.3rem); margin-bottom: .3rem; }
+section > .lead { color: var(--dust); max-width: 70ch; margin: 0 0 1.2rem; }
+
+/* Plan */
+.planbar { display: flex; flex-wrap: wrap; gap: .8rem 1.4rem; align-items: center; margin-bottom: .9rem; }
+.seg { display: inline-flex; border: 1px solid var(--rule); }
+.seg button { font: inherit; font-family: var(--mono); font-size: .85rem; letter-spacing: .08em; text-transform: uppercase; background: transparent; color: var(--dust); border: 0; padding: .45rem .9rem; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--candle); color: var(--ink); }
+.seg button:focus-visible, .layers input:focus-visible + span, .room:focus-visible { outline: 2px solid var(--candle); outline-offset: 2px; }
+.layers { display: flex; flex-wrap: wrap; gap: .3rem 1rem; font-family: var(--mono); font-size: .82rem; color: var(--dust); }
+.layers label { display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; }
+.layers input { accent-color: var(--candle); }
+.layers i { display: inline-block; width: .7rem; height: .7rem; border-radius: 1px; }
+
+.planwrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 1.2rem; align-items: start; }
+@media (max-width: 860px) { .planwrap { grid-template-columns: minmax(0, 1fr); } }
+.plan { background: #0b0a0d; border: 1px solid var(--rule); padding: .6rem; overflow-x: auto; }
+.plan svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.room { cursor: pointer; }
+.room:hover .fill { filter: brightness(1.35); }
+.room.sel .fill { filter: brightness(1.6); }
+.roomcard { background: var(--night); border: 1px solid var(--rule); padding: 1rem 1.1rem; display: grid; gap: .5rem; min-width: 0; }
+.roomcard h3 { font-size: 1.6rem; }
+.roomcard .sys { font-family: var(--mono); font-size: .8rem; color: var(--candle); letter-spacing: .06em; }
+.roomcard p { margin: 0; }
+.roomcard .hint { font-size: .92rem; color: var(--dust); border-top: 1px solid var(--rule); padding-top: .5rem; }
+.metric { font-family: var(--mono); font-size: .85rem; color: var(--dust); margin-top: .6rem; }
+.metric b { color: var(--paper); font-weight: 700; }
+
+/* Vergleich */
+.bars { display: grid; gap: .45rem; max-width: 760px; }
+.bar { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) 4.5rem; gap: .8rem; align-items: center; font-family: var(--mono); font-size: .85rem; }
+.bar .track { height: .9rem; background: var(--night); position: relative; }
+.bar .fillb { position: absolute; inset: 0 auto 0 0; background: var(--dust); opacity: .55; }
+.bar.own .fillb { background: var(--candle); opacity: 1; }
+.bar .num { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { .bar { grid-template-columns: 6.5rem minmax(0, 1fr) 3.6rem; font-size: .78rem; } }
+
+/* Gimmicks */
+.gimmicks { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.2rem; }
+.gimmick { border-top: 2px solid var(--candle); padding-top: .8rem; display: grid; gap: .5rem; align-content: start; min-width: 0; }
+.gimmick h3 { font-size: 1.45rem; }
+.gimmick ul { margin: 0; padding-left: 1.1rem; }
+.gimmick li { margin: .2rem 0; }
+.gimmick .open { font-size: .95rem; color: var(--dust); }
+.gimmick .open b { font-family: var(--mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--candle); font-weight: 400; margin-right: .3rem; }
+
+.frame { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.6rem; }
+.frame p { margin: 0 0 .7rem; }
+.frame h3 { font-size: 1.3rem; margin-bottom: .4rem; color: var(--candle); }
+
+/* Tabelle */
+.tablewrap { overflow-x: auto; border: 1px solid var(--rule); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 1rem; }
+th, td { text-align: left; padding: .5rem .8rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-family: var(--mono); font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; color: var(--dust); font-weight: 400; background: var(--night); }
+td.mono { font-family: var(--mono); font-size: .85rem; }
+td .moved { color: var(--candle); }
+td .none { color: var(--dust); }
+
+.steps { display: grid; gap: .9rem; counter-reset: s; max-width: 78ch; padding: 0; margin: 0; list-style: none; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 2.2rem minmax(0, 1fr); gap: .6rem; }
+.steps li::before { content: counter(s); font-family: var(--display); font-size: 1.5rem; color: var(--candle); line-height: 1.2; }
+.steps b { font-weight: 600; }
+.questions { margin: 0; padding-left: 1.1rem; max-width: 78ch; }
+.questions li { margin: .35rem 0; }
+.shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.2rem; }
+.shots figure { margin: 0; display: grid; gap: .4rem; min-width: 0; }
+.shots figure.wide { grid-column: 1 / -1; }
+.shots img { width: 100%; height: auto; display: block; border: 1px solid var(--rule); background: var(--night); }
+.shots figcaption { font-size: .95rem; color: var(--dust); }
+.review { margin-top: 1.4rem; border-left: 2px solid var(--candle); padding-left: 1rem; max-width: 78ch; }
+.review h3 { font-size: 1.3rem; margin-bottom: .3rem; }
+.review ul { margin: 0; padding-left: 1.1rem; }
+.review li { margin: .3rem 0; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-family: var(--mono); font-size: .78rem; color: var(--dust); }
+@media (prefers-reduced-motion: no-preference) { .candleglow { animation: flicker 3.2s infinite ease-in-out; } }
+@keyframes flicker { 0%, 100% { opacity: .55; } 40% { opacity: .9; } 55% { opacity: .62; } 70% { opacity: .85; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="slate eyebrow"><span>Unknown's Atlas</span><span>Halloween-Karte</span><span>Stand 3: im Spiel</span><span class="secret">Nicht veröffentlichen</span></div>
+    <h1>Hollowmere Manor<em>Arbeitstitel · Villa als Horrorfilm-Set</em></h1>
+    <p class="logline">Eine Filmcrew dreht in einer verlassenen Villa einen Slasher. Nach Drehschluss bleibt sie über Nacht im Haus. <b>Und das Haus spukt wirklich.</b></p>
+    <div class="facts" id="facts"></div>
+  </header>
+
+  <section id="plan">
+    <h2>Grundriss</h2>
+    <p class="lead">Das Haus ist der Kern und in beiden Größen gleich. Die große Variante öffnet zusätzlich Garten, Friedhof und Familiengruft, und einige Systeme ziehen dorthin um. Klick auf einen Raum zeigt, was dort passiert.</p>
+    <div class="planbar">
+      <div class="seg" role="group" aria-label="Kartengröße">
+        <button type="button" id="btn-small" aria-pressed="true">Klein</button>
+        <button type="button" id="btn-large" aria-pressed="false">Groß</button>
+      </div>
+      <div class="layers">
+        <label><input type="checkbox" id="ly-doors" checked><span><i style="background:var(--blood)"></i> Türen</span></label>
+        <label><input type="checkbox" id="ly-secrets" checked><span><i style="background:var(--ghost)"></i> Geheimgänge</span></label>
+        <label><input type="checkbox" id="ly-vents" checked><span><i style="background:var(--vent)"></i> Vents</span></label>
+        <label><input type="checkbox" id="ly-candles" checked><span><i style="background:var(--candle)"></i> Kerzen</span></label>
+        <label><input type="checkbox" id="ly-cams"><span><i style="background:var(--paper)"></i> Kameras</span></label>
+        <label><input type="checkbox" id="ly-heat"><span><i style="background:linear-gradient(90deg,#2f6d5f,#e8a94c,#c0453c)"></i> Laufzeit ab Spawn</span></label>
+      </div>
+    </div>
+    <div class="planwrap">
+      <div class="plan"><svg id="svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Grundriss Hollowmere Manor"></svg></div>
+      <aside class="roomcard" id="card" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <section id="groesse">
+    <h2>Größe im Vergleich</h2>
+    <p class="lead">Weitester Laufweg vom Spawn (Eingangshalle), gerechnet wie bei der Kartenverkleinerung: Raster 0,25 m, 0,3 m Wandabstand, 2,5 m/s. Vents und Geheimgänge zählen nicht mit.</p>
+    <div class="bars" id="bars"></div>
+  </section>
+
+  <section id="stilblatt">
+    <h2>Stilblatt</h2>
+    <p class="lead">Erster Grafik-Entwurf von Fable (handgezeichneter Among-Us-Stil, 160 px pro Meter, Schrägsicht wie Museum und Park). Noch nicht im Spiel, noch nicht auf der Karte verteilt: Das hier legt nur den Look fest.</p>
+    <div class="shots">
+      <figure><img src="img/szene_halle.webp" alt="Eingangshalle mit Parkett, Damast-Tapete, Standuhr, Dollyschiene, Filmkamera, Scheinwerfer und zwei Kandelabern" loading="lazy"><figcaption>Eingangshalle, 12 × 7 m: Standuhr, Dollyschiene mit Filmkamera, Scheinwerfer, Kandelaber an und aus, Kabel und Tape-Marken.</figcaption></figure>
+      <figure><img src="img/szene_friedhof.webp" alt="Friedhof mit Hecke, Eisenzaun, Grabsteinen, Steinsarg, Kandelaber und Absperrband" loading="lazy"><figcaption>Friedhof, 12 × 7 m: Hecke und Eisenzaun als Grenze, vier Grabstein-Formen, Steinsarg, Absperrband der Crew.</figcaption></figure>
+      <figure class="wide"><img src="img/stilblatt_objekte.webp" alt="Alle Objekte des Stilblatts neben einer Spielfigur als Maßstab" loading="lazy"><figcaption>Alle Objekte neben einem Crewmate als Maßstab.</figcaption></figure>
+      <figure class="wide"><img src="img/stilblatt_materialien.webp" alt="Bodenmaterialien, Wandstirnseiten und Bodendetails" loading="lazy"><figcaption>Bodenmaterialien je Raumtyp, Wandstirnseiten (Tapete, Ziegel, Stein, Hecke, Zaun) und Filmset-Bodendetails.</figcaption></figure>
+    </div>
+    <div class="review">
+      <h3>Meine Durchsicht</h3>
+      <ul>
+        <li><b>Stark:</b> Kandelaber an und aus, Kamin mit Glut, Filmkamera auf dem Dolly, Steinsarg, Tapetenwand mit Vertäfelung. Strich und Umrisse passen zu Museum und Park.</li>
+        <li><b>Parkett zu unruhig:</b> Das Fischgrät-Muster ist kontrastreich. Auf großen Flächen könnten Spielfiguren und Leichen schlechter auffallen. Vorschlag: Kontrast deutlich senken.</li>
+        <li><b>Zu wenig Horrorfilm:</b> Der Look ist eher verfallene Pracht. Kunstblut-Spuren, Kreide-Umrisse, Filmplakate oder ein Requisiten-Messer fehlen noch.</li>
+        <li><b>Mondlicht-Fleck:</b> Er wirkt grau statt blau. Das lässt sich bei der Kartengrafik lösen.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="spiel">
+    <h2>Im Spiel</h2>
+    <p class="lead">Aufnahmen aus dem Freeplay-Autotest vom 09.10. (Atlas-Diagnose, eigene DLLs danach zurückgelegt). Beide Größen bauen ohne Fehler: 46 Konsolen, 13 Türen, 4 Kameras, 9 bzw. 13 Vents.</p>
+    <div class="shots">
+      <figure class="wide"><img src="img/spiel_karte_gross.webp" alt="Gesamtaufnahme der großen Variante mit Haus, Garten, Friedhof und Gruft" loading="lazy"><figcaption>Groß (50 × 36 m): Haus, Crew-Lager, Vorplatz, Brunnenhof, Terrasse, Gewächshaus, Friedhof und Familiengruft. Gesamtaufnahme aus dem Spiel.</figcaption></figure>
+      <figure class="wide"><img src="img/spiel_karte_klein.webp" alt="Gesamtaufnahme der kleinen Variante, nur das Haus" loading="lazy"><figcaption>Klein (34 × 24 m): nur das Haus. Die drei Außentüren sind mit Brettern verrammelt.</figcaption></figure>
+      <figure><img src="img/spiel_halle.webp" alt="Spieler in der Eingangshalle neben der Regieklappe" loading="lazy"><figcaption>Eingangshalle: Spawn, Regieklappe als Notfallknopf, Dollyschiene mit Filmkamera. Raum- und Aufgabennamen im Villa-Stil.</figcaption></figure>
+      <figure><img src="img/spiel_seance.webp" alt="Spieler am Séance-Tisch mit den zwei Handabdruck-Platten" loading="lazy"><figcaption>Séance-Salon: die zwei Handabdruck-Platten für die Reaktor-Sabotage „The Ritual Escalates“.</figcaption></figure>
+      <figure><img src="img/spiel_kameras.webp" alt="Überwachungsbildschirm mit vier Kamerabildern der Villa" loading="lazy"><figcaption>Kameras der Regie: Bibliothek, Séance-Salon, Halle, Porträtgalerie.</figcaption></figure>
+      <figure><img src="img/spiel_sabotagekarte.webp" alt="Sabotage-Karte der großen Variante mit allen Raumnamen" loading="lazy"><figcaption>Sabotage-Karte (groß): alle Räume beschriftet, Sabotage- und Türknöpfe an ihren Räumen.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="intro">
+    <h2>Vorspann</h2>
+    <p class="lead">7 Sekunden, handgezeichnet mit zitternden Linien, läuft vor dem Rollen-Intro. Der Host wählt in „Hollowmere Intro“: erste Runde in der Lobby (Standard), jede Runde oder aus. Alle sehen ihn gleich lang, die Runde startet für alle gleich.</p>
+    <div class="shots">
+      <figure><img src="img/intro.webp" alt="Animierter Vorspann: Villa im Gewitter, Regieklappe, Crew mit Scheinwerfer, Kerzen erlöschen, Porträt öffnet die Augen" loading="lazy"><figcaption>Der Vorspann als Animation (verkleinert).</figcaption></figure>
+      <figure><img src="img/spiel_intro_2.webp" alt="Vorspann im Spiel: die Crew beim Aufbau in der Halle" loading="lazy"><figcaption>Im Spiel, bildschirmfüllend über dem HUD.</figcaption></figure>
+      <figure class="wide"><img src="img/intro_storyboard.webp" alt="Storyboard des Vorspanns, jedes sechste Bild" loading="lazy"><figcaption>Storyboard (jedes 6. Bild): Gewitternacht, Regieklappe, Crew, Kerzen, Porträt.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="vote">
+    <h2>Vote-Szenen</h2>
+    <p class="lead">Vier Rauswürfe und zwei Skip-Szenen. Jeder Client wählt dieselbe Szene, ohne eigenen Netzverkehr. Die Void-Szene von Unknown's Collection hat Vorrang.</p>
+    <div class="shots">
+      <figure class="wide"><img src="img/spiel_vote_seance.webp" alt="Rauswurf im Spiel: ein Crewmate wird in die Kristallkugel gesogen" loading="lazy"><figcaption>Im Spiel: „Die Kristallkugel“.</figcaption></figure>
+      <figure class="wide"><img src="img/vote_szenen.webp" alt="Kontaktbogen aller sechs Szenen zu je fünf Zeitpunkten" loading="lazy"><figcaption>Alle Szenen: Aus dem Fenster, Der alte Brunnen, Die Kristallkugel, CUT!, Mitternacht (Skip), Leerer Stuhl (Skip).</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="ui">
+    <h2>Knopf, Symbol und Task-Blöcke</h2>
+    <div class="shots">
+      <figure><img src="img/knopf.webp" alt="Freeplay-Knopf the MANOR" loading="lazy"><figcaption>Freeplay-Knopf im Stil von Museum, Forest und Carnival.</figcaption></figure>
+      <figure><img src="img/symbol.webp" alt="Rundes Lobby-Symbol mit Villa und Mond" loading="lazy" style="max-width:256px"><figcaption>Lobby-Symbol im Kartenwähler.</figcaption></figure>
+      <figure class="wide"><img src="img/task_bloecke.webp" alt="Auswahl der Task-Blöcke" loading="lazy"><figcaption>Task-Blöcke (Auswahl) auf dem Wald-Baukasten in Villa-Farben, mit Regieklappe, Funkgerät, Teleskop und Monitorpult.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="idee">
+    <h2>Die Idee</h2>
+    <div class="frame">
+      <div>
+        <h3>Filmset erklärt die Technik</h3>
+        <p>Atlas-Karten laufen auf der Skeld-Mechanik, also braucht jede Karte Reaktor, Sauerstoff, Strom, Kameras und Admin. In einer alten Villa wirkt das fremd. Die Filmcrew löst das: Die Kameras sind ihre Drehkameras, die Monitore stehen in der Regie, zwei Stromaggregate versorgen die Scheinwerfer, und gefunkt wird mit Walkie-Talkies.</p>
+        <p>Der Notfallknopf ist die Filmklappe in der Halle. Wer ein Meeting ruft, schlägt sie zu: »Cut!«</p>
+      </div>
+      <div>
+        <h3>Der Spuk liefert das Spiel</h3>
+        <p>Was die Crew nicht kontrolliert, ist das Haus. Kerzen, Geheimgänge und die Standuhr gehören der Villa. Sie machen die Karte spielerisch eigen, so wie Überwachung das Museum, Wetter den Forest und die Fahrgeschäfte den Park prägen.</p>
+        <p>Optik: Horrorfilm-Set mit Absperrband, Kamerawagen auf Schienen, Kunstblut in der Maske und Kreidemarkierungen am Boden. Dazwischen echte verfallene Pracht mit Staub, Spinnweben und Porträts.</p>
+      </div>
+      <div>
+        <h3>Klein und Groß</h3>
+        <p><b>Klein:</b> Die Crew hat sich im Haus verbarrikadiert, die Haustür ist zu und draußen tobt der Sturm. Alle 14 Systeme liegen im Haus, einige Räume teilen sich Aufgaben.</p>
+        <p><b>Groß:</b> Die Haustür ist offen. Garten, Crew-Lager, Gewächshaus, Friedhof und Gruft kommen dazu. Lager, Shields und ein Motor ziehen nach draußen. Der Host wählt die Variante in den Atlas-Einstellungen.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="gimmicks">
+    <h2>Drei Mechaniken</h2>
+    <p class="lead">Erste Fassung der Regeln. Zahlen sind Startwerte für den Playtest, alles soll später per Host-Option einstellbar sein.</p>
+    <div class="gimmicks">
+      <article class="gimmick">
+        <h3>Kerzen &amp; Dunkelheit</h3>
+        <ul>
+          <li>Dunkle Räume (im Plan blau getönt) halbieren die Sicht.</li>
+          <li>Leuchter lassen sich per Knopf anzünden und brennen 60 s. Solange sie brennen, gilt im Umkreis normale Sicht.</li>
+          <li>Bei der Licht-Sabotage gehen alle Scheinwerfer aus. Brennende Kerzen bleiben, und sie werden dann zur einzigen Lichtquelle.</li>
+          <li>Impostor können Kerzen ausblasen, mit Abklingzeit.</li>
+        </ul>
+        <p class="open"><b>Offen</b>Ausblasen für Impostor: ja oder nein? Sicht in dunklen Räumen 50 % oder weniger?</p>
+      </article>
+      <article class="gimmick">
+        <h3>Geheimgänge</h3>
+        <ul>
+          <li>Wandteppich im Séance-Salon führt in die Halle, nur in diese Richtung.</li>
+          <li>Speiseaufzug in der Küche führt in den Heizungskeller, nur nach unten.</li>
+          <li>Drehbücherregal zwischen Bibliothek und Halle, in beide Richtungen, hörbar und sichtbar.</li>
+          <li>Groß: Gruft-Tunnel unter dem Garten von der Gruft in die Hauskapelle (Einbahn).</li>
+          <li>Für alle Spieler nutzbar. Das ist eine Alternative zu Vents, die auch Crewmates hilft.</li>
+        </ul>
+        <p class="open"><b>Offen</b>Kurze Abklingzeit pro Spieler, damit niemand im Kreis flieht?</p>
+      </article>
+      <article class="gimmick">
+        <h3>Mitternachtsuhr</h3>
+        <ul>
+          <li>Die Standuhr in der Halle schlägt alle 90 s, mit einer Vorwarnung 5 s vorher.</li>
+          <li>Beim Schlag flackert das Licht 3 s lang, und alle Türen schlagen für 4 s zu.</li>
+          <li>Die Porträts im Flur Ost drehen sich und blicken in die Richtung der zuletzt gefundenen Leiche. Das ist ein kleiner Hinweis für die Crew.</li>
+          <li>Vorhersehbar: Beide Teams können ihre Züge auf den Schlag legen.</li>
+        </ul>
+        <p class="open"><b>Offen</b>Porträt-Hinweis behalten oder ist er zu stark? Uhr während Sabotagen pausieren?</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="raeume">
+    <h2>Räume und Skeld-Systeme</h2>
+    <p class="lead">Jedes Skeld-System braucht einen Raum, damit Tasks, Sabotagen, Admin und Kameras ohne eigenen Netzcode funktionieren. In der großen Variante ziehen drei Systeme nach draußen.</p>
+    <div class="tablewrap"><table id="roomtable"></table></div>
+  </section>
+
+  <section id="sabotagen">
+    <h2>Sabotagen</h2>
+    <div class="tablewrap"><table>
+      <tr><th>Skeld</th><th>In der Villa</th><th>Reparatur</th></tr>
+      <tr><td class="mono">Reactor</td><td>Das Ritual eskaliert: Der Séance-Tisch hebt ab, und Geisterstimmen werden lauter.</td><td>Zwei Spieler legen gleichzeitig die Hände auf die beiden Tischenden im Séance-Salon.</td></tr>
+      <tr><td class="mono">O2</td><td>Der Kamin zieht nicht mehr, und Rauch füllt das Haus.</td><td>Zwei Ventile: Kaminklappe im Kaminzimmer und Lüftung im Arbeitszimmer.</td></tr>
+      <tr><td class="mono">Lights</td><td>Die Scheinwerfer der Crew fallen aus, nur Kerzen brennen weiter.</td><td>Sicherungskasten im Heizungskeller.</td></tr>
+      <tr><td class="mono">Comms</td><td>Funkstille, aus den Walkie-Talkies kommt nur Flüstern.</td><td>Frequenz im Funkraum einstellen.</td></tr>
+      <tr><td class="mono">Doors</td><td>Türen fallen zu wie in jedem Spukhaus.</td><td>13 Türen, 7 senkrecht und 6 waagerecht, wie auf der Skeld.</td></tr>
+    </table></div>
+  </section>
+
+  <section id="weiter">
+    <h2>So geht es weiter</h2>
+    <ol class="steps">
+      <li><div><b>Entwurf abgenommen.</b> Umsetzung läuft seit dem 09.10.</div></li>
+      <li><div><b>Externe Karten in Atlas: gebaut (lokal).</b> Öffentliche Schnittstelle <code>AtlasMaps.Register</code>: Grafik aus der eigenen DLL, Knöpfe in Freeplay und Lobby, Kartenwahl per Schlüssel, Start-Sperre im Handshake, wenn jemand die Karte nicht hat. Atlas erwähnt die Villa nirgends.</div></li>
+      <li><div><b>Karte fertig gezeichnet und im Spiel getestet.</b> Beide Größen aus einem Generator, je 7 + 6 Türen in den Skeld-Gruppen, 46 Konsolen, Host-Option „Hollowmere Manor Size“. Gemessen: Klein 9,7 s, Groß 18,8 s weitester Weg. Stilblatt, Objekte und Vote-Szenen von Fable, Kartenboden, Task-Blöcke, Knopf und Vorspann nach Fables Limit fertiggestellt.</div></li>
+      <li><div><b>Vorspann und Vote-Szenen laufen im Spiel</b> (Abschnitte oben). Offen: echter Mehrspieler-Test (Host-Entscheidung, Start-Sperre, gleicher Rundenstart).</div></li>
+      <li><div><b>Mechaniken einzeln.</b> Erst Kerzen, dann Uhr, dann Geheimgänge, jeweils mit Autotest.</div></li>
+      <li><div><b>Kein Release</b> vor Halloween und nur auf deine Ansage, genau wie bei den Kostümen.</div></li>
+    </ol>
+  </section>
+
+  <section id="fragen">
+    <h2>Offene Fragen</h2>
+    <ul class="questions">
+      <li>Name: Hollowmere Manor als Arbeitstitel, oder hast du einen eigenen?</li>
+      <li>Soll die kleine Variante als Standard eingestellt sein?</li>
+      <li>Sollen die Halloween-Kostüme (Freddy, Jason, Xenomorph, Ghostface) als Filmplakate oder Requisiten in der Villa auftauchen?</li>
+      <li>Rauswurf-Szenen: aus dem Fenster in den Sturm, in den Brunnen, vor die Filmkamera?</li>
+    </ul>
+  </section>
+
+  <footer>Hollowmere Manor · Stand 3 · 09.10.2026 · Daten: villa_plan.js (UnknownsHalloween/docs/villa)</footer>
+</div>
+
+<script>
+/*VILLA_PLAN*/
+</script>
+<script>
+(function () {
+  const S = 20;                                    // px pro Meter im SVG
+  const NS = "http://www.w3.org/2000/svg";
+  const SYS = { Cafeteria: "Cafeteria", Reactor: "Reactor", LowerEngine: "Lower Engine", UpperEngine: "Upper Engine",
+    Comms: "Comms", Storage: "Storage", Navigation: "Navigation", Electrical: "Electrical", Shields: "Shields",
+    Weapons: "Weapons", LifeSupp: "O2", Admin: "Admin", Security: "Security", MedBay: "MedBay" };
+  const VENTC = { A: "#a08ae0", B: "#c58ad6", C: "#7f9ae6", D: "#8ad6c4" };
+  const walks = { small: villaWalk("small"), large: villaWalk("large") };
+  let variant = "small", selected = "halle";
+  try { const v = localStorage.getItem("hollowmere-variant"); if (v === "small" || v === "large") variant = v; } catch (e) {}
+
+  const el = (tag, attrs, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; };
+  const fmt = (x, d = 1) => x.toFixed(d).replace(".", ",");
+  const areasOf = v => VILLA.areas.filter(a => a.v === "both" || v === "large");
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  function facts() {
+    const s = VILLA.variants.small, l = VILLA.variants.large;
+    const doors = v => VILLA.openings.filter(o => o.t[v] === "door");
+    const box = document.getElementById("facts");
+    const items = [
+      ["Klein", `${s.w} × ${s.h} m`, `weitester Weg ${fmt(walks.small.farSec)} s`],
+      ["Groß", `${l.w} × ${l.h} m`, `weitester Weg ${fmt(walks.large.farSec)} s`],
+      ["Systeme", "14", "alle Skeld-Räume, je Variante"],
+      ["Türen", `${doors("small").length}`, "7 senkrecht, 6 waagerecht, wie auf der Skeld"],
+      ["Vents", `${VILLA.vents.small.length} / ${VILLA.vents.large.length}`, "Klein 3 Netze, Groß 4"],
+    ];
+    box.innerHTML = items.map(([k, v, s]) => `<div class="fact"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join("");
+  }
+
+  function bars() {
+    const rows = [
+      ["Villa Klein", walks.small.farSec, true],
+      ["Museum", 14.5, false], ["Forest", 14.5, false], ["Park", 14.5, false],
+      ["Villa Groß", walks.large.farSec, true],
+    ];
+    const max = 20;
+    document.getElementById("bars").innerHTML = rows.map(([n, v, own]) =>
+      `<div class="bar${own ? " own" : ""}"><span>${n}</span><span class="track"><span class="fillb" style="width:${(v / max * 100).toFixed(1)}%"></span></span><span class="num">${own ? fmt(v) : "14–15"} s</span></div>`).join("") +
+      `<p class="metric">Museum, Forest und Park: Messwerte nach der Kartenverkleinerung vom 24.09. (14–15 s).</p>`;
+  }
+
+  function roomTable() {
+    const rows = VILLA.areas.filter(a => a.kind !== "hall" && (a.sys.small || a.sys.large || a.v === "large"));
+    const cell = (a, v) => {
+      if (a.v === "large" && v === "small") return `<span class="none">nicht vorhanden</span>`;
+      const s = a.sys[v];
+      const moved = a.v === "both" && a.sys.small !== a.sys.large;
+      return s ? `<span class="${moved ? "moved" : ""}">${SYS[s]}</span>` : `<span class="none">kein System</span>`;
+    };
+    document.getElementById("roomtable").innerHTML =
+      `<tr><th>Raum</th><th>Klein</th><th>Groß</th><th>Wofür</th></tr>` +
+      rows.map(a => `<tr><td>${a.name}</td><td class="mono">${cell(a, "small")}</td><td class="mono">${cell(a, "large")}</td><td>${a.text}</td></tr>`).join("");
+  }
+
+  function heatImage(w) {
+    const c = document.createElement("canvas"); c.width = w.nx; c.height = w.ny;
+    const g = c.getContext("2d"), img = g.createImageData(w.nx, w.ny);
+    const stops = [[0, [47, 109, 95]], [0.5, [232, 169, 76]], [1, [192, 69, 60]]];
+    const col = t => { for (let i = 1; i < stops.length; i++) if (t <= stops[i][0]) { const [a, ca] = stops[i - 1], [b, cb] = stops[i]; const u = (t - a) / (b - a); return ca.map((x, k) => Math.round(x + (cb[k] - x) * u)); } return stops[2][1]; };
+    for (let k = 0; k < w.nx * w.ny; k++) {
+      if (!w.walk[k] || !isFinite(w.dist[k])) continue;
+      const t = Math.min(1, w.dist[k] / VILLA.speed / 20), [r, gg, b] = col(t);
+      img.data.set([r, gg, b, 170], k * 4);
+    }
+    g.putImageData(img, 0, 0);
+    return c.toDataURL();
+  }
+
+  function draw() {
+    const V = VILLA.variants[variant], svg = document.getElementById("svg");
+    const pad = 1.2;
+    svg.setAttribute("viewBox", `${-pad * S} ${-pad * S} ${(V.w + 2 * pad) * S} ${(V.h + 2 * pad) * S}`);
+    svg.innerHTML = "";
+    const on = id => document.getElementById(id).checked;
+    const C = { wood: css("--wood"), hall: css("--hall"), moss: css("--moss"), wall: css("--wall"), blood: css("--blood"),
+      ghost: css("--ghost"), candle: css("--candle"), paper: css("--paper"), dust: css("--dust"), ink: "#0b0a0d" };
+    const defs = el("defs", {}, svg);
+    defs.innerHTML = `<pattern id="darkp" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="rgba(40,60,120,.18)"/><line x1="0" y1="0" x2="0" y2="8" stroke="rgba(120,150,230,.10)" stroke-width="3"/></pattern>
+      <radialGradient id="glow"><stop offset="0" stop-color="${C.candle}" stop-opacity=".55"/><stop offset="1" stop-color="${C.candle}" stop-opacity="0"/></radialGradient>
+      <marker id="arr" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C.ghost}"/></marker>`;
+    // Gelaende ausserhalb: Hecke/Nacht
+    el("rect", { x: -pad * S, y: -pad * S, width: (V.w + 2 * pad) * S, height: (V.h + 2 * pad) * S, fill: C.ink }, svg);
+    if (variant === "large") el("rect", { x: 0, y: 0, width: V.w * S, height: V.h * S, fill: "#121a12" }, svg);
+    const gRooms = el("g", {}, svg);
+    const areas = areasOf(variant);
+    for (const a of areas) {
+      const [x0, y0, x1, y1] = a.r;
+      const g = el("g", { class: "room" + (a.id === selected ? " sel" : ""), tabindex: 0, role: "button", "aria-label": a.name, "data-id": a.id }, gRooms);
+      const fill = a.kind === "garden" ? C.moss : a.kind === "hall" ? C.hall : C.wood;
+      el("rect", { class: "fill", x: x0 * S, y: y0 * S, width: (x1 - x0) * S, height: (y1 - y0) * S, fill }, g);
+      if (a.dark) el("rect", { x: x0 * S, y: y0 * S, width: (x1 - x0) * S, height: (y1 - y0) * S, fill: "url(#darkp)", "pointer-events": "none" }, g);
+      g.addEventListener("click", () => select(a.id));
+      g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(a.id); } });
+    }
+    if (on("ly-heat")) {
+      const w = walks[variant];
+      el("image", { href: heatImage(w), x: 0, y: 0, width: V.w * S, height: V.h * S, preserveAspectRatio: "none", style: "image-rendering:pixelated", "pointer-events": "none" }, svg);
+    }
+    // Waende
+    const gW = el("g", { "pointer-events": "none" }, svg);
+    for (const a of areas) {
+      const [x0, y0, x1, y1] = a.r;
+      el("rect", { x: x0 * S, y: y0 * S, width: (x1 - x0) * S, height: (y1 - y0) * S, fill: "none", stroke: a.kind === "garden" ? "#5d7a52" : C.wall, "stroke-width": a.kind === "garden" ? 4 : 3.4 }, gW);
+    }
+    // Oeffnungen ausschneiden, dann Tueren
+    const gO = el("g", { "pointer-events": "none" }, svg);
+    for (const o of VILLA.openings) {
+      const t = o.t[variant]; if (!t) continue;
+      const [xa, ya, xb, yb] = o.ax === "x" ? [o.at, o.a, o.at, o.b] : [o.a, o.at, o.b, o.at];
+      el("line", { x1: xa * S, y1: ya * S, x2: xb * S, y2: yb * S, stroke: C.hall, "stroke-width": 6 }, gO);
+      if (t === "door" && on("ly-doors")) {
+        el("line", { x1: xa * S, y1: ya * S, x2: xb * S, y2: yb * S, stroke: C.blood, "stroke-width": 5, "stroke-linecap": "butt" }, gO);
+        const ends = [[xa, ya], [xb, yb]];
+        for (const [ex, ey] of ends) el("rect", { x: ex * S - 3, y: ey * S - 3, width: 6, height: 6, fill: C.wall }, gO);
+      }
+      if (o.label) {
+        const mx = (xa + xb) / 2, my = (ya + yb) / 2;
+        el("text", { x: mx * S + (o.ax === "x" ? 6 : 0), y: my * S + (o.ax === "y" ? 14 : 4), fill: C.dust, "font-family": "Courier Prime, monospace", "font-size": 9, "text-anchor": o.ax === "x" ? "start" : "middle" }, gO).textContent = o.label;
+      }
+    }
+    // Geheimgaenge
+    if (on("ly-secrets")) {
+      const gS = el("g", { "pointer-events": "none" }, svg);
+      for (const s of VILLA.secrets) {
+        if (s.v === "large" && variant !== "large") continue;
+        const [fx, fy] = s.from, [tx, ty] = s.to;
+        let d;
+        if (s.jump) {
+          // Sprung (Tunnel, Speiseaufzug): Bogen, damit er nicht wie ein Weg durch die Raeume aussieht
+          const cx = (fx + tx) / 2, cy = s.id === "tunnel" ? Math.max(fy, ty) + 7 : Math.min(fy, ty) - 1.0;
+          d = `M${fx * S},${fy * S} Q${cx * S},${cy * S} ${tx * S},${ty * S}`;
+        }
+        else d = `M${fx * S},${fy * S} L${tx * S},${ty * S}`;
+        const attrs = { d, fill: "none", stroke: C.ghost, "stroke-width": 2.6, "stroke-dasharray": "5 4", "marker-end": "url(#arr)" };
+        if (!s.oneway) attrs["marker-start"] = "url(#arr)";
+        el("path", attrs, gS);
+        const lp = s.id === "tunnel" ? [(fx + tx) / 2, Math.max(fy, ty) + 3.2]
+          : s.jump ? [(fx + tx) / 2, Math.min(fy, ty) + 0.4] : [fx + 0.5, ty + 0.2];
+        const tx2 = s.id === "regal" ? (fx + tx) / 2 : lp[0];
+        const ty2 = s.id === "regal" ? fy - 0.6 : lp[1];
+        el("text", { x: tx2 * S, y: ty2 * S, fill: C.ghost, "font-family": "Courier Prime, monospace", "font-size": 9, "text-anchor": s.id === "regal" || s.jump ? "middle" : "start" }, gS).textContent = s.name;
+      }
+    }
+    // Raumnamen
+    const gL = el("g", { "pointer-events": "none" }, svg);
+    for (const a of areas) {
+      const [x0, y0, x1, y1] = a.r;
+      let cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      if (a.id === "friedhof") { cx = 45; cy = 22.5; }
+      if (a.id === "halle") cy = 11.6;
+      const vertical = (x1 - x0) < 3.5 && (y1 - y0) > 6;
+      const fs = a.kind === "hall" ? 10 : (x1 - x0) < 5 ? 10.5 : 13;
+      const tr = vertical ? `rotate(-90 ${cx * S} ${cy * S})` : "";
+      const t = el("text", { x: cx * S, y: cy * S, fill: a.kind === "hall" ? C.dust : C.paper, "font-family": "IM Fell English SC, Georgia, serif", "font-size": fs, "text-anchor": "middle", transform: tr }, gL);
+      t.textContent = a.name;
+      const sys = a.sys[variant];
+      if (sys) el("text", { x: cx * S, y: cy * S + 12, fill: C.candle, "font-family": "Courier Prime, monospace", "font-size": 8.5, "text-anchor": "middle", "letter-spacing": ".5" }, gL).textContent = SYS[sys].toUpperCase();
+    }
+    // Markierungen
+    const gM = el("g", { "pointer-events": "none" }, svg);
+    if (on("ly-candles")) for (const [x, y] of VILLA.candles[variant]) {
+      el("circle", { class: "candleglow", cx: x * S, cy: y * S, r: 22, fill: "url(#glow)" }, gM);
+      el("circle", { cx: x * S, cy: y * S, r: 3.2, fill: C.candle }, gM);
+    }
+    if (on("ly-vents")) for (const v of VILLA.vents[variant]) {
+      const [x, y] = v.p, c = VENTC[v.net];
+      el("rect", { x: x * S - 7, y: y * S - 5, width: 14, height: 10, fill: "#0b0a0d", stroke: c, "stroke-width": 1.6 }, gM);
+      for (let i = -1; i <= 1; i++) el("line", { x1: x * S + i * 3.5, y1: y * S - 3, x2: x * S + i * 3.5, y2: y * S + 3, stroke: c, "stroke-width": 1.2 }, gM);
+      el("text", { x: x * S + 10, y: y * S + 3.5, fill: c, "font-family": "Courier Prime, monospace", "font-size": 9 }, gM).textContent = v.net;
+    }
+    if (on("ly-cams")) for (const [x, y] of VILLA.cameras[variant]) {
+      el("path", { d: `M${x * S - 6},${y * S - 4} h9 v8 h-9 z M${x * S + 3},${y * S - 1} l5,-3 v8 l-5,-3 z`, fill: C.paper }, gM);
+    }
+    // Uhr, Klappe, Admin, Spawn
+    const [ux, uy] = VILLA.clock;
+    el("circle", { cx: ux * S, cy: uy * S + 6, r: 6.5, fill: "#0b0a0d", stroke: C.candle, "stroke-width": 1.6 }, gM);
+    el("path", { d: `M${ux * S},${uy * S + 6} v-4 M${ux * S},${uy * S + 6} h3`, stroke: C.candle, "stroke-width": 1.4, fill: "none" }, gM);
+    const [mx, my] = VILLA.meeting;
+    el("rect", { x: mx * S - 10, y: my * S - 7, width: 20, height: 14, fill: "#111", stroke: C.paper, "stroke-width": 1.2 }, gM);
+    el("path", { d: `M${mx * S - 10},${my * S - 7} l4,-6 h20 l-4,6`, fill: "none", stroke: C.paper, "stroke-width": 1.2 }, gM);
+    for (let i = 0; i < 4; i++) el("line", { x1: mx * S - 6 + i * 6, y1: my * S - 13, x2: mx * S - 9 + i * 6, y2: my * S - 7, stroke: C.paper, "stroke-width": 1.4 }, gM);
+    el("text", { x: mx * S, y: my * S + 22, fill: C.dust, "font-family": "Courier Prime, monospace", "font-size": 8.5, "text-anchor": "middle" }, gM).textContent = "Spawn · Meeting-Klappe";
+    const [ax, ay] = VILLA.admin;
+    el("rect", { x: ax * S - 12, y: ay * S - 6, width: 24, height: 12, fill: "none", stroke: C.candle, "stroke-width": 1.2, "stroke-dasharray": "2 2" }, gM);
+    // Weitester Punkt
+    const w = walks[variant], [fx, fy] = w.farPt;
+    el("circle", { cx: fx * S, cy: fy * S, r: 5, fill: "none", stroke: C.blood, "stroke-width": 2 }, gM);
+    // Massstab, daneben die Legende zum weitesten Punkt (nicht im Plan, dort ueberdeckte sie Raumnamen)
+    const gs = el("g", {}, svg), sy = (V.h + 0.7) * S;
+    el("line", { x1: 0, y1: sy, x2: 5 * S, y2: sy, stroke: C.dust, "stroke-width": 1.5 }, gs);
+    for (const t of [0, 5]) el("line", { x1: t * S, y1: sy - 3, x2: t * S, y2: sy + 3, stroke: C.dust, "stroke-width": 1.5 }, gs);
+    el("text", { x: 5 * S + 6, y: sy + 3.5, fill: C.dust, "font-family": "Courier Prime, monospace", "font-size": 9 }, gs).textContent = `5 m · ${V.w} × ${V.h} m · Norden oben`;
+    el("circle", { cx: V.w * S - 150, cy: sy, r: 4, fill: "none", stroke: C.blood, "stroke-width": 1.8 }, gs);
+    el("text", { x: V.w * S - 142, y: sy + 3.5, fill: C.blood, "font-family": "Courier Prime, monospace", "font-size": 9.5, "font-weight": 700 }, gs).textContent = `weitester Punkt ${fmt(w.farSec)} s`;
+    card();
+  }
+
+  function card() {
+    const a = VILLA.areas.find(x => x.id === selected && (x.v === "both" || variant === "large")) || VILLA.areas.find(x => x.id === "halle");
+    const sys = a.sys[variant];
+    const other = variant === "small" ? "large" : "small";
+    const otherSys = a.v === "both" ? a.sys[other] : undefined;
+    const moved = a.v === "both" && otherSys !== sys;
+    const w = walks[variant];
+    const box = document.getElementById("card");
+    box.innerHTML = `<span class="eyebrow">${a.kind === "garden" ? "Außenbereich" : a.kind === "hall" ? "Gang" : "Raum"}${a.v === "large" ? " · nur Groß" : ""}${a.dark ? " · dunkel" : ""}</span>
+      <h3>${a.name}</h3>
+      <span class="sys">${sys ? "Skeld: " + SYS[sys] : "kein Skeld-System"}${moved ? ` · in ${VILLA.variants[other].label}: ${otherSys ? SYS[otherSys] : "kein System"}` : ""}</span>
+      <p>${a.text}</p>
+      <p class="hint">${(a.r[2] - a.r[0])} × ${(a.r[3] - a.r[1])} m</p>
+      <p class="metric">Variante ${VILLA.variants[variant].label}: weitester Weg <b>${fmt(w.far)} m</b> = <b>${fmt(w.farSec)} s</b></p>`;
+  }
+
+  function select(id) { selected = id; draw(); }
+  function setVariant(v) {
+    variant = v;
+    try { localStorage.setItem("hollowmere-variant", v); } catch (e) {}
+    document.getElementById("btn-small").setAttribute("aria-pressed", v === "small");
+    document.getElementById("btn-large").setAttribute("aria-pressed", v === "large");
+    draw();
+  }
+  document.getElementById("btn-small").addEventListener("click", () => setVariant("small"));
+  document.getElementById("btn-large").addEventListener("click", () => setVariant("large"));
+  for (const id of ["ly-doors", "ly-secrets", "ly-vents", "ly-candles", "ly-cams", "ly-heat"]) document.getElementById(id).addEventListener("change", draw);
+
+  facts(); bars(); roomTable(); setVariant(variant);
+})();
+</script>

@@ -2,7 +2,8 @@
 // Licensed under GPL-3.0-or-later. See LICENSE for details.
 
 /*
- * HalloweenCostumes - four full-body costume hats (Freddy, Jason, Xenomorph, Ghostface) with
+ * HalloweenCostumes - seven full-body costume hats (Freddy, Jason, Xenomorph, Ghostface, and since
+ *   2026-10-13 Thing, Predator, Sadako) with
  *   - a 16-frame idle loop and a 12-frame walk loop at 10 fps,
  *   - a back layer (dark trouser openings / robe hem) and a ladder pose,
  *   - a frame-by-frame kill cutscene per costume in the vanilla kill-overlay slot.
@@ -19,8 +20,8 @@
  *
  * Kill cutscenes play ONLY when the killer is wearing the matching costume (current outfit, so a
  * camouflaged or morphed killer never shows it), on a normal field kill that no role cutscene of
- * UCKillOverlay has already claimed, and only if the HOST has them on (options 1793-1797, one per
- * costume). Audience is whoever the vanilla overlay would have shown to.
+ * UCKillOverlay has already claimed, and only if the HOST has them on (option 1793, then one per
+ * costume from 1970). Audience is whoever the vanilla overlay would have shown to.
  * Each frame is five images: killer (back), the victim split into an untinted part (outline,
  * visor) plus a body mask and a shade mask that are tinted in the victim's colours, and the
  * foreground (blade tip, blood, impact). The victim deliberately does NOT go through the game's
@@ -31,7 +32,7 @@
  * Frames are decoded one at a time and thrown away again - a whole strip in memory would cost
  * well over 200 MB in a 32-bit process.
  *
- * HalloweenCostumes.Preview("freddy" | "jason" | "xeno" | "ghost") plays a cutscene locally as if the
+ * HalloweenCostumes.Preview("freddy" | "jason" | "xeno" | "ghost" | "thing" | "predator" | "sadako") plays a cutscene locally as if the
  * local player had just been killed (Role Control: /killanim).
  */
 
@@ -104,14 +105,19 @@ namespace UnknownsHalloween {
                 Alt = new[] { new KillScene { Key = "xenobite", Frames = 46, Flashes = new[] { 18, 31 } } } },
             // 2026-10-07: rebuilt after the Dead-by-Daylight mori (yank down, three stabs, head hauled up, selfie, rip)
             new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 66, Flashes = new[] { 19, 23, 27, 44, 56 }, HasLegs = false, HasAccent = true },
+            // 2026-10-13: three more (kill5_<key>.py): assimilation, wrist blades, out of the vent
+            new Costume { Key = "thing", KillKey = "thing", Name = "Halloween Thing", KillFrames = 60, Flashes = new[] { 12, 41 }, HasLegs = false, HasAccent = true },
+            new Costume { Key = "predator", KillKey = "predator", Name = "Halloween Predator", KillFrames = 62, Flashes = new[] { 25, 33 }, HasLegs = false, HasAccent = true },
+            new Costume { Key = "sadako", KillKey = "sadako", Name = "Halloween Sadako", KillFrames = 62, Flashes = new[] { 31, 56 }, HasLegs = false, HasAccent = true },
         };
 
         // ==================== host options (2026-10-07) ====================
         //
         // The host decides for the whole lobby whether the costume cutscenes play at all and which
         // of them (TOR settings, General tab, block "Unknown's Halloween"). Until now this followed
-        // UC's local "UC Kill Animations" toggle, which is gone. IDs 1793-1797 (the Xenomorph role
-        // holds 1785-1792).
+        // UC's local "UC Kill Animations" toggle, which is gone. ID 1793 is the header (the Xenomorph
+        // role holds 1785-1792); one toggle per costume from 1970 on. Until 2026-10-13 those sat on
+        // 1794-1797, which UC's Faker took on 2026-10-08 (two options per ID in TOR's sync).
         public static CustomOption Anims;
         private static readonly Dictionary<string, CustomOption> perCostume = new();
 
@@ -119,7 +125,7 @@ namespace UnknownsHalloween {
             try {
                 var g = CustomOption.CustomOptionType.General;
                 Anims = CustomOption.Create(1793, g, "Halloween Costume Kill Animations", true, null, true, null, "Unknown's Halloween");
-                int id = 1794;
+                int id = 1970;                                   // 1970-1979 (ID-Registry.md)
                 foreach (var c in Costumes)
                     perCostume[c.Key] = CustomOption.Create(id++, g, "Kill Animation: " + c.Name.Replace("Halloween ", ""), true, Anims);
             } catch (Exception e) {

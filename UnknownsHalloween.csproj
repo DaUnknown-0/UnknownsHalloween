@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        <Version>0.1.0.7</Version>
+        <Version>0.1.0.8</Version>
         <Description>Unknown's Halloween - add-on for Unknown's Collection: four full-body Halloween costume hats (Freddy, Jason, Xenomorph, Ghostface) with idle/walk animation and kill cutscenes, plus the Xenomorph role (neutral killer). Built for AU 2024.11.26 / BepInEx 6.0.0-be.697 / Reactor 2.3.1.</Description>
         <Authors>DaUnknown-0</Authors>
         <LangVersion>latest</LangVersion>
@@ -25,13 +25,31 @@
         <!-- Costume hats (hw_*), the role icon (hw_xenomorph_icon) and the kill-cutscene frames (hk_*).
              Explicit LogicalName so the lookup never depends on the root-namespace default. -->
         <EmbeddedResource Include="Resources\hats\*.png" LogicalName="UnknownsHalloween.Resources.hats.%(Filename)%(Extension)" />
+        <!-- Hollowmere Manor (Atlas map pack, tools/gen_villa.py): floor tiles, prop atlases, minimaps.
+             Flat names, because Atlas looks them up as "<ResourceNamespace>.<file>".
+             Floor tiles and prop/console atlases ship as .atx (finished DXT with mipmaps, Atlas AtlasTexturePack); after
+             regenerating the villa run: python ../UnknownsAtlas/tools/pack_textures.py Resources/villa villa
+             The JPG/PNG sources stay in the repo but are no longer embedded. -->
+        <EmbeddedResource Include="Resources\villa\*.jpg;Resources\villa\*.png;Resources\villa\*.json;Resources\villa\*.wav;Resources\villa\*.atx"
+                          Exclude="Resources\villa\villa_floor_*.jpg;Resources\villa\villa_props_*.png;Resources\villa\villa_consoles_*.png"
+                          LogicalName="UnknownsHalloween.Resources.%(Filename)%(Extension)" />
     </ItemGroup>
 
     <!-- DLL locations: default to the local builds, overridable via -p:TheOtherRolesDll=... / -p:UnknownsCollectionDll=... -->
     <PropertyGroup>
         <TheOtherRolesDll Condition="'$(TheOtherRolesDll)' == ''">..\TheOtherRoles-main\TheOtherRoles-main\TheOtherRoles\bin\Debug\net6.0\TheOtherRoles.dll</TheOtherRolesDll>
         <UnknownsCollectionDll Condition="'$(UnknownsCollectionDll)' == ''">..\UnknownsCollection\bin\Debug\net6.0\UnknownsCollection.dll</UnknownsCollectionDll>
+        <UnknownsAtlasDll Condition="'$(UnknownsAtlasDll)' == ''">..\UnknownsAtlas\bin\Release\net6.0\UnknownsAtlas.dll</UnknownsAtlasDll>
     </PropertyGroup>
+
+    <!-- Soft dependency: Unknown's Atlas (public AtlasMaps API) for the Hollowmere Manor map. Only
+         HollowmereMap and the generated Villa*.g.cs touch it; without Atlas the map is not registered. -->
+    <ItemGroup>
+        <Reference Include="UnknownsAtlas">
+            <HintPath>$(UnknownsAtlasDll)</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
 
     <!-- Hard dependencies: TOR (CustomOption, RoleInfo, Helpers, ...) and Unknown's Collection
          (UCRpc, UCFx, UCPromotion, UCRoleDraft, the hat bounce helper, ...). -->

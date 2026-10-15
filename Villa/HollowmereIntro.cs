@@ -1,0 +1,305 @@
+// Unknown's Halloween - Copyright (C) 2026 DaUnknown-0
+// Licensed under GPL-3.0-or-later. See LICENSE for details.
+//
+// HollowmereIntro - handgezeichneter Vorspann von Hollowmere Manor vor dem Rollen-Intro.
+//
+// Der Vorspann ist eine Bildfolge (Resources/villa/villa_intro_000.jpg ..., 12 Bilder pro Sekunde, aus
+// tools/villa_intro.py), die bildschirmfuellend VOR dem normalen Intro laeuft: der Postfix auf
+// IntroCutscene.CoBegin legt die Koroutine des Spiels in eine eigene, die erst den Vorspann zeigt und dann
+// das Original Schritt fuer Schritt weiterreicht. Rollen-Anzeige, TOR-Patches und Rundenstart bleiben
+// unveraendert, nur spaeter. Weil jeder Client denselben Vorspann sieht, startet die Runde fuer alle gleich.
+//
+// Wer ihn sieht, entscheidet der Host beim Druck auf Start (Option 1961: erste Runde in dieser Lobby, jede
+// Runde, aus) und verteilt es ueber UC-Kanal 230, Modul 236. Ohne Nachricht vom Host spielt kein Client den
+// Vorspann (zum Beispiel ein Host ohne diese Mod). Abbrechen per Taste gibt es bewusst nicht: wer frueher
+// fertig waere, liefe frueher los.
+//
+// Speicher: es lebt immer nur EIN Bild (eine Textur, per LoadImage ueberschrieben); jedes Bild wird erst
+// geladen, wenn es dran ist (~80 KB JPG je Bild).
+
+using System;
+using System.Collections;
+using System.IO;
+using BepInEx.Unity.IL2CPP.Utils.Collections;
+using HarmonyLib;
+using Hazel;
+using TheOtherRoles;
+using UnityEngine;
+using UnknownsCollection;
+using Object = UnityEngine.Object;
+
+namespace UnknownsHalloween;
+
+// Kein [HarmonyPatch] an der Klasse: die Patches beruehren Atlas-Typen und werden deshalb erst in Init()
+// gesetzt, das nur bei installiertem Atlas laeuft (HollowmereMap.Register).
+internal static class HollowmereIntro
+{
+    private const string LogPrefix = "[Halloween/VillaIntro]";
+    internal const byte RpcModule = 236;            // Modulbyte auf UCRpc.CallId 230 (Hollowmere Manor)
+    private const byte SubIntro = 1;
+    private const float Fps = 12f;
+    private const string FramePrefix = "UnknownsHalloween.Resources.villa_intro_";
+
+    public static CustomOption Mode;                // 0 = erste Runde, 1 = jede Runde, 2 = aus
+    private static bool _playNext;                  // Entscheidung des Hosts fuer die naechste Runde
+    private static bool _hostShownThisLobby;
+    private static int _frameCount = -1;
+
+    internal static void Init()
+    {
+        try
+        {
+            Mode = CustomOption.Create(1961, CustomOption.CustomOptionType.General, "Hollowmere Intro",
+                new[] { "First Round", "Every Round", "Off" });
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} option failed: {e}"); }
+        try { UCRpc.Register(RpcModule, HandleRpc); }
+        catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} rpc registration failed: {e}"); }
+        try
+        {
+            var h = new Harmony(HalloweenPlugin.PluginGuid + ".villaintro");
+            h.Patch(AccessTools.Method(typeof(GameStartManager), nameof(GameStartManager.BeginGame)),
+                prefix: new HarmonyMethod(typeof(HollowmereIntro), nameof(GameStartManager_BeginGame_Prefix)));
+            h.Patch(AccessTools.Method(typeof(AmongUsClient), nameof(AmongUsClient.OnGameJoined)),
+                postfix: new HarmonyMethod(typeof(HollowmereIntro), nameof(AmongUsClient_OnGameJoined_Postfix)));
+            h.Patch(AccessTools.Method(typeof(IntroCutscene), nameof(IntroCutscene.CoBegin)),
+                postfix: new HarmonyMethod(typeof(HollowmereIntro), nameof(IntroCutscene_CoBegin_Postfix)));
+            if (Diag)
+                h.Patch(AccessTools.Method(typeof(HudManager), nameof(HudManager.Update)),
+                    postfix: new HarmonyMethod(typeof(HollowmereIntro), nameof(HudManager_Update_DiagPostfix)));
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} patching failed, no intro: {e}"); }
+    }
+
+    // ------------------------------------------------------------------ Diagnose (Autotest im Freeplay)
+
+    private static bool Diag => (Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("villaintro");
+    private static float _diagAt = -1f;
+    private static bool _diagDone;
+
+    // Das Freeplay spielt kein Rollen-Intro: der Vorspann startet hier 2 s nach dem Kartenbau einmal und
+    // fotografiert sich selbst (AtlasShots/intro_<t>.png).
+    internal static void HudManager_Update_DiagPostfix(HudManager __instance)
+    {
+        try
+        {
+            if (_diagDone || UnknownsAtlas.AtlasMaps.ActiveKey != HollowmereMap.Key) return;
+            if (_diagAt < 0f) { _diagAt = Time.time + 2f; return; }
+            if (Time.time < _diagAt) return;
+            _diagDone = true;
+            __instance.StartCoroutine(DiagRun().WrapToIl2Cpp());
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} diag failed: {e}"); _diagDone = true; }
+    }
+
+    private static IEnumerator DiagRun()
+    {
+        float[] at = { 0.62f, 2.6f, 3.9f, 5.0f, 6.3f };
+        int next = 0;
+        float t0 = Time.time;
+        var play = Play();
+        string dir = Path.Combine(BepInEx.Paths.GameRootPath, "AtlasShots");
+        Directory.CreateDirectory(dir);
+        while (play.MoveNext())
+        {
+            float t = Time.time - t0;
+            if (next < at.Length && t >= at[next])
+            {
+                string file = Path.Combine(dir, $"intro_{at[next]:0.0}s_{DateTime.Now:HHmmss}.png".Replace(',', '.'));
+                ScreenCapture.CaptureScreenshot(file);
+                HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag shot -> {file}");
+                next++;
+            }
+            yield return play.Current;
+        }
+        HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag: intro played to the end");
+    }
+
+    // ------------------------------------------------------------------ Entscheidung des Hosts
+
+    internal static void GameStartManager_BeginGame_Prefix()
+    {
+        try
+        {
+            var ac = AmongUsClient.Instance;
+            if (ac == null || !ac.AmHost || PlayerControl.LocalPlayer == null) return;
+            bool villa = UnknownsAtlas.AtlasMaps.SelectedKey == HollowmereMap.Key;
+            int mode = Mode?.getSelection() ?? 0;
+            bool play = villa && FrameCount() > 0 && (mode == 1 || (mode == 0 && !_hostShownThisLobby));
+            if (play && mode == 0) _hostShownThisLobby = true;
+            _playNext = play;
+            var w = UCRpc.Begin(RpcModule);
+            w.Write(SubIntro);
+            w.Write(play);
+            ac.FinishRpcImmediately(w);
+            if (villa) HalloweenPlugin.Logger.LogInfo($"{LogPrefix} host: intro {(play ? "on" : "off")} for this round");
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} host decision failed: {e.Message}"); }
+    }
+
+    private static void HandleRpc(MessageReader reader)
+    {
+        try
+        {
+            if (reader.ReadByte() != SubIntro) return;
+            bool play = reader.ReadBoolean();
+            if (UCRpc.RequireHost("Hollowmere.Intro")) _playNext = play;
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} rpc failed: {e.Message}"); }
+    }
+
+    internal static void AmongUsClient_OnGameJoined_Postfix()
+    {
+        _playNext = false;
+        _hostShownThisLobby = false;
+    }
+
+    // ------------------------------------------------------------------ Einhaengen vor dem Rollen-Intro
+
+    internal static void IntroCutscene_CoBegin_Postfix(ref Il2CppSystem.Collections.IEnumerator __result)
+    {
+        try
+        {
+            // Diagnose: UC_HALLOWEEN_DIAG=villaintro spielt den Vorspann auch ohne Host-Entscheidung (Freeplay)
+            bool diag = (Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("villaintro");
+            if ((!_playNext && !diag) || __result == null) return;
+            _playNext = false;
+            if (UnknownsAtlas.AtlasMaps.ActiveKey != HollowmereMap.Key) return;
+            __result = Wrap(__result).WrapToIl2Cpp();
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} wrap failed, plain intro: {e}"); }
+    }
+
+    private static IEnumerator Wrap(Il2CppSystem.Collections.IEnumerator original)
+    {
+        var play = Play();
+        while (true)
+        {
+            object step;
+            try { if (!play.MoveNext()) break; step = play.Current; }
+            catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} playback failed: {e}"); Cleanup(); break; }
+            yield return step;
+        }
+        // danach das Original unveraendert weiterreichen
+        while (original.MoveNext()) yield return original.Current;
+    }
+
+    // ------------------------------------------------------------------ Abspielen
+
+    private static GameObject _root;
+    private static Texture2D _tex;
+
+    private static int FrameCount()
+    {
+        if (_frameCount >= 0) return _frameCount;
+        int n = 0;
+        var asm = typeof(HollowmereIntro).Assembly;
+        while (asm.GetManifestResourceInfo($"{FramePrefix}{n:000}.jpg") != null) n++;
+        _frameCount = n;
+        return n;
+    }
+
+    private static byte[] FrameBytes(int i)
+    {
+        using Stream s = typeof(HollowmereIntro).Assembly.GetManifestResourceStream($"{FramePrefix}{i:000}.jpg");
+        if (s == null) return null;
+        var data = new byte[s.Length];
+        int read = 0;
+        while (read < data.Length) { int n = s.Read(data, read, data.Length - read); if (n <= 0) break; read += n; }
+        return read == data.Length ? data : null;
+    }
+
+    private static IEnumerator Play()
+    {
+        int frames = FrameCount();
+        var cam = Camera.main;
+        var first = frames > 0 ? FrameBytes(0) : null;
+        if (cam == null || first == null) yield break;
+
+        _tex = new Texture2D(2, 2, TextureFormat.RGB24, false) { hideFlags = HideFlags.HideAndDontSave };
+        if (!ImageConversion.LoadImage(_tex, first, false)) { Cleanup(); yield break; }
+        _tex.filterMode = FilterMode.Bilinear;
+        _tex.wrapMode = TextureWrapMode.Clamp;
+
+        // Bildschirmfuellend und ueber ALLEM: wie die Bildschirmabdunkelung des Spiels (HudManager.FullScreen,
+        // gleiche Ebene, Sortierschicht und Tiefe knapp davor). Am Hauptkamera-Kind lag der Vorspann im
+        // Test 09.10. unter der HUD-Leiste, die eine eigene UI-Kamera zeichnet. Schwarzer Rand bei anderem
+        // Seitenverhaeltnis.
+        var fs = HudManager.InstanceExists ? HudManager.Instance.FullScreen : null;
+        _layer = fs != null ? fs.gameObject.layer : 5;
+        _sortLayer = fs != null ? fs.sortingLayerID : 0;
+        _baseOrder = fs != null ? fs.sortingOrder + 10 : 32000;
+        _root = new GameObject("Hollowmere_Intro") { layer = _layer };
+        if (fs != null && fs.transform.parent != null)
+        {
+            var parent = fs.transform.parent;
+            _root.transform.SetParent(parent, false);
+            _root.transform.localPosition = new Vector3(0f, 0f, fs.transform.localPosition.z - 1f);
+            var ls = parent.lossyScale;
+            _root.transform.localScale = new Vector3(1f / Mathf.Max(0.0001f, ls.x), 1f / Mathf.Max(0.0001f, ls.y), 1f);
+        }
+        else
+        {
+            _root.transform.SetParent(cam.transform, false);
+            _root.transform.localPosition = new Vector3(0f, 0f, 5f);
+        }
+        float h = cam.orthographicSize * 2f, w = h * cam.aspect;
+        var black = MakeQuad("black", Color.black, 0);
+        black.transform.localScale = new Vector3(w * 1.05f, h * 1.05f, 1f);
+        var go = new GameObject("frame") { layer = _layer };
+        go.transform.SetParent(_root.transform, false);
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = Sprite.Create(_tex, new Rect(0, 0, _tex.width, _tex.height), new Vector2(0.5f, 0.5f), 100f);
+        sr.sortingLayerID = _sortLayer;
+        sr.sortingOrder = _baseOrder + 1;
+        float sx = w / (_tex.width / 100f), sy = h / (_tex.height / 100f);
+        float s = Mathf.Min(sx, sy);
+        go.transform.localScale = new Vector3(s, s, 1f);
+        HalloweenPlugin.Logger.LogInfo($"{LogPrefix} playing {frames} frames ({frames / Fps:F1} s)");
+
+        float t0 = Time.time;
+        int shown = 0;
+        while (true)
+        {
+            float t = Time.time - t0;
+            int want = Mathf.Min(frames - 1, (int)(t * Fps));
+            if (want != shown)
+            {
+                var bytes = FrameBytes(want);
+                if (bytes != null) ImageConversion.LoadImage(_tex, bytes, false);
+                shown = want;
+            }
+            // die letzten 0,3 s ausblenden, dann geht es mit dem Rollen-Intro weiter
+            float end = frames / Fps;
+            if (t >= end - 0.3f) sr.color = new Color(1f, 1f, 1f, Mathf.Clamp01((end - t) / 0.3f));
+            if (t >= end) break;
+            yield return null;
+        }
+        Cleanup();
+    }
+
+    private static int _layer = 5, _sortLayer, _baseOrder = 32000;
+
+    private static GameObject MakeQuad(string name, Color c, int order)
+    {
+        var go = new GameObject(name) { layer = _layer };
+        go.transform.SetParent(_root.transform, false);
+        var sr = go.AddComponent<SpriteRenderer>();
+        var tex = new Texture2D(1, 1) { hideFlags = HideFlags.HideAndDontSave };
+        tex.SetPixel(0, 0, Color.white);
+        tex.Apply();
+        sr.sprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+        sr.color = c;
+        sr.sortingLayerID = _sortLayer;
+        sr.sortingOrder = _baseOrder + order;
+        return go;
+    }
+
+    private static void Cleanup()
+    {
+        try { if (_root != null) Object.Destroy(_root); } catch { }
+        try { if (_tex != null) Object.Destroy(_tex); } catch { }
+        _root = null;
+        _tex = null;
+    }
+}

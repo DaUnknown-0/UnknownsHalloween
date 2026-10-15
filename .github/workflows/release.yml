@@ -61,9 +61,16 @@ jobs:
           echo "Unknown's Collection: $UC_TAG"
           gh release download "$UC_TAG" --repo DaUnknown-0/UnknownsCollection --pattern UnknownsCollection.dll --dir "$RUNNER_TEMP/uc"
           echo "UC_DLL=$RUNNER_TEMP/uc/UnknownsCollection.dll" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/atlas"
+          # Hollowmere Manor nutzt die oeffentliche Karten-API von Unknown's Atlas (AtlasMaps.Register),
+          # ebenfalls aus dem neuesten Release inklusive Testversionen.
+          ATLAS_TAG=$(gh release list --repo DaUnknown-0/UnknownsAtlas --limit 1 --json tagName -q '.[0].tagName')
+          echo "Unknown's Atlas: $ATLAS_TAG"
+          gh release download "$ATLAS_TAG" --repo DaUnknown-0/UnknownsAtlas --pattern UnknownsAtlas.dll --dir "$RUNNER_TEMP/atlas"
+          echo "ATLAS_DLL=$RUNNER_TEMP/atlas/UnknownsAtlas.dll" >> "$GITHUB_ENV"
 
       - name: Build
-        run: dotnet build -c Release -p:TheOtherRolesDll="$TOR_DLL" -p:UnknownsCollectionDll="$UC_DLL"
+        run: dotnet build -c Release -p:TheOtherRolesDll="$TOR_DLL" -p:UnknownsCollectionDll="$UC_DLL" -p:UnknownsAtlasDll="$ATLAS_DLL"
 
       - name: Release erstellen + DLL anhaengen
         env:
