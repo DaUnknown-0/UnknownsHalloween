@@ -36,7 +36,17 @@ internal static class HollowmereMap
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogError($"[Halloween/Villa] size option failed: {e}"); }
 
+        // Mechaniken brauchen Atlas-API 2 (AtlasMapDef.World, ab Atlas 1.0.0.2). AtlasMaps.ApiVersion ist eine
+        // Konstante und wird hier eingebacken, also zur Laufzeit am Feld pruefen: mit aelterem Atlas waere jeder
+        // Kartenbau an d.World gescheitert.
+        if (typeof(AtlasMapDef).GetField("World") == null)
+        {
+            HalloweenPlugin.Logger.LogError($"[Halloween/Villa] {DisplayName} needs Unknown's Atlas 1.0.0.2 or newer - map not registered");
+            return;
+        }
+
         HollowmereIntro.Init();
+        HollowmereWorld.Init();
 
         bool ok = AtlasMaps.Register(Key, "Hollowmere", Make, typeof(HollowmereMap).Assembly, ResourceNamespace,
             button: "button_villa.png", icon: "icon_villa.png", contentVersion: HalloweenPlugin.PluginVersion);
@@ -45,8 +55,13 @@ internal static class HollowmereMap
 
     // Diagnose: UC_HALLOWEEN_DIAG=villalarge erzwingt die grosse Variante (Autotest ohne Eingriff in die TOR-Optionen)
     internal static bool Large =>
-        (Size != null && Size.getSelection() == 1) ||
-        (Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("villalarge");
+        !(Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("villasmall") &&
+        ((Size != null && Size.getSelection() == 1) ||
+         (Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("villalarge"));
+
+    // "Make Burger" aus Airship am Herd der Kueche (Kueche = LowerEngine); Atlas laedt dafuer Airship mit.
+    private static readonly (TaskTypes, int, string, SystemTypes)[] BurgerTask =
+        { (TaskTypes.MakeBurger, 4, "LowerEngine/MakeBurger/0", SystemTypes.LowerEngine) };
 
     private static AtlasMapDef Make()
     {
@@ -59,6 +74,13 @@ internal static class HollowmereMap
         d.BuiltInEffects = false;
         d.CameraColor = new Color(0x16 / 255f, 0x10 / 255f, 0x14 / 255f);
         d.TaskNames = TaskNames();
+        d.CustomTasks = CustomTasks();
+        d.TaskArt = TaskArt();
+        d.TaskText = TaskText();
+        // Mechaniken (Geheimgaenge, Uhr, Kerzen): je Bau ein frisches Objekt, Atlas ruft es ueber IAtlasMapWorld
+        d.World = Large
+            ? new HollowmereWorld(d, VillaLarge.Secrets, VillaLarge.Clock, VillaLarge.DarkRooms)
+            : new HollowmereWorld(d, VillaSmall.Secrets, VillaSmall.Clock, VillaSmall.DarkRooms);
         return d;
     }
 
@@ -73,6 +95,7 @@ internal static class HollowmereMap
         PropPixelsPerMeter = VillaSmall.PropPixelsPerMeter, Props = VillaSmall.Props,
         ConsoleSprites = VillaSmall.ConsoleSprites,
         Consoles = VillaSmall.Consoles,
+        ForeignTasks = BurgerTask,
         EmergencyButton = VillaSmall.EmergencyButton, SurveillanceConsole = VillaSmall.SurveillanceConsole,
         AdminTable = VillaSmall.AdminTable, FreeplayLaptop = VillaSmall.FreeplayLaptop,
         Spawn = VillaSmall.Spawn, SpawnRadius = VillaSmall.SpawnRadius,
@@ -94,6 +117,7 @@ internal static class HollowmereMap
         PropPixelsPerMeter = VillaLarge.PropPixelsPerMeter, Props = VillaLarge.Props,
         ConsoleSprites = VillaLarge.ConsoleSprites,
         Consoles = VillaLarge.Consoles,
+        ForeignTasks = BurgerTask,
         EmergencyButton = VillaLarge.EmergencyButton, SurveillanceConsole = VillaLarge.SurveillanceConsole,
         AdminTable = VillaLarge.AdminTable, FreeplayLaptop = VillaLarge.FreeplayLaptop,
         Spawn = VillaLarge.Spawn, SpawnRadius = VillaLarge.SpawnRadius,
@@ -106,6 +130,84 @@ internal static class HollowmereMap
 
     // Jeder Karten-Task reitet auf einem Skeld-TaskType (wie bei den Atlas-Karten); Minispiele bleiben
     // vorerst die der Skeld, eigene folgen spaeter.
+    // Minispiele (Audit 15.10., Schritt 3): Atlas-Bausteine mit Villa-Grafik (tools/gen_villa_tasks.py, Resources/villa),
+    // Atlas laedt Minispiel-Bilder zuerst aus dieser DLL. "spirit" ist das Geisterbrett fuer den Seance-Tisch.
+    private static Dictionary<TaskTypes, string> CustomTasks() => new()
+    {
+        { TaskTypes.FixWiring, "splice" }, { TaskTypes.SwipeCard, "timecard" }, { TaskTypes.CalibrateDistributor, "climate" },
+        { TaskTypes.ChartCourse, "constellation" }, { TaskTypes.CleanO2Filter, "dust" }, { TaskTypes.DivertPower, "route" },
+        { TaskTypes.PrimeShields, "lanterns" }, { TaskTypes.StabilizeSteering, "projector" }, { TaskTypes.UnlockManifolds, "hiero" },
+        { TaskTypes.UploadData, "audio" }, { TaskTypes.AlignEngineOutput, "generator" }, { TaskTypes.ClearAsteroids, "moths" },
+        { TaskTypes.EmptyGarbage, "bins" }, { TaskTypes.FuelEngines, "refuel" }, { TaskTypes.InspectSample, "pigment" },
+        { TaskTypes.StartReactor, "spirit" },
+        { TaskTypes.RestoreOxy, "waterworks" }, { TaskTypes.FixLights, "fusebox" },
+    };
+
+    private static Dictionary<string, string> TaskArt() => new()
+    {
+        // Tafeln
+        { "task_museum_panel.png", "task_villa_panel.png" }, { "task_wald_panel.png", "task_villa_panel.png" },
+        { "task_shop_panel.png", "task_villa_panel.png" }, { "task_steel_panel.png", "task_villa_machine.png" },
+        // Sweep the Chimney
+        { "dust:task_museum_dino.png", "task_villa_flue.png" }, { "dust:task_museum_dust.png", "task_villa_soot.png" },
+        { "dust:task_brush.png", "task_villa_brush.png" },
+        // Shoo the Bats
+        { "moths:task_gallery.png", "task_villa_window.png" }, { "moths:task_moth.png", "task_villa_bat.png" },
+        { "moths:task_torch.png", "task_villa_broom.png" }, { "moths:task_jar.png", "task_villa_openwindow.png" },
+        // Light the Ward Candles
+        { "lanterns:task_dock_night.png", "task_villa_chapel.png" }, { "lanterns:task_lantern_on.png", "task_villa_candle_on.png" },
+        { "lanterns:task_lantern_off.png", "task_villa_candle_off.png" },
+        // Balance the Dimmer Board, Tune the Generator, Refuel the Generators
+        { "climate:task_gauge_band.png", "task_villa_gauge_band.png" }, { "climate:task_needle.png", "task_villa_needle.png" },
+        { "generator:task_generator.png", "task_villa_generator.png" },
+        { "refuel:task_boiler.png", "task_villa_drum.png" }, { "refuel:task_can.png", "task_villa_jerrycan.png" },
+        // Chart the Stars, Focus the Telescope
+        { "constellation:task_card.png", "task_villa_starcard.png" }, { "constellation:task_sky.png", "task_villa_sky.png" },
+        { "projector:task_sky.png", "task_villa_moonsky.png" },
+        // Mix the Fake Blood
+        { "pigment:task_vial.png", "task_villa_vial.png" }, { "pigment:task_strip.png", "task_villa_strip.png" },
+        // Back Up the Dailies
+        { "audio:task_photo.png", "task_villa_reelcan.png" }, { "audio:task_deer.png", "task_villa_scene.png" },
+        { "audio:task_pc.png", "task_villa_recorder.png" }, { "audio:task_dock.png", "task_villa_reeldock.png" },
+        { "audio:task_sdcard.png", "task_villa_tape.png" }, { "audio:task_audioguide.png", "task_villa_reel.png" },
+        { "audio:task_icon_dino.png", "task_villa_icon_candle.png" }, { "audio:task_icon_mummy.png", "task_villa_icon_skull.png" },
+        { "audio:task_icon_planet.png", "task_villa_icon_bat.png" }, { "audio:task_icon_gem.png", "task_villa_icon_key.png" },
+        { "audio:task_icon_painting.png", "task_villa_icon_raven.png" },
+        // Sign the Call Sheet
+        { "timecard:task_timecard.png", "task_villa_callsheet.png" }, { "timecard:task_clock.png", "task_villa_watch.png" },
+        // Take Out the Trash
+        { "bins:task_bin_paper.png", "task_villa_bin_paper.png" }, { "bins:task_bin_glass.png", "task_villa_bin_glass.png" },
+        { "bins:task_bin_rest.png", "task_villa_bin_rest.png" }, { "bins:task_container.png", "task_villa_container.png" },
+        { "bins:task_trash_brochure.png", "task_villa_trash_brochure.png" }, { "bins:task_trash_ticket.png", "task_villa_trash_ticket.png" },
+        { "bins:task_trash_bottle.png", "task_villa_trash_bottle.png" }, { "bins:task_trash_jar.png", "task_villa_trash_jar.png" },
+        { "bins:task_trash_wrapper.png", "task_villa_trash_wrapper.png" }, { "bins:task_trash_apple.png", "task_villa_trash_apple.png" },
+        // Route Generator Power, Set Lights Down
+        { "route:task_socket.png", "task_villa_socket.png" }, { "route:task_plug.png", "task_villa_plug.png" },
+        { "route:task_switch_plate.png", "task_villa_switchplate.png" }, { "route:task_switch_lever.png", "task_villa_switchlever.png" },
+        { "fusebox:task_fuse_ok.png", "task_villa_fuse_ok.png" }, { "fusebox:task_fuse_dead.png", "task_villa_fuse_dead.png" },
+        { "fusebox:task_fuse_new.png", "task_villa_fuse_new.png" },
+        { "fusebox:task_switch_plate.png", "task_villa_switchplate.png" }, { "fusebox:task_switch_lever.png", "task_villa_switchlever.png" },
+        // Open the Puzzle Box
+        { "hiero:task_cartouche.png", "task_villa_tile.png" },
+        { "hiero:task_glyph0.png", "task_villa_rune0.png" }, { "hiero:task_glyph1.png", "task_villa_rune1.png" },
+        { "hiero:task_glyph2.png", "task_villa_rune2.png" }, { "hiero:task_glyph3.png", "task_villa_rune3.png" },
+        { "hiero:task_glyph4.png", "task_villa_rune4.png" }, { "hiero:task_glyph5.png", "task_villa_rune5.png" },
+        { "hiero:task_glyph6.png", "task_villa_rune6.png" }, { "hiero:task_glyph7.png", "task_villa_rune7.png" },
+        { "hiero:task_glyph8.png", "task_villa_rune8.png" }, { "hiero:task_glyph9.png", "task_villa_rune9.png" },
+        // Smoke in the Chimney
+        { "waterworks:task_pipes.png", "task_villa_pipes.png" }, { "waterworks:task_valve.png", "task_villa_wheel.png" },
+        { "waterworks:task_card.png", "task_villa_plan.png" },
+    };
+
+    private static Dictionary<string, string> TaskText() => new()
+    {
+        { "audio:FIND THE ANIMAL", "FIND THE SCENE" }, { "audio:EXHIBIT", "SCENE" },
+        { "audio:TRACK 1", "REEL 1" }, { "audio:TRACK 2", "REEL 2" }, { "audio:TRACK 3", "REEL 3" },
+        { "bins:PAPER", "SCRIPTS" }, { "bins:GLASS", "BOTTLES" }, { "bins:OTHER", "PROPS" },
+        { "climate:TEMP", "KEY" }, { "climate:HUMIDITY", "FILL" }, { "climate:LIGHT", "BACK" },
+        { "waterworks:PLAN", "FLUE" },
+    };
+
     private static Dictionary<TaskTypes, string> TaskNames() => new()
     {
         { TaskTypes.FixWiring, "Rewire the Set Lights" },

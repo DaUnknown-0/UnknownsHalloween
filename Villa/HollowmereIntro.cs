@@ -64,11 +64,29 @@ internal static class HollowmereIntro
                 postfix: new HarmonyMethod(typeof(HollowmereIntro), nameof(AmongUsClient_OnGameJoined_Postfix)));
             h.Patch(AccessTools.Method(typeof(IntroCutscene), nameof(IntroCutscene.CoBegin)),
                 postfix: new HarmonyMethod(typeof(HollowmereIntro), nameof(IntroCutscene_CoBegin_Postfix)));
+            h.Patch(AccessTools.Method(typeof(HudManager), nameof(HudManager.Update)),
+                postfix: new HarmonyMethod(typeof(HollowmereIntro), nameof(HudManager_Update_WatchdogPostfix)));
+            h.Patch(AccessTools.Method(typeof(IntroCutscene), nameof(IntroCutscene.OnDestroy)),
+                postfix: new HarmonyMethod(typeof(HollowmereIntro), nameof(IntroCutscene_OnDestroy_Postfix)));
             if (Diag)
                 h.Patch(AccessTools.Method(typeof(HudManager), nameof(HudManager.Update)),
                     postfix: new HarmonyMethod(typeof(HollowmereIntro), nameof(HudManager_Update_DiagPostfix)));
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} patching failed, no intro: {e}"); }
+    }
+
+    // Der Vorspann laeuft in der Intro-Koroutine des Spiels. Bricht die ab (Intro vorzeitig zerstoert, im Test
+    // 15.10. nach einem Rollenwechsel per Role Control mitten im Intro), kam Play() nie bei Cleanup() an und
+    // die schwarze Flaeche blieb fuer die ganze Runde liegen. Deshalb raeumt hier ein Waechter auf, sobald die
+    // Spielzeit des Vorspanns um ist.
+    private static float _deadline = -1f;
+
+    internal static void HudManager_Update_WatchdogPostfix()
+    {
+        if (_root == null || _deadline < 0f || Time.time < _deadline) return;
+        HalloweenPlugin.Logger.LogWarning($"{LogPrefix} intro was cut off, overlay removed by the watchdog");
+        Cleanup();
+        _playing = false;
     }
 
     // ------------------------------------------------------------------ Diagnose (Autotest im Freeplay)
@@ -141,7 +159,8 @@ internal static class HollowmereIntro
     {
         try
         {
-            if (reader.ReadByte() != SubIntro) return;
+            byte sub = reader.ReadByte();
+            if (sub != SubIntro) { HollowmereWorld.HandleRpc(sub, reader); return; }   // Mechaniken (Sub 2+)
             bool play = reader.ReadBoolean();
             if (UCRpc.RequireHost("Hollowmere.Intro")) _playNext = play;
         }
@@ -170,18 +189,44 @@ internal static class HollowmereIntro
         catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} wrap failed, plain intro: {e}"); }
     }
 
+    // Der Vorspann laeuft als eigene Koroutine auf dem HudManager, nicht in der Intro-Koroutine: wird die
+    // IntroCutscene vorzeitig zerstoert (15.10.: Rollenwechsel per Role Control, Solo-Runde), stirbt ihre
+    // Koroutine mitten im Vorspann, und die schwarze Flaeche blieb liegen. Hier wartet das Intro nur, bis
+    // der Vorspann fertig ist; IntroCutscene.OnDestroy raeumt ihn zusaetzlich sofort weg.
     private static IEnumerator Wrap(Il2CppSystem.Collections.IEnumerator original)
+    {
+        if (HudManager.InstanceExists)
+        {
+            _playing = true;
+            HudManager.Instance.StartCoroutine(Guarded().WrapToIl2Cpp());
+            while (_playing) yield return null;
+        }
+        // danach das Original unveraendert weiterreichen
+        while (original.MoveNext()) yield return original.Current;
+    }
+
+    private static bool _playing;
+
+    private static IEnumerator Guarded()
     {
         var play = Play();
         while (true)
         {
             object step;
             try { if (!play.MoveNext()) break; step = play.Current; }
-            catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} playback failed: {e}"); Cleanup(); break; }
+            catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} playback failed: {e}"); break; }
             yield return step;
         }
-        // danach das Original unveraendert weiterreichen
-        while (original.MoveNext()) yield return original.Current;
+        Cleanup();
+        _playing = false;
+    }
+
+    internal static void IntroCutscene_OnDestroy_Postfix()
+    {
+        if (_root == null) return;
+        HalloweenPlugin.Logger.LogWarning($"{LogPrefix} intro ended early, overlay removed");
+        Cleanup();
+        _playing = false;
     }
 
     // ------------------------------------------------------------------ Abspielen
@@ -258,10 +303,19 @@ internal static class HollowmereIntro
         HalloweenPlugin.Logger.LogInfo($"{LogPrefix} playing {frames} frames ({frames / Fps:F1} s)");
 
         float t0 = Time.time;
+        _deadline = t0 + frames / Fps + 1f;
         int shown = 0;
         while (true)
         {
             float t = Time.time - t0;
+            try
+            {
+                float ch = cam.orthographicSize * 2f, cw = ch * cam.aspect;
+                black.transform.localScale = new Vector3(cw * 1.1f, ch * 1.1f, 1f);
+                float fs2 = Mathf.Min(cw / (_tex.width / 100f), ch / (_tex.height / 100f));
+                go.transform.localScale = new Vector3(fs2, fs2, 1f);
+            }
+            catch { }
             int want = Mathf.Min(frames - 1, (int)(t * Fps));
             if (want != shown)
             {
@@ -301,5 +355,6 @@ internal static class HollowmereIntro
         try { if (_tex != null) Object.Destroy(_tex); } catch { }
         _root = null;
         _tex = null;
+        _deadline = -1f;
     }
 }

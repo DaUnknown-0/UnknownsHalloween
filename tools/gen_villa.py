@@ -13,6 +13,7 @@
 # Waende, Raeume, Konsolen, Vents, Tueren, Kameras und eine eigene Minimap.
 # Objekte, die villa_art.py (Fable-Stilblatt) schon zeichnet, kommen von dort, alle anderen als Graybox-Block.
 
+import hashlib
 import heapq
 import math
 import sys
@@ -36,6 +37,7 @@ import villa_layout as L        # noqa: E402
 
 try:
     import villa_art as VA      # Fable-Stilblatt; fehlt er, bleibt alles Graybox
+    import villa_art2           # Einrichtung seit dem Audit 15.10. (traegt sich in villa_art ein)
 except Exception as e:          # noqa: BLE001
     VA = None
     print(f"note: villa_art not usable ({e}) - props stay graybox")
@@ -75,7 +77,7 @@ KIND_COL = {
     "lesetisch": (120, 80, 50), "kirchenbank": (110, 80, 50), "baer": (90, 60, 40), "sessel": (120, 40, 50),
     "schreibtisch": (110, 80, 50), "catering": (200, 200, 200), "absperrung": (230, 200, 40), "urne": (150, 150, 150),
     "gartenbank": (110, 90, 70), "pflanztisch": (100, 120, 90), "brunnen": (130, 130, 140), "grabstein": (150, 150, 155),
-    "sarg": (120, 110, 100), "barrikade": (130, 90, 50),
+    "sarg": (120, 110, 100), "barrikade": (130, 90, 50), "treppensperre": (150, 100, 70),
 }
 
 SKELD_CONSOLES = {   # wie gen_park.py
@@ -174,6 +176,7 @@ def geom_parts(g):
 def props_of(v):
     """Alle Objekte der Variante: (Form, Art, opaque?)."""
     out = [(s, k, True) for s, k, vs in L.OPAQUE if v in vs] + [(s, k, False) for s, k, vs in L.GLASS if v in vs]
+    out += [(s, k, None) for s, k, vs in getattr(L, "DECOR", []) if v in vs]      # None = ohne Kollision
     return out
 
 
@@ -316,6 +319,13 @@ def draw_block(kind, ws):
     return im, x0 - pad, y0 - pad, y0
 
 
+# Tauschbilder fuer die Mechaniken (HollowmereWorld): gleiche Art und Groesse, anderer Zustand. Sie liegen im
+# Konsolen-Atlas unter "Prop/<Art>/<welt_x>/<welt_y>/<Variante>" (3 Dezimalen wie in der g.cs), Anker unten links
+# wie das Prop selbst, damit der Renderer nur das Sprite tauscht.
+PROP_VARIANTS = {"portrait": ("l", "r"), "standuhr": ("p1", "p2"), "scheinwerfer": ("off",), "kandelaber": ("off",)}
+PROP_VARIANT_SPRITES = {}
+
+
 def render_props():
     """Alle Objekte beider Varianten einmal zeichnen und packen. Rueckgabe: {(Art, Weltform): Prop-Tupel}."""
     uniq = {}
@@ -331,6 +341,16 @@ def render_props():
         images.append((i, im))
         fx0, _, fx1, _ = A.shape_bounds(ws)
         meta.append((kind, wx, wy, base, fx0, fx1))
+        for var in PROP_VARIANTS.get(kind, ()):
+            try:
+                im2, wx2, wy2, _b = VA.draw(kind, ws, abs(hash((kind, ws))) % 997, PROP_PPM, variant=var)
+            except Exception as e:      # noqa: BLE001
+                print(f"WARN variant {kind}/{var} failed: {e}")
+                continue
+            if im2.size != im.size or abs(wx2 - wx) > 1e-6 or abs(wy2 - wy) > 1e-6:
+                print(f"WARN variant {kind}/{var}: size/anchor differs ({im2.size} vs {im.size})")
+            # Anker so, dass das Tauschbild an der Stelle des Originals sitzt (Prop-Pivot = unten links bei wx/wy)
+            PROP_VARIANT_SPRITES[f"Prop/{kind}/{wx:.3f}/{wy:.3f}/{var}"] = (im2, (wx - wx2) * PROP_PPM, (wy - wy2) * PROP_PPM)
     atlases, placed = A.pack(images, max_w=2048, max_h=2048)
     for old in ASSETS.glob("villa_props_*.png"):
         old.unlink()
@@ -352,19 +372,14 @@ def place_consoles(v, walk_w, rooms_w, door_pts, obstacles_w):
     free = walk_w.difference(unary_union(obstacles_w).buffer(0.5)).buffer(0) if obstacles_w else walk_w
     edge = walk_w.boundary
     fixed = {k: wp(p) for k, p in L.FIXED.items()}
+    fixed.update({k: wp(p) for k, p in getattr(L, "FIXED_" + v.upper(), {}).items()})
     taken = [Point(p) for p in list(fixed.values())] + \
             [Point(wp(p)) for p in (L.EMERGENCY, L.SURVEILLANCE, L.ADMIN_TABLE, L.FREEPLAY, L.SPAWN)]
     taken += [Point(wp(p)) for p in L.VENTS[v].values()] + [Point(wp(p)) for p in L.CAMERAS[v]]
     # Geheimgaenge und Standuhr brauchen freie Wand: dort keine Konsole
-    for _key, sec, spec, _d, vs in L.SECRETS:
-        if v not in vs:
-            continue
-        if sec == "wall":
-            ax, at, a, b = spec
-            mid = (at, (a + b) / 2) if ax == "x" else ((a + b) / 2, at)
-            taken.append(Point(wp(mid)))
-        else:
-            taken += [Point(wp(p)) for p in spec]
+    for _key, _prop, ent, ext, _both, vs in L.SECRETS:
+        if v in vs:
+            taken += [Point(wp(ent)), Point(wp(ext))]
     taken.append(Point(wp(L.CLOCK)))
     for key, (name, sysname, g) in rooms_w.items():
         keys = [k for k in SKELD_CONSOLES.get(sysname, []) if k not in fixed]
@@ -453,19 +468,31 @@ def render_consoles(all_consoles):
     import json
     brief = json.loads((PREVIEW / "console_brief.json").read_text(encoding="utf-8"))
     sprites = VC.render_all(PROP_PPM, brief)          # {(variant, key): (img, ax, ay)}
+    sprites.update(render_doors_cams(PROP_PPM))
+    for v in L.VARIANTS:                              # Tauschbilder der Mechaniken (render_props), je Variante
+        for key, spr in PROP_VARIANT_SPRITES.items():
+            sprites[(v, key)] = spr
     names, per_variant = {}, {"small": {}, "large": {}}
+    by_content = {}                                   # gleiche Bilder unter verschiedenen Schluesseln (Tueren) nur einmal
     for (v, key), spr in sorted(sprites.items(), key=lambda kv: (kv[0][0] != "small", kv[0][1])):
         name = key
         if name in names:
             old = names[name]
             if old[0].size != spr[0].size or old[0].tobytes() != spr[0].tobytes() or old[1:] != spr[1:]:
                 name = f"{key}@{v}"                   # andere Wand oder anderer Raum in dieser Variante
+        if name not in names:
+            h = (spr[0].size, spr[1], spr[2], hashlib.md5(spr[0].tobytes()).hexdigest())
+            if h in by_content:
+                name = by_content[h]
+            else:
+                by_content[h] = name
         names.setdefault(name, spr)
         per_variant[v][key] = (name, spr)
     for old in ASSETS.glob("villa_consoles_*.png"):
         old.unlink()
     keys = sorted(names)
-    images = [(i, names[k][0].filter(ImageFilter.GaussianBlur(0.45))) for i, k in enumerate(keys)]
+    # Tauschbilder ("Prop/...") ohne den Weichzeichner: sie ersetzen 1:1 ein ungefiltertes Prop-Bild
+    images = [(i, names[k][0] if k.startswith("Prop/") else names[k][0].filter(ImageFilter.GaussianBlur(0.45))) for i, k in enumerate(keys)]
     atlases, placed = A.pack(images, max_w=2048, max_h=2048)
     for k, atlas in enumerate(atlases):
         atlas.save(ASSETS / f"villa_consoles_{k}.png", optimize=True)
@@ -478,6 +505,34 @@ def render_consoles(all_consoles):
     for v in per_variant:
         out[v] = [(key,) + entry[name] for key, (name, _s) in sorted(per_variant[v].items())]
     print(f"consoles {len(keys)} sprites in {len(atlases)} atlas(es)")
+    return out
+
+
+def render_doors_cams(ppm):
+    """Tuer-Bildsaetze ("Door/<label>", "/1".."/5") und Kameras ("Camera/<i>", "/on") je Variante
+    (villa_doors.py). Gleiche Art und Achse = gleiche Bilder; render_consoles legt sie nur einmal ab."""
+    import villa_doors as VD
+    out = {}
+    cache = {}
+    for v in L.VARIANTS:
+        for o in L.OPENINGS:
+            t = o[4].get(v)
+            if not t or t == "open":
+                continue
+            ax, at, a0, b0 = o[:4]
+            label = f"{ax}{at:g}-{(a0 + b0) / 2:g}"
+            kind = L.DOOR_KIND.get((ax, at, (a0 + b0) / 2), "wood")
+            if (kind, ax) not in cache:
+                cache[(kind, ax)] = VD.door_frames(kind, ax, ppm)
+            frames = cache[(kind, ax)]
+            out[(v, f"Door/{label}")] = frames[0]
+            for k, fr in enumerate(frames[1:], 1):
+                out[(v, f"Door/{label}/{k}")] = fr
+        if "cam" not in cache:
+            cache["cam"] = (VD.camera(ppm, False), VD.camera(ppm, True))
+        for i in range(len(L.CAMERAS[v])):
+            out[(v, f"Camera/{i}")] = cache["cam"][0]
+            out[(v, f"Camera/{i}/on")] = cache["cam"][1]
     return out
 
 
@@ -561,8 +616,8 @@ def emit(v, walk_w, rooms_w, opens, tiles, props, consoles, labels, console_spri
     move = walk_w.difference(affinity.translate(solid, 0, -0.3)).buffer(0)
     shadow = unary_union([walk_w, affinity.translate(walk_w, 0, 0.45)]).buffer(0)
     items = props_of(v)
-    opaque = [W(shape(s)) for s, _k, o in items if o]
-    glass = [W(shape(s)) for s, _k, o in items if not o]
+    opaque = [W(shape(s)) for s, _k, o in items if o is True]
+    glass = [W(shape(s)) for s, _k, o in items if o is False]
     edges = unary_union([LineString(r + [r[0]]) for r in rings_of(walk_w)])
     casts = [p.distance(edges) > 0.08 for p in opaque]
     room_u = unary_union([g for _n, _s, g in rooms_w.values()])
@@ -671,6 +726,14 @@ def emit(v, walk_w, rooms_w, opens, tiles, props, consoles, labels, console_spri
             a(f"        [SystemTypes.{sysname}] = {v2((c.x, c.y + 0.8))},")
             done.add(sysname)
     a("    };")
+    a("    /// <summary>Geheimgaenge (HollowmereWorld): Schluessel, Moebel-Art, Eingang, Ausgang, beide Richtungen.</summary>")
+    a("    public static readonly (string Key, string Prop, Vector2 Entry, Vector2 Exit, bool Both)[] Secrets =\n    {")
+    for key, prop, ent, ext, both, vs in L.SECRETS:
+        if v in vs:
+            a(f"        (\"{key}\", \"{prop}\", {v2(wp(ent))}, {v2(wp(ext))}, {'true' if both else 'false'}),")
+    a("    };")
+    a("    /// <summary>Standuhr in der Halle (Mitternachtsuhr), Standpunkt davor.</summary>")
+    a(f"    public static readonly Vector2 Clock = {v2(wp(L.CLOCK))};")
     a("    /// <summary>Raeume mit schwaecherem Licht (Mechanik Kerzen und Dunkelheit).</summary>")
     a("    public static readonly string[] DarkRooms = { " + ", ".join(f"\"{k}\"" for k in sorted(L.DARK) if k in rooms_w or True) + " };")
     a("}")
@@ -710,7 +773,7 @@ def main(argv):
         missing = [s for s in SKELD_CONSOLES if s not in systems]
         if missing:
             print(f"WARN [{v}] systems without a room: {missing}")
-        obstacles_w = [W(shape(s)) for s, _k, _o in props_of(v)]
+        obstacles_w = [W(shape(s)) for s, _k, o in props_of(v) if o is not None]
         door_pts = [W(opening_box(o)).centroid for o in opens]
         consoles = place_consoles(v, walk_w, rooms_w, door_pts, obstacles_w)
         free = walk_w.difference(unary_union(obstacles_w).buffer(0.25)) if obstacles_w else walk_w

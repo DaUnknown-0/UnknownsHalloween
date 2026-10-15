@@ -38,12 +38,13 @@ AREAS = [
     ("observatory", "Observatory", (27, 4, 34, 8), B, {"small": "Nav", "large": "Nav"}),
     # ----------------------------------------------------------------- Haus, Mitte
     ("boiler", "Boiler Room", (0, 8, 8, 14), B, {"small": "Electrical", "large": "Electrical"}),
-    ("westhall", "West Hall", (8, 8, 11, 14), B, {"small": None, "large": None}),
-    ("library", "Library", (0, 14, 11, 19), B, {"small": "Records", "large": "Records"}),
+    # seit 15.10. L-foermig: der alte Westflur (8-11 x 8-14) ist der Nordarm, der Heizungskeller wird ausgeschnitten
+    ("library", "Long Library", (0, 8, 11, 19), B, {"small": "Records", "large": "Records"}),
     ("chapel", "Chapel", (0, 19, 11, 24), B, {"small": "Shields", "large": "Lounge"}),
-    ("hall", "Entrance Hall", (11, 8, 23, 20), B, {"small": "Cafeteria", "large": "Cafeteria"}),
+    # seit 15.10. T-foermig: das alte Vestibuel (15-19 x 20-24) ist der Suedarm mit der Haustuer; Regie und Maske
+    # liegen darin und werden ausgeschnitten
+    ("hall", "Entrance Hall", (11, 8, 23, 24), B, {"small": "Cafeteria", "large": "Cafeteria"}),
     ("booth", "Director's Booth", (11, 20, 15, 24), B, {"small": "Security", "large": "Security"}),
-    ("vestibule", "Vestibule", (15, 20, 19, 24), B, {"small": None, "large": None}),
     ("makeup", "Makeup", (19, 20, 23, 24), B, {"small": "MedBay", "large": "MedBay"}),
     ("gallery", "Portrait Gallery", (23, 8, 26, 24), B, {"small": "HallOfPortraits", "large": "HallOfPortraits"}),
     ("trophy", "Trophy Room", (26, 8, 34, 13), B, {"small": "Weapons", "large": "Weapons"}),
@@ -67,23 +68,21 @@ OPENINGS = [
     ("x", 7, 3.0, 5.5, {"small": ("door", "LowerEngine"), "large": ("door", "LowerEngine")}),   # Kitchen - Laundry
     ("x", 11, 3.0, 5.5, {"small": ("door", "UpperEngine"), "large": "open"}),                   # Laundry - Seance
     ("x", 23, 3.0, 5.5, {"small": "open", "large": "open"}),                                    # Seance - Radio
-    ("y", 8, 8.3, 10.7, {"small": ("door", "UpperEngine"), "large": "open"}),                   # Laundry - West Hall
+    ("y", 8, 8.2, 10.7, {"small": ("door", "UpperEngine"), "large": "open"}),                   # Laundry - Library (Nordarm)
     ("y", 8, 23.5, 25.5, {"small": "open", "large": "open"}),                                   # Radio - Gallery
     ("x", 27, 0.75, 3.25, {"small": ("door", "Storage"), "large": "open"}),                     # Radio - Box Room
     ("y", 4, 29.5, 32.0, {"small": ("door", "Storage"), "large": "open"}),                      # Box Room - Observatory
     ("y", 8, 30.0, 32.5, {"small": ("door", "Storage"), "large": "open"}),                      # Observatory - Trophy
     ("y", 8, 2.0, 4.5, {"small": ("door", "LowerEngine"), "large": ("door", "LowerEngine")}),   # Kitchen - Boiler
     # Mitte
-    ("x", 8, 9.5, 12.0, {"small": ("door", "Electrical"), "large": ("door", "Electrical")}),    # West Hall - Boiler
-    ("x", 11, 10.25, 12.75, {"small": ("door", "Cafeteria"), "large": ("door", "Cafeteria")}), # West Hall - Hall
-    ("y", 14, 8.5, 10.5, {"small": "open", "large": "open"}),                                   # West Hall - Library
+    ("x", 8, 9.5, 12.0, {"small": ("door", "Electrical"), "large": ("door", "Electrical")}),    # Library (Nordarm) - Boiler
+    ("x", 11, 10.25, 12.75, {"small": ("door", "Cafeteria"), "large": ("door", "Cafeteria")}), # Library (Nordarm) - Hall
     ("y", 14, 2.0, 4.5, {"small": "open", "large": "open"}),                                    # Boiler - Library
-    ("y", 19, 3.0, 5.5, {"small": "open", "large": "open"}),                                    # Library - Chapel
+    ("y", 19, 3.0, 5.5, {"small": ("door", "Cafeteria"), "large": "open"}),                     # Library - Chapel (klein: Tuer statt Halle-Vestibuel)
     ("x", 23, 10.25, 12.75, {"small": ("door", "Cafeteria"), "large": ("door", "Cafeteria")}), # Hall - Gallery
-    ("y", 20, 15.75, 18.25, {"small": ("door", "Cafeteria"), "large": "open"}),                 # Hall - Vestibule
     ("y", 20, 11.75, 14.25, {"small": ("door", "Security"), "large": ("door", "Security")}),   # Hall - Booth
-    ("x", 15, 21.5, 23.5, {"small": "open", "large": "open"}),                                  # Booth - Vestibule
-    ("x", 19, 21.5, 23.5, {"small": "open", "large": "open"}),                                  # Vestibule - Makeup
+    ("x", 15, 21.5, 23.5, {"small": "open", "large": "open"}),                                  # Booth - Hall (Suedarm)
+    ("x", 19, 21.5, 23.5, {"small": "open", "large": "open"}),                                  # Hall (Suedarm) - Makeup
     ("x", 23, 21.0, 23.5, {"small": ("door", "MedBay"), "large": ("door", "MedBay")}),         # Makeup - Gallery
     ("x", 26, 9.5, 12.0, {"small": "open", "large": "open"}),                                   # Gallery - Trophy
     ("x", 26, 14.5, 16.5, {"small": "open", "large": "open"}),                                  # Gallery - Fireplace
@@ -91,7 +90,7 @@ OPENINGS = [
     ("y", 13, 27.0, 29.5, {"small": "open", "large": "open"}),                                  # Trophy - Fireplace
     ("y", 18, 27.0, 29.5, {"small": "open", "large": "open"}),                                  # Fireplace - Study
     # Aussen (nur gross; in "small" verrammelt, siehe BARRICADES)
-    ("y", 24, 15.75, 18.25, {"large": ("door", "Cafeteria")}),                                  # Vestibule - Driveway (Haustuer)
+    ("y", 24, 15.75, 18.25, {"large": ("door", "Cafeteria")}),                                  # Hall (Suedarm) - Driveway (Haustuer)
     ("x", 34, 14.5, 16.5, {"large": "open"}),                                                   # Fireplace - Terrace (Terrassentuer)
     ("y", 24, 3.0, 5.5, {"large": ("door", "UpperEngine")}),                                    # Chapel - Crew Camp (Hintertuer)
     ("x", 12, 26.5, 29.0, {"large": ("door", "UpperEngine")}),                                  # Driveway - Crew Camp
@@ -102,6 +101,11 @@ OPENINGS = [
     ("x", 40, 30.0, 33.0, {"large": "open"}),                                                   # Fountain Court - Graveyard
     ("y", 28, 45.75, 48.25, {"large": ("door", "Storage")}),                                    # Graveyard - Crypt (Gruft-Tor)
 ]
+
+# Tuerart je Oeffnung (Grafik, villa_doors.py): Garten-Tore aus Schmiedeeisen, Haus- und Hintertuer schwer,
+# alles andere Holz mit Messing. Schluessel = (Achse, Lage, Mitte) wie das DoorSlot-Label.
+DOOR_KIND = {("x", 40, 6.25): "iron", ("y", 26, 37): "iron", ("y", 28, 47): "iron", ("x", 12, 27.75): "iron",
+             ("y", 24, 17): "heavy", ("y", 24, 4.25): "heavy"}
 
 # Aussenoeffnungen des Hauses, die in "small" verrammelt sind (Bretter vor der Tuer, Prop "barrikade")
 BARRICADES = [("y", 24, 15.75, 18.25), ("x", 34, 14.5, 16.5), ("y", 24, 3.0, 5.5)]
@@ -126,15 +130,30 @@ FIXED = {
     "MedBay/MedScanner/0": (21.4, 21.4),                  # Schminkstuhl
     "Security/FixWiringConsole/5": (11.45, 22.4),         # Regie, Westwand (zu eng fuer die Automatik)
     "Nav/FixWiringConsole/3": (27.6, 7.3),                # Sternwarte, Suedwestecke
+    # Aufgabe aus Airship (Atlas ForeignTasks): Burger braten am Herd der Kueche (User 15.10.)
+    "LowerEngine/MakeBurger/0": (1.55, 1.25),
 }
+
+# Feste Konsolen nur einer Variante (seit der Einrichtung 15.10. finden sie sonst keinen freien Wandplatz)
+FIXED_SMALL = {
+    "Storage/gasCanConsole/0": (31.4, 1.4),              # Prop Store, zwischen Kleiderstange und Kisten
+    "Storage/FixWiringConsole/1": (27.6, 3.65),          # Prop Store, Suedwestecke
+    "Storage/AirlockConsole/0": (31.3, 3.7),             # Prop Store, Suedwand
+}
+FIXED_BOTH_EXTRA = {
+    "Security/DivertPowerConsole/1": (12.6, 21.2),       # Regie
+    "MedBay/MedBayConsole/0": (22.5, 20.7),              # Maske, rechts vom Kunstblutregal
+    "LifeSupp/DivertPowerConsole/1": (33.3, 17.3),       # Kaminzimmer, Suedostecke
+}
+FIXED.update(FIXED_BOTH_EXTRA)
 
 # Vents (Skeld-Ids, Netze): small 3 Netze, large dazu das Garten-Netz
 VENTS = {
-    "small": {0: (5.6, 6.6), 1: (5.6, 12.6), 2: (9.6, 22.8),
-              3: (21.8, 1.2), 5: (1.4, 17.8), 6: (22.2, 20.8),
+    "small": {0: (5.6, 6.6), 1: (6.0, 11.4), 2: (9.6, 22.8),
+              3: (21.8, 1.2), 5: (1.0, 18.45), 6: (22.3, 23.1),
               7: (33.1, 7.2), 8: (33.1, 17.2), 9: (33.1, 23.2)},
-    "large": {0: (5.6, 6.6), 1: (5.6, 12.6), 2: (9.6, 22.8),
-              3: (21.8, 1.2), 5: (1.4, 17.8), 6: (22.2, 20.8),
+    "large": {0: (5.6, 6.6), 1: (6.0, 11.4), 2: (9.6, 22.8),
+              3: (21.8, 1.2), 5: (1.0, 18.45), 6: (22.3, 23.1),
               7: (33.1, 7.2), 8: (33.1, 17.2), 9: (33.1, 23.2),
               10: (10.8, 34.8), 11: (26.0, 34.8), 12: (48.8, 3.2), 13: (48.8, 34.8)},
 }
@@ -148,12 +167,14 @@ CAMERAS = {
     "large": [(11.7, 9.4), (16.0, 0.6), (12.6, 24.6), (40.6, 14.6)],
 }
 
-# Geheimgaenge (Mechanik spaeter): Wand-Durchgaenge (Achse, Lage, von, bis) oder Sprungpaare
+# Geheimgaenge (Mechanik, Schritt 4 des Audits 15.10.): Schluessel, Moebel-Art am Eingang (bewegt sich beim
+# Durchgang; der Speiseaufzug hat an beiden Enden eine Klappe), Eingang, Ausgang (Plan-Meter, jeweils einen
+# Schritt vor dem Moebel), beide Richtungen, Varianten. Use-Knopf "ENTER" in 1 m Naehe, Teleport nach 0,5 s.
 SECRETS = [
-    ("tapestry", "wall", ("y", 8, 20.0, 22.0), "seance>hall", B),            # Wandteppich, Einbahn
-    ("bookcase", "wall", ("x", 11, 15.5, 17.5), "both", B),                  # Drehbuecherregal
-    ("dumbwaiter", "jump", ((6.2, 0.7), (26.3, 6.8)), "kitchen>radio", B),   # Speiseaufzug, Einbahn nach oben
-    ("tunnel", "jump", ((47.0, 35.3), (1.2, 23.3)), "crypt>chapel", L),      # Gruft-Tunnel, Einbahn
+    ("tapestry", "wandteppich", (21.0, 7.1), (21.0, 8.9), False, B),         # Seance -> Halle, Einbahn
+    ("bookcase", "drehregal", (10.0, 16.5), (11.8, 16.5), True, B),          # Bibliothek <-> Halle
+    ("dumbwaiter", "speiseaufzug", (6.3, 5.5), (26.3, 6.8), False, B),       # Kueche -> Funkraum, Einbahn
+    ("tunnel", "tunneleingang", (44.8, 34.2), (1.2, 23.3), False, L),        # Gruft -> Kapelle, Einbahn
 ]
 
 # Mitternachtsuhr (Mechanik spaeter): die Standuhr in der Halle
@@ -164,12 +185,14 @@ CLOCK = (12.35, 8.7)
 # OPAQUE sperrt Weg und Sicht, GLASS nur den Weg. Varianten wie bei den Bereichen.
 OPAQUE = [
     (("rect", 15.0, 8.2, 19.0, 10.4), "freitreppe", B),
+    (("rect", 15.2, 9.7, 18.8, 10.9), "treppensperre", B),     # Moebel am Treppenfuss: oben ist nichts (User 15.10.)
     (("rect", 12.0, 8.25, 12.7, 8.7), "standuhr", B),
     (("rect", 0.3, 0.25, 2.8, 0.85), "herd", B),
     (("rect", 23.3, 0.25, 25.5, 0.85), "funktisch", B),
     (("rect", 32.0, 0.25, 33.75, 1.2), "kisten", B),
     (("rect", 0.25, 9.0, 1.8, 10.8), "kessel", B),
     (("rect", 0.25, 15.0, 0.7, 18.2), "buecherregal", B),
+    (("rect", 10.55, 15.5, 11.0, 17.5), "drehregal", B),          # Long Library, Ostwand: Drehbuecherregal (Geheimgang)
     (("rect", 6.0, 18.3, 10.7, 18.75), "buecherregal", B),
     (("rect", 0.25, 20.6, 1.0, 22.6), "altar", B),
     (("rect", 11.3, 23.25, 14.7, 23.8), "monitorwand", B),
@@ -224,6 +247,126 @@ GLASS = [
     (("circle", 43.0, 34.5, 0.25), "kandelaber", L),
     (("rect", 45.2, 30.9, 47.2, 31.6), "sarg", L),
     (("rect", 45.2, 33.4, 47.2, 34.1), "sarg", L),
+]
+
+
+# ------------------------------------------------------------------ Einrichtung seit dem Audit 15.10. (Schritt 2)
+# Gleiche Form wie oben. DECOR = Objekte ohne Kollision (Wandbilder, Haengendes, Umgestuerztes, Bodenkram); sie
+# werden gezeichnet und sortiert wie Props, sperren aber weder Weg noch Sicht.
+OPAQUE += [
+    (("rect", 10.1, 1.2, 10.75, 2.4), "kupferkessel", B),           # Laundry, Ostwand
+    (("rect", 23.25, 3.0, 23.7, 6.0), "bandregal", B),               # Radio Room, Westwand
+    (("rect", 33.3, 1.6, 33.75, 3.6), "maskenregal", B),             # Prop Store, Ostwand
+    (("rect", 8.25, 12.2, 8.7, 13.9), "garderobe", B),               # Long Library, Nordarm Westwand
+    (("rect", 0.4, 19.3, 1.2, 19.9), "engelsstatue_tuch", B),        # Chapel, Nordwestecke
+    (("rect", 15.25, 22.5, 15.7, 23.8), "garderobe", B),             # Entrance Hall, Suedarm Westwand
+    (("rect", 21.4, 19.3, 22.7, 19.8), "muellcontainer", B),         # Entrance Hall, Suedwand vor der Maske
+    (("rect", 20.0, 20.25, 21.7, 20.6), "kunstblutregal", B),        # Makeup, Nordwand (mit Spiegel)
+    (("rect", 26.3, 19.0, 26.75, 19.9), "safe", B),                  # Study, Westwand
+    (("rect", 35.0, 3.0, 37.5, 5.0), "kamerakran", L),               # Terrace
+    (("rect", 38.6, 24.0, 39.6, 25.0), "statue_schleier", L),        # Terrace, Suedostecke
+    (("rect", 12.6, 24.6, 15.4, 26.3), "van", L),                    # Driveway
+    (("rect", 1.0, 26.0, 4.0, 28.8), "zelt_aufgeschlitzt", L),       # Crew Camp
+    (("rect", 10.8, 24.4, 11.7, 25.6), "dixi", L),                   # Crew Camp, Ostwand
+    (("rect", 47.2, 3.6, 49.0, 5.2), "riesenpflanze", L),            # Greenhouse
+    (("rect", 41.0, 14.5, 42.0, 15.5), "engelsstatue", L),           # Graveyard, Nordwestecke
+    (("rect", 44.3, 34.6, 45.3, 35.7), "tunneleingang", L),          # Family Crypt, Suedwestecke
+    (("rect", 0.8, 23.1, 1.6, 23.7), "tunnelausgang", L),            # Chapel, Suedwestecke: das andere Tunnelende
+]
+GLASS += [
+    (("rect", 5.6, 1.0, 6.4, 1.8), "hackblock", B),                  # Kitchen
+    (("rect", 5.4, 3.2, 6.8, 4.4), "craftservice", B),               # Kitchen
+    (("rect", 7.3, 4.0, 8.6, 4.8), "mangel", B),                     # Laundry
+    (("rect", 7.3, 7.0, 8.0, 7.75), "seifenkisten", B),              # Laundry, Suedwestecke
+    (("circle", 13.0, 6.5, 0.35), "kristallkugel_tisch", B),         # Seance Parlour
+    (("rect", 21.5, 1.2, 22.4, 1.9), "phonograph", B),               # Seance Parlour
+    (("rect", 26.3, 3.2, 26.75, 4.0), "walkie_station", B),          # Radio Room, Ostwand
+    (("circle", 24.4, 2.2, 0.3), "drehstuhl", B),                    # Radio Room
+    (("rect", 28.5, 0.3, 31.0, 0.7), "kleiderstange", B),            # Prop Store, Nordwand
+    (("circle", 30.6, 2.4, 0.3), "schneiderpuppe", B),               # Prop Store
+    (("rect", 32.2, 2.6, 33.0, 3.7), "sarg_angelehnt", B),           # Prop Store
+    (("rect", 29.6, 3.2, 30.4, 3.75), "nebelmaschine", B),           # Prop Store, Suedwand
+    (("circle", 31.5, 5.0, 0.35), "orrery", B),                      # Observatory
+    (("rect", 33.2, 6.6, 33.75, 7.6), "buecherstapel", B),           # Observatory, Ostwand
+    (("rect", 6.9, 17.6, 7.3, 18.3), "leiter", B),                   # Long Library, am Suedregal
+    (("circle", 2.0, 17.8, 0.3), "globus", B),                       # Long Library
+    (("rect", 8.0, 15.2, 8.9, 16.0), "lesesessel", B),               # Long Library
+    (("rect", 3.2, 18.2, 3.8, 18.75), "buecherstapel", B),           # Long Library, Suedwand
+    (("circle", 10.4, 8.6, 0.2), "laterne", B),                      # Long Library, Nordarm
+    (("rect", 8.2, 22.2, 10.2, 22.7), "zersplitterte_bank", B),      # Chapel
+    (("rect", 13.2, 12.8, 14.0, 13.6), "regiestuhl", B),             # Entrance Hall
+    (("ellipse", 14.0, 15.5, 0.8, 0.6), "kronleuchter_boden", B),    # Entrance Hall, abgestuerzt
+    (("rect", 14.1, 20.4, 14.75, 21.1), "regiestuhl_director", B),   # Director's Booth
+    (("rect", 11.3, 20.5, 11.75, 21.8), "mischpult", B),             # Director's Booth, Westwand
+    (("rect", 19.3, 20.3, 19.75, 21.3), "perueckenkoepfe", B),       # Makeup, Westwand
+    (("circle", 24.0, 9.3, 0.25), "buesten_saeule", B),              # Portrait Gallery
+    (("rect", 25.2, 19.0, 25.8, 19.6), "ruestung", B),               # Portrait Gallery
+    (("rect", 23.3, 23.0, 23.8, 23.7), "standspiegel", B),           # Portrait Gallery, Suedwestecke
+    (("rect", 28.5, 10.2, 31.3, 11.7), "billardtisch", B),           # Trophy Room
+    (("circle", 27.0, 11.8, 0.35), "globusbar", B),                  # Trophy Room
+    (("circle", 31.3, 15.6, 0.25), "beistelltisch", B),              # Fireplace Room, zwischen den Sesseln
+    (("rect", 33.2, 13.3, 33.6, 13.8), "schuerhaken", B),            # Fireplace Room, neben dem Kamin
+    (("rect", 33.0, 14.0, 33.75, 14.8), "holzkorb", B),              # Fireplace Room, Ostwand
+    (("rect", 26.4, 16.6, 27.2, 17.5), "schaukelstuhl", B),          # Fireplace Room
+    (("rect", 26.3, 22.6, 27.4, 23.7), "aktenkisten", B),            # Study, Suedwestecke
+    (("circle", 37.0, 14.0, 0.6), "gartentisch", L),                 # Terrace
+    (("rect", 34.3, 7.0, 34.9, 8.0), "kuebelpflanze", L),            # Terrace, Hauswand
+    (("rect", 34.3, 22.0, 34.9, 23.0), "kuebelpflanze", L),          # Terrace, Hauswand
+    (("circle", 37.0, 20.0, 0.2), "laterne", L),                     # Terrace
+    (("circle", 22.5, 25.5, 0.3), "lichtstativ", L),                 # Driveway
+    (("circle", 16.5, 28.0, 0.3), "lichtstativ", L),                 # Driveway
+    (("rect", 6.0, 26.2, 7.8, 27.0), "campingtisch", L),             # Crew Camp
+    (("circle", 5.0, 34.6, 0.45), "kabeltrommel", L),                # Crew Camp
+    (("circle", 9.0, 27.0, 0.35), "scheinwerfer", L),                # Crew Camp
+    (("rect", 40.4, 10.6, 41.2, 11.5), "giesskannen", L),            # Greenhouse, Suedwestecke
+    (("circle", 48.8, 10.8, 0.4), "schlauchtrommel", L),             # Greenhouse, Suedostecke
+    (("circle", 26.5, 33.0, 0.35), "sonnenuhr", L),                  # Fountain Court
+    (("rect", 27.0, 35.0, 29.0, 35.6), "parkbank", L),               # Fountain Court, Suedwand
+    (("circle", 34.5, 28.5, 0.2), "laterne", L),                     # Fountain Court
+    (("circle", 27.5, 28.5, 0.2), "laterne", L),                     # Fountain Court
+    (("rect", 41.2, 26.6, 42.6, 28.6), "offenes_grab", L),           # Graveyard
+    (("rect", 44.0, 24.4, 44.9, 24.7), "grabstein_hausherr", L),     # Graveyard
+    (("rect", 47.8, 30.4, 49.3, 31.4), "sarkophag", L),              # Family Crypt
+]
+DECOR = [
+    (("rect", 3.2, 0.25, 5.2, 0.6), "topfregal", B),                 # Kitchen, Nordwand
+    (("rect", 6.75, 5.0, 7.0, 6.0), "speiseaufzug", B),              # Kitchen, Ostwand (Geheimgang)
+    (("rect", 26.75, 6.3, 27.0, 7.3), "speiseaufzug", B),            # Radio Room, Ostwand: das andere Ende des Aufzugs
+    (("rect", 0.6, 2.6, 1.6, 2.9), "fleischerhaken", B),             # Kitchen, haengt von der Decke
+    (("rect", 7.4, 6.2, 10.6, 6.5), "waescheleine", B),              # Laundry, Laken wie Gestalten
+    (("rect", 14.5, 0.25, 19.5, 0.5), "seance_wand", B),             # Seance, Nordwand: Ouija-Tableau, Fotos, Vorhaenge
+    (("rect", 20.0, 7.5, 22.0, 7.75), "wandteppich", B),             # Seance, Suedwand (Geheimgang zur Halle)
+    (("rect", 14.0, 6.6, 14.9, 7.2), "umgestuerzter_stuhl", B),      # Seance
+    (("rect", 24.8, 5.6, 25.8, 6.4), "tonband_boden", B),            # Radio Room, abgewickelte Spule
+    (("rect", 29.5, 4.25, 31.5, 4.5), "sternkarte_datum", B),        # Observatory, Nordwand
+    (("rect", 2.5, 8.25, 6.0, 8.55), "rohre", B),                    # Boiler Room, Nordwand
+    (("rect", 0.25, 11.5, 0.55, 12.5), "handabdruck_russ", B),       # Boiler Room, Westwand
+    (("rect", 10.75, 12.9, 11.0, 13.9), "klingelbrett", B),          # Long Library, Nordarm Ostwand
+    (("rect", 4.0, 15.2, 4.5, 15.5), "rauchendes_buch", B),          # Long Library, am Boden
+    (("rect", 23.25, 13.5, 23.45, 14.5), "portrait", B),             # Portrait Gallery, Westwand
+    (("rect", 23.25, 15.5, 23.45, 16.5), "portrait", B),
+    (("rect", 23.25, 17.5, 23.45, 18.5), "portrait", B),
+    (("rect", 25.55, 12.3, 25.75, 13.3), "portrait", B),             # Portrait Gallery, Ostwand
+    (("rect", 25.55, 17.0, 25.75, 18.0), "portrait", B),
+    (("rect", 25.55, 23.0, 25.75, 23.8), "portrait", B),
+    (("rect", 23.25, 19.5, 23.45, 20.5), "leerer_rahmen", B),        # Portrait Gallery, Westwand
+    (("rect", 29.0, 8.25, 31.0, 8.5), "geweihe", B),                 # Trophy Room, Nordwand
+    (("rect", 33.5, 8.8, 33.75, 9.8), "hirschkopf", B),              # Trophy Room, Ostwand
+    (("rect", 31.5, 8.25, 33.0, 8.5), "fledermaeuse", B),            # Trophy Room, unter der Decke
+    (("rect", 31.5, 13.9, 31.8, 14.1), "kinderschuh", B),            # Fireplace Room, vor dem Kamin
+    (("rect", 27.0, 18.25, 29.5, 18.5), "pinnwand", B),              # Study, Nordwand
+    (("rect", 33.5, 21.2, 33.75, 22.0), "lueftungsgitter", B),       # Study, Ostwand
+    (("rect", 29.6, 23.65, 30.2, 23.9), "schreibmaschine", B),      # Study, auf dem Schreibtisch (Standlinie vor dem Tisch, Hoehe mitgezeichnet)
+    (("rect", 38.0, 2.3, 39.8, 2.6), "vogelschwarm", L),             # Terrace, auf der Balustrade
+    (("rect", 7.2, 34.2, 8.8, 34.9), "schlafsack", L),               # Crew Camp
+    (("rect", 49.55, 6.0, 49.75, 8.0), "kletterpflanzen", L),        # Greenhouse, Ostwand
+    (("rect", 30.6, 32.25, 31.4, 32.45), "brunnen_blut", L),         # Fountain Court, rotes Wasser + Schleierstatue (vor dem Brunnen)
+    (("rect", 42.5, 16.1, 43.3, 16.4), "kraehen", L),                # Graveyard, auf den Steinen
+    (("rect", 44.25, 29.0, 44.45, 32.0), "nischen_urnen", L),        # Family Crypt, Westwand
+    (("rect", 49.55, 29.0, 49.75, 32.0), "nischen_urnen", L),        # Family Crypt, Ostwand
+    (("rect", 44.6, 28.25, 44.9, 28.5), "wandfackel", L),            # Family Crypt, Nordwand
+    (("rect", 49.1, 28.25, 49.4, 28.5), "wandfackel", L),
+    (("rect", 48.0, 33.0, 48.6, 33.4), "zerbrochene_urne", L),       # Family Crypt, am Boden
 ]
 
 

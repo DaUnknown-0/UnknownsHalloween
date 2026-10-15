@@ -295,6 +295,70 @@ def runner(C, x0, y0, x1, y1, ppm):
         d.line([C.P(xx, y0), C.P(xx, y1)], fill=(196, 160, 90, 220), width=max(1, int(0.05 * ppm)))
 
 
+def horror_floor(d, C, rnd, av):
+    """Bodenspuren der Horror-Schicht (Audit 15.10.): Schleifspur zur Treppe, Russ-Fussspuren aus dem Kamin,
+    Kreidekreis unter dem Seance-Tisch, Blut in Kueche und Waschkueche, Glasscherben und Wurzeln im Gewaechshaus,
+    Kratzspuren vor der Grufttuer, Kabelbuendel im Heizungskeller, Papiere im Arbeitszimmer."""
+    ppm = C.ppm
+    px = lambda m: max(1, int(m * ppm))
+    # Schleifspur: vom Kreide-Umriss in der Halle zur Treppe (zwei dunkle Streifen, aussen verwischt)
+    for off in (-0.12, 0.12):
+        pts = [(17.0, 17.4 + off), (17.1, 15.0 + off), (16.9, 12.6 + off), (17.0, 11.0 + off)]
+        d.line([C.P(*q) for q in HD.wobble(pts, amp=0.03, seed=41, step=0.1)], fill=(60, 10, 16, 150), width=px(0.08), joint="curve")
+    footprints(d, C, [(17.3, 17.0), (17.6, 14.5), (17.4, 12.0), (17.2, 11.0)], rnd)
+    # Kreidekreis mit Zeichen unter dem Seance-Tisch (auf dem Teppich)
+    cx, cy = 17.0, 4.2
+    d.ellipse([*C.P(cx - 1.65, cy - 1.15), *C.P(cx + 1.65, cy + 1.15)], outline=(232, 228, 220, 150), width=px(0.03))
+    for k in range(5):
+        a1 = math.pi * 2 * k / 5 - math.pi / 2
+        a2 = math.pi * 2 * ((k + 2) % 5) / 5 - math.pi / 2
+        d.line([C.P(cx + 1.55 * math.cos(a1), cy + 1.05 * math.sin(a1)), C.P(cx + 1.55 * math.cos(a2), cy + 1.05 * math.sin(a2))], fill=(232, 228, 220, 110), width=px(0.02))
+    # Russ-Fussspuren aus dem Kamin ins Zimmer, werden schwaecher
+    pts = [(31.6, 14.2), (31.2, 15.2), (30.4, 16.0), (29.4, 16.8)]
+    ls = LineString(pts)
+    k, side = 0.0, 1
+    while k < ls.length:
+        q = ls.interpolate(k)
+        qq = ls.interpolate(min(ls.length, k + 0.05))
+        ang = math.atan2(qq.y - q.y, qq.x - q.x)
+        nx, ny = -math.sin(ang) * 0.09 * side, math.cos(ang) * 0.09 * side
+        al = int(170 * (1 - k / max(ls.length, 0.1)) + 20)
+        d.ellipse([*C.P(q.x + nx - 0.06, q.y + ny - 0.04), *C.P(q.x + nx + 0.06, q.y + ny + 0.04)], fill=(20, 18, 18, al))
+        side = -side
+        k += 0.3
+    # Blut: Kueche beim Hackblock, Waschkueche unter der Leine, Prop Store vor dem Sarg
+    for x, y, r in ((6.0, 2.3, 0.2), (8.4, 7.0, 0.16), (32.6, 3.9, 0.14)):
+        if av.ok(x - r - 0.3, y - r - 0.3, x + r + 0.3, y + r + 0.3):
+            blood(d, C, x, y, r, rnd)
+    # Gewaechshaus: Glasscherben (helle Splitter) und Wurzeln, die durch den Boden brechen
+    for _ in range(30):
+        x, y = rnd.uniform(40.6, 49.4), rnd.uniform(2.6, 11.4)
+        if 42.0 <= x <= 48.0 and (3.9 <= y <= 5.0 or 8.4 <= y <= 9.5):
+            continue
+        s_ = rnd.uniform(0.04, 0.1)
+        ang = rnd.uniform(0, math.tau)
+        tri = [(x + s_ * math.cos(ang + t), y + s_ * 0.7 * math.sin(ang + t)) for t in (0, 2.3, 4.2)]
+        d.polygon([C.P(*q) for q in tri], fill=(196, 216, 232, 150), outline=(14, 16, 20, 200))
+    for k in range(3):
+        pts = [(49.4, 6.2 + k * 1.6), (48.2, 6.5 + k * 1.5), (47.0, 6.1 + k * 1.7), (45.8, 6.6 + k * 1.6)]
+        d.line([C.P(*q) for q in HD.wobble(pts, amp=0.05, seed=50 + k, step=0.08)], fill=(70, 50, 30, 200), width=px(0.07), joint="curve")
+    # Kratzspuren vor der Grufttuer (innen), Kabelbuendel im Heizungskeller, Papiere im Arbeitszimmer
+    for k in range(4):
+        x0 = 46.1 + k * 0.4
+        d.line([C.P(x0, 28.6), C.P(x0 + 0.1, 29.9)], fill=(40, 36, 36, 180), width=px(0.025))
+    VF.floor_cable(d, C.Pw, ppm, [(2.6, -8.9), (3.4, -9.6), (4.8, -9.3), (6.2, -9.9), (6.8, -11.0)], seed=9)
+    VF.floor_cable(d, C.Pw, ppm, [(2.3, -9.2), (3.0, -10.4), (4.4, -11.2), (5.0, -12.2)], seed=10)
+    for k in range(6):
+        x, y = rnd.uniform(27.0, 33.0), rnd.uniform(19.4, 22.4)
+        ang = rnd.uniform(-0.4, 0.4)
+        w, h = 0.21, 0.3
+        pts = [(x + (-w / 2) * math.cos(ang) - (-h / 2) * math.sin(ang), y + (-w / 2) * math.sin(ang) + (-h / 2) * math.cos(ang)),
+               (x + (w / 2) * math.cos(ang) - (-h / 2) * math.sin(ang), y + (w / 2) * math.sin(ang) + (-h / 2) * math.cos(ang)),
+               (x + (w / 2) * math.cos(ang) - (h / 2) * math.sin(ang), y + (w / 2) * math.sin(ang) + (h / 2) * math.cos(ang)),
+               (x + (-w / 2) * math.cos(ang) - (h / 2) * math.sin(ang), y + (-w / 2) * math.sin(ang) + (h / 2) * math.cos(ang))]
+        d.polygon([C.P(*q) for q in pts], fill=(220, 212, 190, 230), outline=(14, 16, 20, 200))
+
+
 def decorate(C, walk, geoms, opens, rnd):
     av = Avoid(opens)
     ppm = C.ppm
@@ -336,6 +400,7 @@ def decorate(C, walk, geoms, opens, rnd):
             continue
         x0, y0, x1, y1 = g.bounds
         VF.floor_leaves(d, C.Pw, ppm, x0, -y1, x1, -y0, n=int(g.area * 1.2), seed=len(key))
+    horror_floor(d, C, rnd, av)
     # Reifenspuren auf dem Kies, Grabhuegel auf dem Friedhof
     for off in (-0.55, 0.55):
         d.line([C.P(12.2, 27.6 + off), C.P(17.5, 27.1 + off), C.P(23.8, 27.8 + off)], fill=(70, 66, 58, 120), width=max(1, int(0.22 * ppm)), joint="curve")

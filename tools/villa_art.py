@@ -84,13 +84,17 @@ PROP_H = {"standuhr": 2.3, "seance_tisch": 0.8, "buecherregal": 2.6, "kamin": 1.
           "monitorwand": 2.1, "gewehrschrank": 2.2, "zelt": 2.6, "hecke": 1.3, "kuechentisch": 1.1,
           "waschzuber": 0.8, "requisiten": 1.7, "teleskop": 1.9, "kohlen": 1.1, "lesetisch": 1.3,
           "kirchenbank": 1.0, "baer": 2.5, "schreibtisch": 1.4, "catering": 1.5, "urne": 1.5,
-          "gartenbank": 1.0, "pflanztisch": 1.6, "brunnen": 1.9, "barrikade": 2.0}
+          "gartenbank": 1.0, "pflanztisch": 1.6, "brunnen": 1.9, "barrikade": 2.0,
+          # Moebelstapel am Fuss der Freitreppe (das Obergeschoss gibt es nicht)
+          "treppensperre": 2.2}
 KINDS = set(PROP_H)
+NO_SHADOW = set()        # Arten ohne Bodenschatten (Wandbilder, Haengendes, Bodenkram; villa_art2 traegt ein)
 # Leinwandrand je Objekt (Standard 0,3 m): Lichtkegel, Glutschein und Lichtlachen reichen ueber die Grundflaeche
 PROP_PAD = {"scheinwerfer": 2.3, "kamin": 0.8, "kandelaber": 1.3, "kandelaber_aus": 0.5, "aggregat": 0.6,
             "filmkamera": 0.6, "seance_tisch": 0.5, "standuhr": 0.35, "schminktisch": 0.4,
             "lesetisch": 0.7, "schreibtisch": 0.6, "altar": 0.6, "kessel": 0.5, "zelt": 0.6, "funktisch": 0.5,
-            "monitorwand": 0.5, "herd": 0.5, "kuechentisch": 0.4, "brunnen": 0.5, "teleskop": 0.4, "catering": 0.4}
+            "monitorwand": 0.5, "herd": 0.5, "kuechentisch": 0.4, "brunnen": 0.5, "teleskop": 0.4, "catering": 0.4,
+            "treppensperre": 0.4}
 
 
 # ------------------------------------------------------------------ gemeinsame Teile
@@ -208,7 +212,8 @@ def dust(c, x0, y0, x1, y1, n, seed=0):
 
 # ------------------------------------------------------------------ die Objekte
 
-def _standuhr(p, c, x0, y0, x1, y1, idx, rnd):
+def _standuhr(p, c, x0, y0, x1, y1, idx, rnd, variant=None):
+    # variant "p1"/"p2": Pendel nach links/rechts, Zeiger auf Mitternacht (Mitternachtsuhr-Mechanik)
     w = x1 - x0
     cx = (x0 + x1) / 2
     p.box(x0, y0, x1, y1, 0, 0.3, WALNUT_L, WALNUT_D)                               # Sockel
@@ -219,9 +224,10 @@ def _standuhr(p, c, x0, y0, x1, y1, idx, rnd):
     gx0, gx1 = tx0 + 0.06, tx1 - 0.06
     gz0, gz1 = 0.45, 1.4
     c.rect(gx0, fy + gz0 * K, gx1, fy + gz1 * K, fill=hexc("#2a2430"), outline=BRASS_D, width=0.02)
-    c.line([(cx, fy + (gz1 - 0.05) * K), (cx, fy + (gz0 + 0.2) * K)], fill=BRASS, width=0.015)
-    c.ellipse(cx, fy + (gz0 + 0.2) * K, 0.07, 0.06, fill=BRASS, outline=BRASS_D, width=0.015)
-    c.ellipse(cx - 0.02, fy + (gz0 + 0.24) * K, 0.02, 0.015, fill=BRASS_L)
+    px = cx + {"p1": -0.06, "p2": 0.06}.get(variant, 0.0)
+    c.line([(cx, fy + (gz1 - 0.05) * K), (px, fy + (gz0 + 0.2) * K)], fill=BRASS, width=0.015)
+    c.ellipse(px, fy + (gz0 + 0.2) * K, 0.07, 0.06, fill=BRASS, outline=BRASS_D, width=0.015)
+    c.ellipse(px - 0.02, fy + (gz0 + 0.24) * K, 0.02, 0.015, fill=BRASS_L)
     c.line([(gx0 + 0.02, fy + gz1 * K - 0.03), (gx0 + 0.02, fy + gz0 * K + 0.12)], fill=alpha((255, 255, 255, 255), 55), width=0.012)
     # Kopf mit Zifferblatt (Messinglunette, Pergament, Striche, Zeiger kurz vor Mitternacht)
     hx0, hx1 = x0 + w * 0.04, x1 - w * 0.04
@@ -237,8 +243,8 @@ def _standuhr(p, c, x0, y0, x1, y1, idx, rnd):
         c.line([(fcx + r1 * math.cos(a), fcy + r1 * 0.9 * math.sin(a)),
                 (fcx + fr * 0.8 * math.cos(a), fcy + fr * 0.8 * 0.9 * math.sin(a))],
                fill=OUTLINE, width=0.02 if k % 3 == 0 else 0.012)
-    minute = 50 + (idx * 7) % 10
-    ah = math.pi / 2 - (11 + minute / 60) / 12 * math.tau
+    minute = 0 if variant else 50 + (idx * 7) % 10
+    ah = math.pi / 2 - ((12 if variant else 11) + minute / 60) / 12 * math.tau
     am = math.pi / 2 - minute / 60 * math.tau
     c.line([(fcx, fcy), (fcx + fr * 0.45 * math.cos(ah), fcy + fr * 0.45 * 0.9 * math.sin(ah))], fill=OUTLINE, width=0.025)
     c.line([(fcx, fcy), (fcx + fr * 0.68 * math.cos(am), fcy + fr * 0.68 * 0.9 * math.sin(am))], fill=OUTLINE, width=0.018)
@@ -411,9 +417,11 @@ def _kamin(p, c, x0, y0, x1, y1, idx, rnd):
     cobweb(c, x1 + 0.05, y0 - 0.04 + 1.5 * K, 0.2, -1, -1, seed=idx + 2)
 
 
-def _kandelaber(p, c, x0, y0, x1, y1, idx, rnd, lit=True):
+def _kandelaber(p, c, x0, y0, x1, y1, idx, rnd, lit=True, variant=None):
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     r = (x1 - x0) / 2
+    if variant == "off":                                                                    # Tauschbild: erloschen
+        lit = False
     if lit:
         floor_light(c, cx, cy - 0.05, 1.15, 0.65, WARM, 0.42, seed=idx)
     c.ellipse(cx, cy, r, r * 0.5, fill=BRASS_D, outline=OUTLINE, width=0.025)              # Fuss
@@ -481,17 +489,18 @@ def _filmkamera(p, c, x0, y0, x1, y1, idx, rnd):
     cable(c, [(vx - dir_ * 0.02, fz - 0.05), (vx - dir_ * 0.15, fz - 0.4), (vx - dir_ * 0.2, y0 - 0.05), (vx - dir_ * 0.5, y0 - 0.1)], seed=idx)
 
 
-def _scheinwerfer(p, c, x0, y0, x1, y1, idx, rnd):
+def _scheinwerfer(p, c, x0, y0, x1, y1, idx, rnd, variant=None):
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     dir_ = -1 if idx % 2 == 0 else 1
     col = (WARM, MOON, MOON)[idx % 3]              # mehr kaltes Mondlicht als warmes Wolfram
     hx, hy = cx, cy + 1.75 * K
     fx = hx + dir_ * 0.17
     ex, ey = cx + dir_ * 1.9, cy - 0.35
-    floor_light(c, ex, ey, 1.0, 0.5, col, 0.5, seed=idx)                                  # Lichtkegel auf dem Boden
-    for s, a_ in ((1.0, 26), (0.7, 26), (0.4, 28)):
-        c.poly([(fx, hy + 0.08), (ex + dir_ * 0.9 * s, ey + 0.35 * s), (ex + dir_ * 1.0 * s, ey), (ex + dir_ * 0.9 * s, ey - 0.35 * s),
-                (ex - dir_ * 0.2 * s, ey - 0.5 * s), (fx, hy - 0.08)], fill=alpha(col, a_))
+    if variant != "off":                                                                   # Tauschbild "off": kein Licht
+        floor_light(c, ex, ey, 1.0, 0.5, col, 0.5, seed=idx)                              # Lichtkegel auf dem Boden
+        for s, a_ in ((1.0, 26), (0.7, 26), (0.4, 28)):
+            c.poly([(fx, hy + 0.08), (ex + dir_ * 0.9 * s, ey + 0.35 * s), (ex + dir_ * 1.0 * s, ey), (ex + dir_ * 0.9 * s, ey - 0.35 * s),
+                    (ex - dir_ * 0.2 * s, ey - 0.5 * s), (fx, hy - 0.08)], fill=alpha(col, a_))
     for (lx, ly) in ((cx - 0.3, cy - 0.22), (cx + 0.3, cy - 0.2), (cx + 0.05, cy + 0.3)):     # Stativbeine
         c.line([(cx, cy + 0.55 * K), (lx, ly)], fill=OUTLINE, width=0.05)
         c.line([(cx, cy + 0.55 * K), (lx, ly)], fill=MATTE_L, width=0.025)
@@ -1838,6 +1847,172 @@ def _barrikade(p, c, x0, y0, x1, y1, idx, rnd):
     cobweb(c, fx1, fy1, 0.14, -1, -1, seed=idx)
 
 
+def _stuhl(p, c, x, y, w, d, z, idx, inverted=False, splay=0.0):
+    """Esszimmerstuhl (Nussholz) mit Standpunkt (x, y) = vordere linke Ecke, auf Hoehe z. inverted: steht
+    kopfueber (Sitz unten, Beine zeigen nach oben, leicht gespreizt), die Lehne haengt hinten herab."""
+    seat_h, leg_h, back_h = 0.06, 0.46, 0.5
+    leg = WALNUT_D
+    if not inverted:
+        for (lx, ly) in ((x + 0.04, y + 0.05), (x + w - 0.04, y + 0.05), (x + 0.06, y + d - 0.06), (x + w - 0.06, y + d - 0.06)):
+            c.line([(lx, ly + z * K), (lx, ly + (z + leg_h) * K)], fill=OUTLINE, width=0.05)
+            c.line([(lx, ly + z * K), (lx, ly + (z + leg_h) * K)], fill=leg, width=0.03)
+        c.line([(x + 0.04, y + 0.05 + (z + leg_h * 0.45) * K), (x + w - 0.04, y + 0.05 + (z + leg_h * 0.45) * K)], fill=OUTLINE, width=0.035)   # Zarge
+        c.line([(x + 0.04, y + 0.05 + (z + leg_h * 0.45) * K), (x + w - 0.04, y + 0.05 + (z + leg_h * 0.45) * K)], fill=leg, width=0.018)
+        p.box(x, y, x + w, y + d, z + leg_h, seat_h, BORDEAUX, WALNUT, w=0.03)                    # Sitz mit Samtpolster
+        bz = z + leg_h + seat_h
+        p.box(x + 0.02, y + d - 0.08, x + w - 0.02, y + d, bz, back_h, WALNUT_L, WALNUT, w=0.03)   # Lehne
+        for k in range(3):                                                                          # Sprossen
+            sx = x + 0.02 + (k + 1) * (w - 0.04) / 4
+            c.line([(sx, y + d - 0.08 + (bz + 0.06) * K), (sx, y + d - 0.08 + (bz + back_h - 0.06) * K)], fill=shade(WALNUT, 0.7), width=0.014)
+    else:
+        bz = z
+        p.box(x + 0.02, y + d - 0.08, x + w - 0.02, y + d, bz - back_h * 0.9, back_h * 0.9, WALNUT_L, WALNUT, w=0.03)   # Lehne haengt hinten vom Sitz herab
+        p.box(x, y, x + w, y + d, bz, seat_h, WALNUT_L, BORDEAUX, w=0.03)                          # Sitz (Unterseite oben)
+        tz = bz + seat_h
+        for (lx, ly, sp) in ((x + 0.04, y + 0.05, -1), (x + w - 0.04, y + 0.05, 1), (x + 0.06, y + d - 0.06, -0.6), (x + w - 0.06, y + d - 0.06, 0.6)):
+            ex = lx + sp * splay
+            c.line([(lx, ly + tz * K), (ex, ly + (tz + leg_h) * K)], fill=OUTLINE, width=0.05)
+            c.line([(lx, ly + tz * K), (ex, ly + (tz + leg_h) * K)], fill=leg, width=0.03)
+            c.ellipse(ex, ly + (tz + leg_h) * K, 0.02, 0.014, fill=WALNUT_L, outline=OUTLINE, width=0.012)
+        c.line([(x + 0.04 - splay * 0.45, y + 0.05 + (tz + leg_h * 0.45) * K), (x + w - 0.04 + splay * 0.45, y + 0.05 + (tz + leg_h * 0.45) * K)], fill=OUTLINE, width=0.035)
+        c.line([(x + 0.04 - splay * 0.45, y + 0.05 + (tz + leg_h * 0.45) * K), (x + w - 0.04 + splay * 0.45, y + 0.05 + (tz + leg_h * 0.45) * K)], fill=leg, width=0.018)
+
+
+def _treppensperre(p, c, x0, y0, x1, y1, idx, rnd):
+    """Moebelstapel, der die Freitreppe versperrt: Kiste mit zwei Stuehlen darauf (der obere kopfueber,
+    Beine nach oben), hochkant gestelltes Sofa unter einem Staublaken, Kommode mit Requisitenkiste, ein
+    angelehnter Teppichrollen-Laeufer; davor gekreuztes Gaffer-Band mit Schild CLOSED, Spinnweben, Staub."""
+    sheet = hexc("#c9c4b8")
+    sheet_d, sheet_l = shade(sheet, 0.72), shade(sheet, 1.08)
+    crate = lift("#6a4a2c", 1.5)
+    # --- links: Kiste, darauf ein Stuhl, darauf ein zweiter kopfueber
+    kx0, kx1 = x0, x0 + 0.85
+    ky0, ky1 = y0 + 0.2, y0 + 0.9
+    p.box(kx0, ky0, kx1, ky1, 0, 0.6, shade(crate, 1.15), crate)
+    for k in range(2):
+        c.line([(kx0 + 0.04, ky0 + 0.05 + k * 0.14), (kx1 - 0.04, ky0 + 0.05 + k * 0.14)], fill=shade(crate, 0.7), width=0.012)
+    c.rect(kx0 + 0.03, ky0 + 0.04, kx0 + 0.1, ky0 + 0.6 * K - 0.03, fill=shade(crate, 0.85), outline=OUTLINE, width=0.012)
+    c.rect(kx1 - 0.1, ky0 + 0.04, kx1 - 0.03, ky0 + 0.6 * K - 0.03, fill=shade(crate, 0.85), outline=OUTLINE, width=0.012)
+    c.text((kx0 + kx1) / 2, ky0 + 0.3 * K, "PROPS", 0.08, alpha(OUTLINE, 170))
+    sx, sy = kx0 + 0.18, ky0 + 0.12
+    _stuhl(p, c, sx, sy, 0.46, 0.46, 0.6, idx)
+    _stuhl(p, c, sx + 0.03, sy + 0.02, 0.44, 0.44, 0.6 + 0.46 + 0.06, idx, inverted=True, splay=0.07)
+    # --- Mitte links: Sofa hochkant (steht auf der Armlehne), Lehne hinten, Sitzpolster als Wulst links
+    vel = BORDEAUX
+    vel_l, vel_d = shade(vel, 1.2), shade(vel, 0.78)
+    fx0, fx1 = x0 + 0.95, x0 + 1.9
+    fy0, fy1 = y0 + 0.1, y0 + 1.0
+    SH = 1.95
+    p.box(fx0, fy1 - 0.3, fx1, fy1, 0, SH, vel_l, vel)                                              # Rueckenlehne (Platte)
+    for row, z in enumerate((0.45, 0.8, 1.15, 1.5)):                                                # Knopfheftung
+        for k in range(3):
+            bx = fx0 + 0.18 + (k + (0.5 if row % 2 else 0)) * 0.26
+            if bx < fx1 - 0.08:
+                c.ellipse(bx, fy1 - 0.3 + z * K, 0.014, 0.011, fill=vel_d)
+    p.box(fx0, fy0, fx0 + 0.36, fy1 - 0.3, 0.3, SH - 0.6, vel_l, vel_d, w=0.04)                     # Sitzpolster (senkrecht)
+    c.line([(fx0 + 0.04, fy0 + 0.5 * K), (fx0 + 0.04, fy0 + (SH - 0.5) * K)], fill=shade(vel, 1.35), width=0.012)   # Paspel
+    for zz in (0.0, SH - 0.3):                                                                       # Armlehnen oben und unten
+        p.box(fx0 - 0.02, fy0, fx1 + 0.02, fy1 - 0.25, zz, 0.3, vel_l, vel, w=0.04)
+    for (lz, ly) in ((0.25, fy0 + 0.15), (SH - 0.45, fy0 + 0.15)):                                  # Fuesse zeigen nach links
+        c.line([(fx0 - 0.02, ly + lz * K), (fx0 - 0.14, ly + (lz - 0.04) * K)], fill=OUTLINE, width=0.05)
+        c.line([(fx0 - 0.02, ly + lz * K), (fx0 - 0.14, ly + (lz - 0.04) * K)], fill=WALNUT_L, width=0.03)
+    # Staublaken ueber dem oberen Teil: haengt vorn in Falten herab, Saum zittrig
+    top = fy1 + SH * K
+    hem = HD.wobble([(fx0 - 0.08, fy0 + 1.05 * K), (fx0 + 0.3, fy0 + 0.95 * K), (fx0 + 0.6, fy0 + 1.12 * K), (fx1 + 0.08, fy0 + 1.0 * K)],
+                    amp=0.02, seed=idx, step=0.08)
+    drape = [(fx0 - 0.08, top + 0.02), (fx1 + 0.1, top + 0.02), (fx1 + 0.1, fy0 + 1.0 * K)] + list(reversed(hem))[:-1]
+    c.poly(drape, fill=sheet, outline=OUTLINE, width=0.035)
+    c.poly([(fx0 - 0.05, top), (fx1 + 0.07, top), (fx1 + 0.05, top + 0.06), (fx0 - 0.03, top + 0.06)], fill=sheet_l)   # Oberseite
+    for k in range(5):                                                                              # Falten
+        fxk = fx0 + 0.1 + k * 0.2
+        c.line(HD.wobble([(fxk, top - 0.04), (fxk + rnd.uniform(-0.05, 0.05), fy0 + 1.1 * K + rnd.uniform(-0.03, 0.03))], amp=0.015, seed=idx + k, step=0.06),
+               fill=alpha(sheet_d, 160), width=0.014)
+    c.line(hem, fill=sheet_d, width=0.012)
+    # --- Mitte rechts: Kommode (Nussholz, zwei Schubladen, Messinggriffe), darauf Requisitenkiste
+    dx0, dx1 = x0 + 2.0, x0 + 2.95
+    dy0, dy1 = y0 + 0.25, y0 + 0.85
+    p.box(dx0, dy0, dx1, dy1, 0, 1.0, WALNUT_L, WALNUT)
+    c.rect(dx0 + 0.02, dy0 + 0.02, dx1 - 0.02, dy0 + 0.08 * K, fill=WALNUT_D)                       # Sockel
+    for z in (0.12, 0.56):
+        c.rect(dx0 + 0.07, dy0 + z * K, dx1 - 0.07, dy0 + (z + 0.38) * K, fill=shade(WALNUT, 0.92), outline=OUTLINE, width=0.02)
+        c.line([(dx0 + 0.1, dy0 + (z + 0.36) * K), (dx1 - 0.1, dy0 + (z + 0.36) * K)], fill=WALNUT_L, width=0.01)
+        for gx in (dx0 + 0.28, dx1 - 0.28):
+            c.ellipse(gx, dy0 + (z + 0.19) * K, 0.045, 0.03, outline=OUTLINE, width=0.03)
+            c.ellipse(gx, dy0 + (z + 0.19) * K, 0.045, 0.03, outline=BRASS, width=0.014)
+            c.ellipse(gx, dy0 + (z + 0.21) * K, 0.012, 0.01, fill=BRASS_L)
+    c.rect(dx0 + 0.07, dy0 + 0.56 * K, dx0 + 0.11, dy0 + 0.94 * K, fill=shade(WALNUT, 0.55))        # eine Schublade steht offen (Schattenspalt)
+    cx0, cx1 = dx0 + 0.1, dx1 - 0.1
+    cy0, cy1 = dy0 + 0.05, dy1 - 0.05
+    p.box(cx0, cy0, cx1, cy1, 1.0, 0.55, shade(crate, 1.1), shade(crate, 0.95))
+    c.rect(cx0 + 0.03, cy0 + 1.0 * K + 0.04, cx0 + 0.09, cy0 + 1.55 * K - 0.03, fill=shade(crate, 0.85), outline=OUTLINE, width=0.012)
+    c.rect(cx1 - 0.09, cy0 + 1.0 * K + 0.04, cx1 - 0.03, cy0 + 1.55 * K - 0.03, fill=shade(crate, 0.85), outline=OUTLINE, width=0.012)
+    c.text((cx0 + cx1) / 2, cy0 + 1.28 * K, "FRAGILE", 0.065, alpha(hexc("#b03030"), 200))
+    dust(c, cx0 + 0.1, cy0 + 0.05 + 1.55 * K, cx1 - 0.1, cy1 - 0.05 + 1.55 * K, 7, seed=idx)
+    # --- rechts: Teppichrolle (Laeufer, Bordeaux) lehnt schraeg an der Kiste
+    rx0, ry0 = x1 - 0.12, y0 + 0.3
+    rx1, ry1 = dx1 - 0.25, cy0 + 1.62 * K
+    ang = math.atan2(ry1 - ry0, rx1 - rx0)
+    nx, ny = -math.sin(ang) * 0.11, math.cos(ang) * 0.11
+    roll = [(rx0 + nx, ry0 + ny), (rx1 + nx, ry1 + ny), (rx1 - nx, ry1 - ny), (rx0 - nx, ry0 - ny)]
+    c.poly(roll, fill=BORDEAUX_D, outline=OUTLINE, width=A.OUT_W)
+    c.line([(rx0 + nx * 0.5, ry0 + ny * 0.5), (rx1 + nx * 0.5, ry1 + ny * 0.5)], fill=shade(BORDEAUX, 1.15), width=0.03)
+    c.line([(rx0 - nx * 0.5, ry0 - ny * 0.5), (rx1 - nx * 0.5, ry1 - ny * 0.5)], fill=shade(BORDEAUX_D, 0.75), width=0.025)
+    c.ellipse(rx0, ry0, 0.11, 0.11, fill=shade(BORDEAUX, 1.05), outline=OUTLINE, width=A.OUT_W)   # Stirnseite der Rolle (Spirale)
+    c.ellipse(rx0, ry0, 0.07, 0.07, outline=shade(BORDEAUX_D, 0.8), width=0.014)
+    c.ellipse(rx0 + 0.01, ry0 - 0.01, 0.03, 0.03, outline=shade(BORDEAUX_D, 0.8), width=0.012)
+    c.line([(rx0 - 0.08, ry0 + nx * 0.4), (rx1 - 0.1, ry1 - 0.02)], fill=alpha(BRASS, 150), width=0.012)   # Messingstange steckt in der Rolle
+    # --- Gaffer-Band gekreuzt ueber die Front, Schild CLOSED am Kreuzungspunkt
+    gz = 1.15
+    ga = (kx0 + 0.1, ky0 + (gz - 0.55) * K)
+    gb = (dx1 + 0.05, dy0 + (gz + 0.3) * K)
+    gaffer(c, ga[0], ga[1], gb[0], gb[1], 0.05)
+    c.line([ga, gb], fill=alpha(MATTE_D, 180), width=0.012)
+    gc_ = (kx0 + 0.1, ky0 + (gz + 0.45) * K)
+    gd = (dx1 + 0.05, dy0 + (gz - 0.45) * K)
+    gaffer(c, gc_[0], gc_[1], gd[0], gd[1], 0.05)
+    c.line([gc_, gd], fill=alpha(MATTE_D, 180), width=0.012)
+    mx = (ga[0] + gb[0]) / 2
+    my = (ga[1] + gb[1] + gc_[1] + gd[1]) / 4
+    c.rect(mx - 0.33, my - 0.17, mx + 0.33, my + 0.17, fill=CREAM, outline=OUTLINE, width=0.02)
+    c.line([(mx - 0.3, my + 0.14), (mx + 0.3, my + 0.14)], fill=CREAM_D, width=0.01)
+    c.text(mx, my + 0.075, "SET", 0.06, alpha(OUTLINE, 200))
+    c.text(mx, my - 0.04, "CLOSED", 0.12, OUTLINE)
+    c.line([(mx - 0.2, my - 0.13), (mx + 0.2, my - 0.13)], fill=BLOOD, width=0.012)
+    gaffer(c, mx - 0.2, my + 0.17, mx - 0.08, my + 0.12, 0.035)                                     # Schild mit Tape befestigt
+    gaffer(c, mx + 0.08, my + 0.12, mx + 0.2, my + 0.17, 0.035)
+    # --- Spinnweben und Staub
+    cobweb(c, sx + 0.03, sy + 0.02 + (0.6 + 0.52 + 0.46) * K, 0.22, 1, -1, seed=idx)                # zwischen den Stuhlbeinen
+    cobweb(c, fx1 + 0.1, top + 0.02, 0.2, 1, -1, seed=idx + 1)                                      # Sofa-Oberkante zur Kommode
+    cobweb(c, dx1, cy0 + 1.55 * K, 0.16, -1, 1, seed=idx + 2)
+    dust(c, fx0, top + 0.01, fx1, top + 0.05, 6, seed=idx + 3)
+    # --- Horror-Schicht (Audit 15.10.): genagelte Bretter quer ueber den Aufgang, Kratzspuren auf dem Laken,
+    #     eine Hand unter dem Saum, Blut am Fuss der Sperre
+    plank = shade(WALNUT_L, 0.9)
+    for (ax, ay, bx, by) in ((x0 + 0.05, top + 0.12, x1 - 0.05, top + 0.42), (x0 + 0.05, top + 0.5, x1 - 0.05, top + 0.22)):
+        ang = math.atan2(by - ay, bx - ax)
+        nx, ny = -math.sin(ang) * 0.09, math.cos(ang) * 0.09
+        c.poly([(ax + nx, ay + ny), (bx + nx, by + ny), (bx - nx, by - ny), (ax - nx, ay - ny)], fill=plank, outline=OUTLINE, width=0.03)
+        c.line([(ax + nx * 0.5, ay + ny * 0.5), (bx + nx * 0.5, by + ny * 0.5)], fill=shade(plank, 1.25), width=0.015)
+        for t in (0.08, 0.5, 0.92):
+            px_, py_ = ax + (bx - ax) * t, ay + (by - ay) * t
+            c.ellipse(px_, py_, 0.016, 0.016, fill=STEEL, outline=OUTLINE, width=0.008)
+    chalk_text(c, (x0 + x1) / 2, top + 0.3, "KEEP OUT", 0.1)
+    for k in range(3):                                                                              # Kratzer im Laken
+        sx_ = fx0 + 0.45 + k * 0.09
+        c.line(HD.wobble([(sx_, top - 0.25), (sx_ + 0.12, fy0 + 1.25 * K)], amp=0.01, seed=idx + 10 + k, step=0.05),
+               fill=shade(sheet_d, 0.75), width=0.016)
+        c.line([(sx_ + 0.12, fy0 + 1.25 * K), (sx_ + 0.14, fy0 + 1.18 * K)], fill=BLOOD, width=0.012)
+    hx_, hy_ = hem[1][0], hem[1][1] - 0.02                                                        # Hand unter dem Saum
+    pale = hexc("#b9b0a6")
+    c.poly([(hx_ - 0.07, hy_), (hx_ + 0.07, hy_ + 0.01), (hx_ + 0.06, hy_ - 0.08), (hx_ - 0.08, hy_ - 0.07)], fill=pale, outline=OUTLINE, width=0.014)
+    for k, (fdx, fl) in enumerate(((-0.065, 0.07), (-0.025, 0.1), (0.015, 0.1), (0.05, 0.08))):
+        c.line([(hx_ + fdx, hy_ - 0.07), (hx_ + fdx + 0.01, hy_ - 0.07 - fl)], fill=pale, width=0.028)
+        c.line([(hx_ + fdx, hy_ - 0.07), (hx_ + fdx + 0.01, hy_ - 0.07 - fl)], fill=OUTLINE, width=0.036)
+        c.line([(hx_ + fdx, hy_ - 0.07), (hx_ + fdx + 0.01, hy_ - 0.07 - fl)], fill=pale, width=0.022)
+    blood_pool(c, hx_ + 0.1, fy0 + 0.02, 0.16, 0.06, seed=idx + 5, a=210)
+    blood_drips(c, fx0 + 0.9, fy0 + 1.0 * K, 3, 0.1, seed=idx + 6)
+
+
 _KIND_FN = {"standuhr": _standuhr, "seance_tisch": _seance_tisch, "buecherregal": _buecherregal, "kamin": _kamin,
             "kandelaber": _kandelaber, "kandelaber_aus": lambda *a: _kandelaber(*a, lit=False), "filmkamera": _filmkamera,
             "scheinwerfer": _scheinwerfer, "schminktisch": _schminktisch, "sessel": _sessel, "sarg": _sarg,
@@ -1847,11 +2022,13 @@ _KIND_FN = {"standuhr": _standuhr, "seance_tisch": _seance_tisch, "buecherregal"
             "kuechentisch": _kuechentisch, "waschzuber": _waschzuber, "requisiten": _requisiten, "teleskop": _teleskop,
             "kohlen": _kohlen, "lesetisch": _lesetisch, "kirchenbank": _kirchenbank, "baer": _baer,
             "schreibtisch": _schreibtisch, "catering": _catering, "urne": _urne, "gartenbank": _gartenbank,
-            "pflanztisch": _pflanztisch, "brunnen": _brunnen, "barrikade": _barrikade}
+            "pflanztisch": _pflanztisch, "brunnen": _brunnen, "barrikade": _barrikade, "treppensperre": _treppensperre}
 
 
-def draw(kind, shape, idx, ppm):
-    """Ein Objekt als Sprite: (RGBA-Bild, welt_x_links, welt_y_unten, standlinie_y). Vertrag wie park_art.draw."""
+def draw(kind, shape, idx, ppm, variant=None):
+    """Ein Objekt als Sprite: (RGBA-Bild, welt_x_links, welt_y_unten, standlinie_y). Vertrag wie park_art.draw.
+    variant: Tauschbild derselben Art und Groesse (Mechaniken: Pendel, Blick, Licht aus), nur Arten mit
+    variant-Parameter; gen_villa legt sie unter "Prop/<Art>/<x>/<y>/<Variante>" in den Konsolen-Atlas."""
     x0, y0, x1, y1 = A.shape_bounds(shape)
     h = PROP_H[kind]
     p = Prop(x0, y0, x1, y1, h, ppm, pad=PROP_PAD.get(kind, 0.3))
@@ -1861,7 +2038,10 @@ def draw(kind, shape, idx, ppm):
     if shape[0] in ("circle", "ellipse"):
         rx, ry = (x1 - x0) / 2, (y1 - y0) / 2
         c.soft_shadow([(cx + 0.08 + rx * math.cos(t * math.pi / 12), cy - 0.08 + ry * math.sin(t * math.pi / 12)) for t in range(24)], 100, 0.1)
-    elif kind not in ("absperrung", "hecke", "kohlen"):
+    elif kind not in ("absperrung", "hecke", "kohlen") and kind not in NO_SHADOW:
         c.soft_shadow([(x0 + 0.08, y0 - 0.1), (x1 + 0.12, y0 - 0.1), (x1 + 0.12, y1), (x0 + 0.08, y1)], 95, 0.09)
-    _KIND_FN[kind](p, c, x0, y0, x1, y1, idx, rnd)
+    if variant is None:
+        _KIND_FN[kind](p, c, x0, y0, x1, y1, idx, rnd)
+    else:
+        _KIND_FN[kind](p, c, x0, y0, x1, y1, idx, rnd, variant=variant)
     return c.finish(), c.x0, c.y0, p.base_y
