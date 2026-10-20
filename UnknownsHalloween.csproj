@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        <Version>0.1.1.1</Version>
+        <Version>0.1.1.2</Version>
         <Description>Unknown's Halloween - add-on for Unknown's Collection: four full-body Halloween costume hats (Freddy, Jason, Xenomorph, Ghostface) with idle/walk animation and kill cutscenes, plus the Xenomorph role (neutral killer). Built for AU 2024.11.26 / BepInEx 6.0.0-be.697 / Reactor 2.3.1.</Description>
         <Authors>DaUnknown-0</Authors>
         <LangVersion>latest</LangVersion>
@@ -32,6 +32,34 @@
         <!-- Trick or Treat artwork (Grafik-Lieferung 2026-10-20, candy_art.py): 13 candy kinds 256 px (floor shadow baked in),
              the eater's card 640x200 and the menu icon 128 px. Loaded by TreatFx, DXT5 at runtime. -->
         <EmbeddedResource Include="Resources\treats\*.png" LogicalName="UnknownsHalloween.Resources.treats.%(Filename)%(Extension)" />
+        <!-- Omens and spook moments (Omens.cs, OmensFx.cs, Spooks.cs): omen_<key>.png, omen_card.png, fx_rain.png, fx_raven_1..6.png
+             and spook_*.png. Missing files are drawn at runtime, so new pictures only need to be dropped in and built. -->
+        <EmbeddedResource Include="Resources\hw2026\omens\*.png" LogicalName="UnknownsHalloween.Resources.hw2026.omens.%(Filename)%(Extension)" />
+        <EmbeddedResource Include="Resources\hw2026\spook\*.png" LogicalName="UnknownsHalloween.Resources.hw2026.spook.%(Filename)%(Extension)" />
+        <!-- Lobby games (LobbyGamesArt.cs): carve_pumpkin, carve_lantern, carve_lantern_glow, boo_button, boo_crown. Missing files
+             are drawn at runtime as placeholders of the same size and layout. -->
+        <EmbeddedResource Include="Resources\hw2026\lobby\*.png" LogicalName="UnknownsHalloween.Resources.hw2026.lobby.%(Filename)%(Extension)" />
+        <!-- Scaredy-Cat, Haunted Mirrors, Phantom Parade (HwScaredyCat.cs, HwMirrors.cs, HwPhantomParade.cs, loaded by HwArt):
+             scaredy_icon/_exclaim, mirror_<vanilla|villa|graveyard>/mirror_glass, icon_phantom_parade/phantom_mist_1..8.
+             Missing files are drawn at runtime. -->
+        <EmbeddedResource Include="Resources\hw2026\scaredy\*.png" LogicalName="UnknownsHalloween.Resources.hw2026.scaredy.%(Filename)%(Extension)" />
+        <EmbeddedResource Include="Resources\hw2026\mirror\*.png" LogicalName="UnknownsHalloween.Resources.hw2026.mirror.%(Filename)%(Extension)" />
+        <EmbeddedResource Include="Resources\hw2026\phantom\*.png" LogicalName="UnknownsHalloween.Resources.hw2026.phantom.%(Filename)%(Extension)" />
+        <!-- Zombie Outbreak + Final Girl (HalloweenModeArt.cs): infect button, zombie tint tile, exit portal frames, exit arrow.
+             Missing files are painted at runtime. -->
+        <EmbeddedResource Include="Resources\hw2026\zombie\*.png" LogicalName="UnknownsHalloween.Resources.hw2026.zombie.%(Filename)%(Extension)" />
+        <!-- Halloween look (HwLookMeeting.cs, HwLookEndscreen.cs, HwLookGhosts.cs, loaded by HwArt on first use): meeting webs,
+             candles, flames, vote ghost, skip bat; end screen backdrops (3 x 0.4-0.65 MB, decoded only while the end screen
+             stands), leaves and candies; ghost props per costume (loaded on the first death in that costume). -->
+        <EmbeddedResource Include="Resources\hw2026\meeting\*.png" LogicalName="UnknownsHalloween.Resources.hw2026.meeting.%(Filename)%(Extension)" />
+        <EmbeddedResource Include="Resources\hw2026\endscreen\*.png" LogicalName="UnknownsHalloween.Resources.hw2026.endscreen.%(Filename)%(Extension)" />
+        <EmbeddedResource Include="Resources\hw2026\ghosts\*.png" LogicalName="UnknownsHalloween.Resources.hw2026.ghosts.%(Filename)%(Extension)" />
+        <!-- Halloween task skins (HwTaskSkins.cs): task_hw_fuel_cauldron/_brew, task_hw_bat_1..4/_poof, task_hw_wrapper_1..6,
+             task_hw_pumpkin_hex_off/_on, task_hw_lantern_off/_on. A missing file leaves that part of the task vanilla. -->
+        <EmbeddedResource Include="Resources\hw2026\tasks\*.png" LogicalName="UnknownsHalloween.Resources.hw2026.tasks.%(Filename)%(Extension)" />
+        <!-- Halloween music (HwMusic.cs): four public-domain classics rendered from the notes by tools/render_classics.py
+             (own synthesizer, no recordings), Ogg Vorbis. Written to BepInEx/cache at runtime for UTS' music manager. -->
+        <EmbeddedResource Include="Resources\hw2026\music\*.ogg" LogicalName="UnknownsHalloween.Resources.hw2026.music.%(Filename)%(Extension)" />
         <!-- Hollowmere Manor (Atlas map pack, tools/gen_villa.py): flat names, because Atlas looks them up as
              "<ResourceNamespace>.<file>". Embedded: map button and icon, minimaps, eject direction (JSON) and the two
              eject overlays both maps share; floor/props/consoles (.atx, python ../UnknownsAtlas/tools/pack_textures.py

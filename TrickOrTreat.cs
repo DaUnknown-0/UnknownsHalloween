@@ -79,7 +79,7 @@ namespace UnknownsHalloween {
             if (TrickOrTreatDiag.On) return true;
             return TreatSettings.Current.Enabled;
         }
-        internal static int Count() => Mathf.Clamp(TreatSettings.Current.Count, 1, 30);
+        internal static int Count() => Mathf.Clamp(TreatSettings.Current.Count * Omens.CandyFactor(), 1, 30);   // x2 under the Harvest omen (Omens.cs)
         internal static int MeetingsFor() => Mathf.Clamp(TreatSettings.Current.Meetings, 1, 5);
         internal static float Range() => RangeValues[Mathf.Clamp(TreatSettings.Current.Range, 0, RangeValues.Length - 1)];
 
@@ -660,6 +660,7 @@ namespace UnknownsHalloween {
             if (c != null && ph == phase) { c.Eaten = true; c.Pending = false; TreatFx.RemoveCandy(c); }
             var p = Helpers.playerById(pid);
             if (p == null) return;
+            try { HwTitles.OnCandyEaten(pid, (byte)fx == FxPoison); } catch { }   // titles of the evening (HwTitles.cs)
             bool local = PlayerControl.LocalPlayer != null && PlayerControl.LocalPlayer.PlayerId == pid;
             if ((byte)fx == FxPoison) {
                 poisoned.Add(pid);
