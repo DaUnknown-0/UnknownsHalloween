@@ -40,7 +40,7 @@ public class HalloweenPlugin : BasePlugin
 {
     public const string PluginGuid = "com.daunknown.unknownshalloween";
     public const string PluginName = "Unknown's Halloween";
-    public const string PluginVersion = "0.1.1";
+    public const string PluginVersion = "0.1.1.1";
     public static readonly System.Version Version = System.Version.Parse(PluginVersion);
     private const string AtlasGuid = "com.daunknown0.atlas";
 
@@ -82,6 +82,12 @@ public class HalloweenPlugin : BasePlugin
             return;
         }
 
+        // Large artwork (costumes, kill scenes, both maps) comes from the asset repository (HalloweenAssets). Before
+        // PatchAll: the costume setup there asks whether the packages are ready.
+        var source = Config.Bind("Assets", "DownloadSource", "",
+            "Leave empty. Test override for the asset download (only the asset repository or http://127.0.0.1:<port>/).");
+        HalloweenAssets.Start(AddComponent<HalloweenAssetHost>(), source.Value);
+
         // PatchAll runs the HarmonyPrepare hooks that set the costumes and the role up
         // (HalloweenCostumes.KillHook.Prepare, Xenomorph.ResetPatch.Prepare).
         new Harmony(PluginGuid).PatchAll();
@@ -91,8 +97,11 @@ public class HalloweenPlugin : BasePlugin
         try { atlas = BepInEx.Unity.IL2CPP.IL2CPPChainloader.Instance.Plugins.ContainsKey(AtlasGuid); } catch { }
         if (atlas)
         {
+            // Options and RPC handlers now; the map itself joins Atlas once its packages are there (HalloweenAssets).
             try { RegisterVilla(); }
             catch (System.Exception ex) { Logger.LogError($"[Halloween] Hollowmere Manor registration failed: {ex}"); }
+            try { RegisterGraveyard(); }
+            catch (System.Exception ex) { Logger.LogError($"[Halloween] Ravenhollow Cemetery registration failed: {ex}"); }
         }
         Logger.LogInfo($"[Halloween] {PluginName} {PluginVersion} loaded{(atlas ? "" : " (Unknown's Atlas missing: no Hollowmere Manor)")}.");
     }
@@ -100,6 +109,9 @@ public class HalloweenPlugin : BasePlugin
     // Separate method so the Atlas types are only resolved when Atlas is actually installed.
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
     private static void RegisterVilla() => HollowmereMap.Register();
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static void RegisterGraveyard() => GraveyardMap.Register();
 }
 
 // Version line in the top-corner PingTracker readout, folded into the shared "Unknown's

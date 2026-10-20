@@ -49,7 +49,7 @@ namespace UnknownsHalloween {
 
         private static Sprite LoadSprite(string resName, Vector2 pivotPx) {
             try {
-                using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("UnknownsHalloween.Resources.hats." + resName);
+                using var stream = HalloweenAssets.Open("UnknownsHalloween.Resources.hats." + resName);
                 if (stream == null) { Log("resource missing: " + resName); return null; }
                 var data = new byte[stream.Length];
                 int read = 0;
@@ -155,6 +155,10 @@ namespace UnknownsHalloween {
             var (co, pc) = OwnerOf(hat);
             int id = co != null ? co.GetInstanceID() : 0;
             bool isCorpse = hat.Hat != null && hat.Hat.name == HatName;
+            if (!isCorpse && hat.Hat != null && BodylessHats.Contains(hat.Hat.name)) {
+                HideBodyOnly(hat, co, pc, id);
+                return false;   // the costume code still animates the frames
+            }
             if (!isCorpse) {
                 if (hidden.Count > 0 && id != 0) Restore(id);
                 if (deadFront.Count > 0 && deadFront.Remove(id, out var fs) && hat.FrontLayer != null)
@@ -217,6 +221,29 @@ namespace UnknownsHalloween {
             float ox = (flip ? -Offset.x : Offset.x) * h.Lossy, oy = Offset.y * h.Lossy;
             front.transform.position = new Vector3(b.x + ox, b.y + oy, front.transform.position.z);
             return true;
+        }
+
+        /// Costume hats whose image is the whole figure (angel ghost): the body, skin and visor
+        /// cosmetic are hidden like under the corpse, but the hat keeps its own front layer. The ladder
+        /// keeps them hidden too (the climb image is the whole figure); dead, vent, moving platform and
+        /// other body types get the crewmate back.
+        internal static readonly HashSet<string> BodylessHats = new();
+
+        private static void HideBodyOnly(HatParent hat, CosmeticsLayer co, PlayerControl pc, int id) {
+            if (co == null) return;
+            SpriteRenderer body = null;
+            try { body = co.currentBodySprite != null ? co.currentBodySprite.BodySprite : null; } catch { }
+            bool off = false;
+            try { off = pc != null && (pc.Data == null || pc.Data.IsDead || pc.inVent || pc.inMovingPlat); } catch { }
+            if (body == null || off || co.CurrentBodyType != PlayerBodyTypes.Normal) { Restore(id); return; }
+            if (!hidden.TryGetValue(id, out var h)) {
+                h = new Hidden { Body = body.transform, BodyScale = body.transform.localScale };
+                try { if (co.skin != null) { h.Skin = co.skin.transform; h.SkinScale = h.Skin.localScale; } } catch { }
+                try { if (co.visor != null) { h.Visor = co.visor.transform; h.VisorScale = h.Visor.localScale; } } catch { }
+                if (hidden.Count > 256) hidden.Clear();
+                hidden[id] = h;
+            }
+            Scale0(h.Body); Scale0(h.Skin); Scale0(h.Visor);
         }
 
         internal static void ResetAll() {

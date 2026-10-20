@@ -48,7 +48,16 @@ internal static class HollowmereMap
         HollowmereIntro.Init();
         HollowmereWorld.Init();
 
-        bool ok = AtlasMaps.Register(Key, "Hollowmere", Make, typeof(HollowmereMap).Assembly, ResourceNamespace,
+        // Floor, props, consoles, minigames, intro and eject art come from the asset packages (HalloweenAssets): the map
+        // joins Atlas only once they are there, right away on a normal start, otherwise as soon as the download is done.
+        if (!HalloweenAssets.Ready("villa_"))
+            HalloweenPlugin.Logger.LogInfo($"[Halloween/Villa] {DisplayName} waits for its asset packages");
+        HalloweenAssets.WhenReady("villa_", JoinAtlas);
+    }
+
+    private static void JoinAtlas()
+    {
+        bool ok = AtlasMaps.Register(Key, "Hollowmere", Make, HalloweenAssets.ResourceAssembly, ResourceNamespace,
             button: "button_villa.png", icon: "icon_villa.png", contentVersion: HalloweenPlugin.PluginVersion);
         HalloweenPlugin.Logger.LogInfo($"[Halloween/Villa] {DisplayName} {(ok ? "registered with" : "NOT registered with")} Unknown's Atlas (API {AtlasMaps.ApiVersion})");
     }
@@ -69,7 +78,7 @@ internal static class HollowmereMap
         d.Key = Key;
         d.DisplayName = DisplayName;
         d.ResourcePrefix = "villa";
-        d.ResourceAssembly = typeof(HollowmereMap).Assembly;
+        d.ResourceAssembly = HalloweenAssets.ResourceAssembly;
         d.ResourceNamespace = ResourceNamespace;
         d.BuiltInEffects = false;
         d.CameraColor = new Color(0x16 / 255f, 0x10 / 255f, 0x14 / 255f);

@@ -82,7 +82,7 @@ internal static class EjectEngine {
 
     public static Doc LoadDoc(string file) {
         try {
-            using var s = typeof(EjectEngine).Assembly.GetManifestResourceStream(Prefix + file);
+            using var s = HalloweenAssets.Open(Prefix + file);
             if (s == null) { Warn($"eject: resource {file} missing"); return null; }
             using var r = new StreamReader(s);
             return Parse(r.ReadToEnd());
@@ -320,7 +320,7 @@ internal static class EjectEngine {
             Texture2D tex = null;
             foreach (var kv in _sprites) if (kv.Key.StartsWith(file + "|") && kv.Value != null) { tex = kv.Value.texture; break; }
             if (tex == null) {
-                using var st = typeof(EjectEngine).Assembly.GetManifestResourceStream(Prefix + file);
+                using var st = HalloweenAssets.Open(Prefix + file);
                 if (st == null) { Warn($"eject: sprite {file} missing"); return null; }
                 var bytes = new byte[st.Length];
                 int got = 0;

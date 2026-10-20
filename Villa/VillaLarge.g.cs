@@ -808,7 +808,7 @@ internal static class VillaLarge
         ("tapestry", "wandteppich", new(4.000f, 6.900f), new(4.000f, 5.100f), false),
         ("bookcase", "drehregal", new(-7.000f, -2.500f), new(-5.200f, -2.500f), true),
         ("dumbwaiter", "speiseaufzug", new(-10.700f, 8.500f), new(9.300f, 7.200f), false),
-        ("tunnel", "tunneleingang", new(27.800f, -20.200f), new(-15.800f, -9.300f), false),
+        ("tunnel", "tunneleingang", new(27.800f, -20.200f), new(-15.600f, -8.700f), false),
     };
     /// <summary>Standuhr in der Halle (Mitternachtsuhr), Standpunkt davor.</summary>
     public static readonly Vector2 Clock = new(-4.650f, 5.300f);

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        <Version>0.1.1</Version>
+        <Version>0.1.1.1</Version>
         <Description>Unknown's Halloween - add-on for Unknown's Collection: four full-body Halloween costume hats (Freddy, Jason, Xenomorph, Ghostface) with idle/walk animation and kill cutscenes, plus the Xenomorph role (neutral killer). Built for AU 2024.11.26 / BepInEx 6.0.0-be.697 / Reactor 2.3.1.</Description>
         <Authors>DaUnknown-0</Authors>
         <LangVersion>latest</LangVersion>
@@ -22,17 +22,31 @@
     </ItemGroup>
 
     <ItemGroup>
-        <!-- Costume hats (hw_*), the role icon (hw_xenomorph_icon) and the kill-cutscene frames (hk_*).
-             Explicit LogicalName so the lookup never depends on the root-namespace default. -->
-        <EmbeddedResource Include="Resources\hats\*.png" LogicalName="UnknownsHalloween.Resources.hats.%(Filename)%(Extension)" />
-        <!-- Hollowmere Manor (Atlas map pack, tools/gen_villa.py): floor tiles, prop atlases, minimaps.
-             Flat names, because Atlas looks them up as "<ResourceNamespace>.<file>".
-             Floor tiles and prop/console atlases ship as .atx (finished DXT with mipmaps, Atlas AtlasTexturePack); after
-             regenerating the villa run: python ../UnknownsAtlas/tools/pack_textures.py Resources/villa villa
-             The JPG/PNG sources stay in the repo but are no longer embedded. -->
-        <EmbeddedResource Include="Resources\villa\*.jpg;Resources\villa\*.png;Resources\villa\*.json;Resources\villa\*.wav;Resources\villa\*.atx"
-                          Exclude="Resources\villa\villa_floor_*.jpg;Resources\villa\villa_props_*.png;Resources\villa\villa_consoles_*.png"
+        <!-- Since 2026-10-20 the large artwork is NOT embedded: costume, kill and spider-leg frames (Resources/hats), the
+             .atx packs, minigame, intro and eject art of Hollowmere Manor and Ravenhollow Cemetery go into the asset
+             repository DaUnknown-0/UnknownsHalloween-Assets (tools/build_assets_repo.py, HalloweenAssets.cs downloads them).
+             Embedded stays only what is needed before the download. Keep this list in step with KEEP in
+             tools/build_assets_repo.py. Explicit LogicalName so the lookup never depends on the root-namespace default. -->
+        <!-- role icons (hats\hw_xenomorph_icon, hw_banshee_icon) -->
+        <EmbeddedResource Include="Resources\hats\hw_xenomorph_icon.png;Resources\hats\hw_banshee_icon.png" LogicalName="UnknownsHalloween.Resources.hats.%(Filename)%(Extension)" />
+        <!-- Trick or Treat artwork (Grafik-Lieferung 2026-10-20, candy_art.py): 13 candy kinds 256 px (floor shadow baked in),
+             the eater's card 640x200 and the menu icon 128 px. Loaded by TreatFx, DXT5 at runtime. -->
+        <EmbeddedResource Include="Resources\treats\*.png" LogicalName="UnknownsHalloween.Resources.treats.%(Filename)%(Extension)" />
+        <!-- Hollowmere Manor (Atlas map pack, tools/gen_villa.py): flat names, because Atlas looks them up as
+             "<ResourceNamespace>.<file>". Embedded: map button and icon, minimaps, eject direction (JSON) and the two
+             eject overlays both maps share; floor/props/consoles (.atx, python ../UnknownsAtlas/tools/pack_textures.py
+             Resources/villa villa), minigames, intro and eject art come with the asset packages. -->
+        <EmbeddedResource Include="Resources\villa\button_villa.png;Resources\villa\icon_villa.png;Resources\villa\villa_minimap_*.png;Resources\villa\task_eject_*.png;Resources\villa\*.json;Resources\villa\*.wav"
                           LogicalName="UnknownsHalloween.Resources.%(Filename)%(Extension)" />
+        <!-- Ravenhollow Cemetery (Atlas map file, tools/gen_graveyard.py): map.json, button, icon and minimap embedded,
+             the .atx packs (python ../UnknownsAtlas/tools/pack_textures.py Resources/graveyard graveyard) and the minigame
+             art come with the asset packages. -->
+        <EmbeddedResource Include="Resources\graveyard\map.json;Resources\graveyard\button_graveyard.png;Resources\graveyard\icon_graveyard.png;Resources\graveyard\graveyard_minimap.png"
+                          LogicalName="UnknownsHalloween.Resources.graveyard.%(Filename)%(Extension)" />
+        <!-- Ravenhollow eject scenes (tools/gen_graveyard_eject.py + tools/graveyard_eject.py): the direction (JSON) is
+             embedded, the pictures come with the asset packages. Flat like the villa (EjectEngine looks under
+             UnknownsHalloween.Resources.<file>). -->
+        <EmbeddedResource Include="Resources\graveyard_eject\*.json" LogicalName="UnknownsHalloween.Resources.%(Filename)%(Extension)" />
     </ItemGroup>
 
     <!-- DLL locations: default to the local builds, overridable via -p:TheOtherRolesDll=... / -p:UnknownsCollectionDll=... -->

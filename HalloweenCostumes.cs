@@ -2,8 +2,9 @@
 // Licensed under GPL-3.0-or-later. See LICENSE for details.
 
 /*
- * HalloweenCostumes - seven full-body costume hats (Freddy, Jason, Xenomorph, Ghostface, and since
- *   2026-10-13 Thing, Predator, Sadako) with
+ * HalloweenCostumes - full-body costume hats (Freddy, Jason, Xenomorph, Ghostface, since
+ *   2026-10-13 Thing, Predator, Sadako, since 2026-10-16 Spider, BVB Fan, Angel Ghost, since 2026-10-20
+ *   Pumpkin Head, Reaper, Vampire, Medusa) with
  *   - a 16-frame idle loop and a 12-frame walk loop at 10 fps,
  *   - a back layer (dark trouser openings / robe hem) and a ladder pose,
  *   - a frame-by-frame kill cutscene per costume in the vanilla kill-overlay slot.
@@ -24,7 +25,9 @@
  * costume from 1970). Audience is whoever the vanilla overlay would have shown to.
  * Each frame is five images: killer (back), the victim split into an untinted part (outline,
  * visor) plus a body mask and a shade mask that are tinted in the victim's colours, and the
- * foreground (blade tip, blood, impact). The victim deliberately does NOT go through the game's
+ * foreground (blade tip, blood, impact). Scenes with killer layers (spider v2) add the killer's own
+ * crewmate under and partly over the costume, split the same way and tinted in the killer's colours.
+ * The victim deliberately does NOT go through the game's
  * player material: that shader obeys sprite masks, and an open chat window cut a rectangle out of
  * the victim in the first playtest (2026-10-05).
  * Sound is the vanilla kill-overlay stinger (own synthesized tracks were tried and dropped on
@@ -32,7 +35,8 @@
  * Frames are decoded one at a time and thrown away again - a whole strip in memory would cost
  * well over 200 MB in a 32-bit process.
  *
- * HalloweenCostumes.Preview("freddy" | "jason" | "xeno" | "ghost" | "thing" | "predator" | "sadako") plays a cutscene locally as if the
+ * HalloweenCostumes.Preview("freddy" | "jason" | "xeno" | "ghost" | "thing" | "predator" | "sadako" | "spider" | "pumpkin" | "reaper"
+ * | "vampire" | "medusa") plays a cutscene locally as if the
  * local player had just been killed (Role Control: /killanim).
  */
 
@@ -62,23 +66,38 @@ namespace UnknownsHalloween {
 
         private sealed class Costume {
             public string Key;          // file key of the hat frames  (hw_<Key>_...)
-            public string KillKey;      // file key of the kill frames (hk_<KillKey>_...)
+            public string KillKey;      // file key of the kill frames (hk_<KillKey>_...); null = no cutscene (vanilla kill)
             public string Name;         // hat name in the shop
             public string HatId;
             public int KillFrames;
             public int[] Flashes;       // frames on which the red band flashes
+            public float KillHold;      // seconds the last kill frame stays up before the overlay closes (0 = closes right away)
             public bool HasLegs;        // walk loop has painted legs -> hide the back layer while running
             public Sprite[] Idle, Walk;
             public bool HasAccent;      // highlight masks (hw_<Key>_acc_N) that are tinted in the wearer's colour
             public Sprite[] IdleAcc, WalkAcc;
             public bool FramesTried;
             public KillScene[] Alt;     // further cutscenes of this costume; one of all is picked at random
+            public bool HidesBody;      // the image IS the figure: body, skin and visor cosmetic are hidden (HalloweenCorpse.BodylessHats)
+            public bool KillerLayers;   // the main cutscene shows the crewmate under the costume in the KILLER's colour (u*/o* layers)
+            // Still walk (spider, 2026-10-17): the crewmate keeps its idle pose while moving (no run
+            // animation, no bob, StillWalkPatch) and the costume plays its own walk loop on its own clock,
+            // WalkFps frames per second, as many frames as hw_<Key>_walk_N exist (painted on the idle pose).
+            public bool StillWalk;
+            public float WalkFps = HatFps;
+            // Live legs (spider, 2026-10-17): on a real player the hat shows hw_<Key>_body_N (no legs) and
+            // SpiderLegs works out and draws the eight legs every frame. Shop, previews and anything without a
+            // live player keep the classic frames with painted legs.
+            public bool LiveLegs;
+            public Sprite[] Body, BodyAcc;
         }
 
         private sealed class KillScene {
             public string Key;          // file key (hk_<Key>_...)
             public int Frames;
             public int[] Flashes;
+            public float Hold;          // seconds the last frame stays up (Costume.KillHold)
+            public bool Killer;         // has the u*/o* layers (crewmate under / parts over the costume, killer's colour)
         }
 
         private static readonly Dictionary<Costume, KillScene> mainScene = new();
@@ -88,7 +107,7 @@ namespace UnknownsHalloween {
         /// the victim's client, so the draw needs no syncing.</summary>
         private static KillScene PickScene(Costume c, string key = null) {
             if (!mainScene.TryGetValue(c, out var main))
-                mainScene[c] = main = new KillScene { Key = c.KillKey, Frames = c.KillFrames, Flashes = c.Flashes };
+                mainScene[c] = main = new KillScene { Key = c.KillKey, Frames = c.KillFrames, Flashes = c.Flashes, Hold = c.KillHold, Killer = c.KillerLayers };
             if (c.Alt == null || c.Alt.Length == 0) return main;
             if (key != null) return c.Alt.FirstOrDefault(x => x.Key == key) ?? main;
             int i = UnityEngine.Random.Range(0, c.Alt.Length + 1);
@@ -109,6 +128,30 @@ namespace UnknownsHalloween {
             new Costume { Key = "thing", KillKey = "thing", Name = "Halloween Thing", KillFrames = 60, Flashes = new[] { 12, 41 }, HasLegs = false, HasAccent = true },
             new Costume { Key = "predator", KillKey = "predator", Name = "Halloween Predator", KillFrames = 62, Flashes = new[] { 25, 33 }, HasLegs = false, HasAccent = true },
             new Costume { Key = "sadako", KillKey = "sadako", Name = "Halloween Sadako", KillFrames = 62, Flashes = new[] { 31, 56 }, HasLegs = false, HasAccent = true },
+            // 2026-10-16: knitted spider costume (spider.py), BVB fan (bvb.py) and the angel ghost (angel.py,
+            // the real body is hidden). Only costumes with a KillKey get a cutscene and a host option.
+            // abseil behind the victim, cocoon from the feet up, bite, the cocoon tips over (kill5_spider.py).
+            // 2026-10-17 spider v2: the killer's own crewmate under the costume, in the killer's colour
+            new Costume { Key = "spider", KillKey = "spider", Name = "Halloween Spider", KillFrames = 64, Flashes = new[] { 16, 42 }, HasLegs = false, HasAccent = true, KillerLayers = true,
+                // Spidertron: the body glides level, every leg steps on its own (SpiderLegs); the walk loop
+                // is only the fallback for players the live legs cannot run on
+                StillWalk = true, WalkFps = 12f, LiveLegs = true },
+            new Costume { Key = "bvb", KillKey = null, Name = "Halloween BVB Fan", HasLegs = false, HasAccent = true },
+            new Costume { Key = "angel", KillKey = null, Name = "Halloween Angel Ghost", HasLegs = false, HasAccent = true, HidesBody = true },
+            // 2026-10-20: Pumpkin Head (pumpkin.py; the glow jumps over to the victim and goes out, kill5_pumpkin.py)
+            // and Reaper (reaper.py; floats on the idle pose like the spider, one scythe swing and the soul rises,
+            // kill5_reaper.py). Appended at the end so their options take 1978 and 1979.
+            new Costume { Key = "pumpkin", KillKey = "pumpkin", Name = "Halloween Pumpkin Head", KillFrames = 56, Flashes = new[] { 22, 44 }, HasLegs = false, HasAccent = true },
+            new Costume { Key = "reaper", KillKey = "reaper", Name = "Halloween Reaper", KillFrames = 58, Flashes = new[] { 19, 30 }, HasLegs = false, HasAccent = true,
+                StillWalk = true, WalkFps = 12f },
+            // 2026-10-20 (Grafik-Lieferung, vampire.py / medusa.py, kill5_vampire.py / kill5_medusa.py): Vampire (the cape
+            // closes around the victim, bat swarm; player colour in the cape lining, collar and medallion band) and
+            // Medusa (the gaze turns the victim to stone; player colour in the sash and the snakes' tongues). Normal
+            // 12-frame walk on the run cycle. Their options take 1944 and 1945 (1970-1979 is full).
+            new Costume { Key = "vampire", KillKey = "vampire", Name = "Halloween Vampire", KillFrames = 56, Flashes = new[] { 24, 44 }, HasLegs = false, HasAccent = true },
+            // the scene ends on the grey statue; without a hold it would only stand for one frame (1/15 s)
+            new Costume { Key = "medusa", KillKey = "medusa", Name = "Halloween Medusa", KillFrames = 56, Flashes = new[] { 20, 40 }, HasLegs = false, HasAccent = true,
+                KillHold = 1.2f },
         };
 
         // ==================== host options (2026-10-07) ====================
@@ -125,12 +168,19 @@ namespace UnknownsHalloween {
             try {
                 var g = CustomOption.CustomOptionType.General;
                 Anims = CustomOption.Create(1793, g, "Halloween Costume Kill Animations", true, null, true, null, "Unknown's Halloween");
-                int id = 1970;                                   // 1970-1979 (ID-Registry.md)
-                foreach (var c in Costumes)
+                // 1970-1979 for the first ten costumes with a cutscene, then 1944-1949 (ID-Registry.md; 1980 is the
+                // Masquerade). The order of the table decides, so new costumes always go to the end.
+                int id = 1970;
+                foreach (var c in Costumes) {
+                    if (c.KillKey == null) continue;
+                    if (id == 1980) id = 1944;
+                    if (id == 1950) { HalloweenPlugin.Logger?.LogWarning($"[Halloween] no free option id for {c.Name}"); continue; }
                     perCostume[c.Key] = CustomOption.Create(id++, g, "Kill Animation: " + c.Name.Replace("Halloween ", ""), true, Anims);
+                }
             } catch (Exception e) {
                 HalloweenPlugin.Logger?.LogError($"[Halloween] CreateOptions failed: {e}");
             }
+            Masquerade.CreateOptions();                          // 1980-1981, right below the costume block
         }
 
         private static bool On(CustomOption o, bool fallback) {
@@ -142,6 +192,10 @@ namespace UnknownsHalloween {
 
         private static readonly Dictionary<string, Costume> ByHatName = new();
         private static readonly Dictionary<string, Costume> ByHatId = new();
+
+        /// <summary>Kostuem-Schluessel ("sadako", "xeno" ...) zu einer Hut-Id, sonst null (Rauswurf-Sonderszenen).</summary>
+        internal static string CostumeKeyOfHat(string hatId) =>
+            hatId != null && ByHatId.TryGetValue(hatId, out var c) ? c.Key : null;
         private static readonly HashSet<string> OwnFiles = new();
 
         private static bool setupDone;
@@ -167,7 +221,38 @@ namespace UnknownsHalloween {
                 }
                 if (mBounce != null) setBounceNode = (Action<HatParent>)Delegate.CreateDelegate(typeof(Action<HatParent>), mBounce);
                 loadHatSprite = LoadHatSprite;
+                registerHats = () => RegisterHats(mDir, mRegister);
 
+                var harmony = new Harmony("daunknown.unknownshalloween.costumes");
+                var dl = AccessTools.Method(typeof(CustomHatManager), "GenerateDownloadList");
+                if (dl != null)
+                    harmony.Patch(dl, postfix: new HarmonyMethod(AccessTools.Method(typeof(HalloweenCostumes), nameof(StripOwnFiles))));
+                var late = AccessTools.Method(typeof(HatParent), nameof(HatParent.LateUpdate));
+                if (late != null)
+                    harmony.Patch(late, postfix: new HarmonyMethod(AccessTools.Method(typeof(HalloweenCostumes), nameof(HatLateUpdate))));
+
+                UCFx.RegisterTick(Tick);
+                UCFx.RegisterTick(TickLock);
+                UCFx.RegisterTick(Masquerade.Tick);
+                UCFx.RegisterReset(ResetAll);
+            } catch (Exception ex) {
+                HalloweenPlugin.Logger?.LogError($"[Halloween] setup failed: {ex}");
+                return;
+            }
+            // The frames live in the asset packages (HalloweenAssets): the hats join the shop right away on a normal
+            // start, otherwise once the download is done. Without the packages there are no costumes at all.
+            if (!HalloweenAssets.Ready("hats_"))
+                HalloweenPlugin.Logger?.LogInfo("[Halloween] costume hats wait for their asset packages.");
+            HalloweenAssets.WhenReady("hats_", () => registerHats());
+        }
+
+        private static Action registerHats;
+
+        /// <summary>Costume hats are in the shop (their asset packages are there and the registration went through).</summary>
+        internal static bool HatsRegistered { get; private set; }
+
+        private static void RegisterHats(MethodInfo mDir, MethodInfo mRegister) {
+            try {
                 string dir = mDir.Invoke(null, null) as string;
                 if (dir == null) {
                     HalloweenPlugin.Logger?.LogWarning("[Halloween] hats directory not resolved - costumes skipped.");
@@ -203,23 +288,29 @@ namespace UnknownsHalloween {
                     if (!byName.TryGetValue(hat.Name, out var c)) continue;
                     c.HatId = UCHats.HatIdOf(c.Name);
                     ByHatName[c.Name] = c;
+                    if (c.HidesBody) HalloweenCorpse.BodylessHats.Add(c.Name);
                     ByHatId[c.HatId] = c;
                 }
-
-                var harmony = new Harmony("daunknown.unknownshalloween.costumes");
-                var dl = AccessTools.Method(typeof(CustomHatManager), "GenerateDownloadList");
-                if (dl != null)
-                    harmony.Patch(dl, postfix: new HarmonyMethod(AccessTools.Method(typeof(HalloweenCostumes), nameof(StripOwnFiles))));
-                var late = AccessTools.Method(typeof(HatParent), nameof(HatParent.LateUpdate));
-                if (late != null)
-                    harmony.Patch(late, postfix: new HarmonyMethod(AccessTools.Method(typeof(HalloweenCostumes), nameof(HatLateUpdate))));
-
-                UCFx.RegisterTick(Tick);
-                UCFx.RegisterTick(TickLock);
-                UCFx.RegisterReset(ResetAll);
+                HatsRegistered = true;
+                KickTorHatLoader();
                 HalloweenPlugin.Logger?.LogInfo($"[Halloween] registered {ByHatName.Count} costume hat(s).");
             } catch (Exception ex) {
-                HalloweenPlugin.Logger?.LogError($"[Halloween] setup failed: {ex}");
+                HalloweenPlugin.Logger?.LogError($"[Halloween] costume registration failed: {ex}");
+            }
+        }
+
+        // TOR moves UnregisteredHats into the HatManager on GetHatById until the list is empty once, then never again
+        // (HatManagerPatches.isLoaded). Hats that arrive later (download finished mid-session) need that pass once more.
+        private static void KickTorHatLoader() {
+            try {
+                var t = typeof(CustomHatManager).Assembly.GetType("TheOtherRoles.Modules.CustomHats.Patches.HatManagerPatches");
+                var f = t?.GetField("isLoaded", BindingFlags.NonPublic | BindingFlags.Static);
+                if (f != null && f.GetValue(null) is bool loaded && loaded) {
+                    f.SetValue(null, false);
+                    HalloweenPlugin.Logger?.LogInfo("[Halloween] costume hats arrived after TOR's hat loading, adding them now.");
+                }
+            } catch (Exception ex) {
+                HalloweenPlugin.Logger?.LogWarning($"[Halloween] late hat registration: {ex.Message}");
             }
         }
 
@@ -227,18 +318,8 @@ namespace UnknownsHalloween {
             try { __result?.RemoveAll(f => OwnFiles.Contains(f)); } catch { }
         }
 
-        private static byte[] ReadResource(string logicalName) {
-            using Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(logicalName);
-            if (stream == null) return null;
-            var data = new byte[stream.Length];
-            int read = 0;
-            while (read < data.Length) {
-                int n = stream.Read(data, read, data.Length - read);
-                if (n <= 0) break;
-                read += n;
-            }
-            return read == data.Length ? data : null;
-        }
+        // Embedded (icons) or from the asset packages (all costume and kill frames, HalloweenAssets).
+        private static byte[] ReadResource(string logicalName) => HalloweenAssets.Read(logicalName);
 
         // Writes the embedded PNG into TheOtherHats when it is missing or differs (UCHats' rule:
         // a normal start does no I/O beyond one read, new artwork still refreshes the file).
@@ -317,7 +398,27 @@ namespace UnknownsHalloween {
                 }
             }
             c.Idle = idle;
-            var walk = new Sprite[WalkFrames];
+            if (c.LiveLegs) {
+                // body frames without legs (+ accent masks); missing ones simply switch the live legs off
+                var body = new Sprite[IdleFrames];
+                var bodyAcc = new Sprite[IdleFrames];
+                bool ok = true;
+                for (int i = 0; i < IdleFrames && ok; i++) {
+                    body[i] = loadHatSprite(Res + $"hw_{c.Key}_body_{i + 1}.png");
+                    bodyAcc[i] = loadHatSprite(Res + $"hw_{c.Key}_body_acc_{i + 1}.png");
+                    ok = body[i] != null;
+                }
+                if (ok) { c.Body = body; c.BodyAcc = bodyAcc.All(s => s != null) ? bodyAcc : null; }
+                else HalloweenPlugin.Logger?.LogWarning($"[Halloween] {c.Name}: body frames missing - live legs off.");
+            }
+            int walkCount = WalkFrames;
+            if (c.StillWalk) {
+                // own loop: as many frames as the resources hold (up to 96)
+                walkCount = 0;
+                while (walkCount < 96 && HalloweenAssets.Exists(Res + $"hw_{c.Key}_walk_{walkCount + 1}.png")) walkCount++;
+                if (walkCount == 0) return;
+            }
+            var walk = new Sprite[walkCount];
             for (int i = 0; i < walk.Length; i++) {
                 walk[i] = loadHatSprite(Res + $"hw_{c.Key}_walk_{i + 1}.png");
                 if (walk[i] == null) {
@@ -331,7 +432,7 @@ namespace UnknownsHalloween {
             var idleAcc = new Sprite[IdleFrames];
             for (int i = 0; i < idleAcc.Length; i++)
                 if ((idleAcc[i] = loadHatSprite(Res + $"hw_{c.Key}_acc_{i + 1}.png")) == null) return;
-            var walkAcc = new Sprite[WalkFrames];
+            var walkAcc = new Sprite[walkCount];
             for (int i = 0; i < walkAcc.Length; i++)
                 if ((walkAcc[i] = loadHatSprite(Res + $"hw_{c.Key}_walk_acc_{i + 1}.png")) == null) return;
             c.IdleAcc = idleAcc;
@@ -395,11 +496,22 @@ namespace UnknownsHalloween {
 
         // Runs after TOR's LateUpdatePrefix (which skips the original for cached custom hats), so
         // this is the last writer of the sprite in the frame - same slot UCHats uses for its hats.
+        private static bool legsShown;
+
+        // Live legs need a living, walking player on the map (no vent, ladder or moving platform).
+        private static bool LiveLegsAllowed(PlayerControl pc) {
+            try {
+                return pc.Data != null && !pc.Data.IsDead && !pc.inVent && !pc.onLadder && !pc.inMovingPlat;
+            } catch { return false; }
+        }
+
         private static void HatLateUpdate(HatParent __instance) {
             bool accentShown = false;
+            legsShown = false;
             try {
-                if (HalloweenCorpse.Handle(__instance)) { HideAccent(__instance); return; }
+                if (HalloweenCorpse.Handle(__instance)) { HideAccent(__instance); SpiderLegs.Hide(__instance); return; }
                 accentShown = HatLateUpdateCore(__instance);
+                if (!legsShown) SpiderLegs.Hide(__instance);
             } catch (Exception ex) {
                 if (!loggedAnimError) {
                     loggedAnimError = true;
@@ -431,9 +543,34 @@ namespace UnknownsHalloween {
             EnsureFrames(c);
             if (c.Idle == null) return false;
 
+            if (c.LiveLegs && c.Body != null) {
+                var owner = OwnerOf(__instance);
+                if (owner != null && LiveLegsAllowed(owner)) {
+                    int bi = Mathf.FloorToInt(Time.time * HatFps) % IdleFrames;
+                    var bf = c.Body[bi];
+                    if (bf != null && front.sprite != bf) front.sprite = bf;
+                    if (SpiderLegs.Drive(__instance, owner, front, back)) {
+                        legsShown = true;
+                        if (c.BodyAcc == null) return false;
+                        ShowAccent(__instance, front, c.BodyAcc[bi]);
+                        return true;
+                    }
+                }
+            }
+
             bool running = false;
             float cycle = -1f;
-            if (c.Walk != null) {
+            if (c.Walk != null && c.StillWalk) {
+                // No run animation to read (StillWalkPatch keeps the idle pose): moving = real velocity.
+                var pc = OwnerOf(__instance);
+                if (pc != null && StillWalkMoving(pc)) {
+                    running = true;
+                    if (!walkStart.TryGetValue(pc.PlayerId, out float t0)) walkStart[pc.PlayerId] = t0 = Time.time;
+                    cycle = ((Time.time - t0) * c.WalkFps / c.Walk.Length) % 1f;
+                } else if (pc != null) {
+                    walkStart.Remove(pc.PlayerId);
+                }
+            } else if (c.Walk != null) {
                 var pc = OwnerOf(__instance);
                 if (pc != null) {
                     try {
@@ -452,8 +589,10 @@ namespace UnknownsHalloween {
 
             Sprite frame;
             if (running) {
-                int i = cycle >= 0f ? Mathf.FloorToInt(cycle * WalkFrames) : Mathf.FloorToInt(Time.time * HatFps);
-                frame = c.Walk[((i + WalkPhaseOffset) % WalkFrames + WalkFrames) % WalkFrames];
+                int n = c.Walk.Length;
+                int i = cycle >= 0f ? Mathf.FloorToInt(cycle * n) : Mathf.FloorToInt(Time.time * HatFps);
+                if (!c.StillWalk) i += WalkPhaseOffset;
+                frame = c.Walk[(i % n + n) % n];
             } else {
                 frame = c.Idle[Mathf.FloorToInt(Time.time * HatFps) % IdleFrames];
             }
@@ -477,6 +616,60 @@ namespace UnknownsHalloween {
             var t = sr.transform;
             bool hidden = t.localScale.x == 0f;
             if (hidden != hide) t.localScale = hide ? Vector3.zero : Vector3.one;
+        }
+
+        // ---- still walk (spider): idle pose while moving, the costume's own walk loop ----
+
+        // When each player started moving; the loop starts at frame 0 (the planted idle stance) every time.
+        private static readonly Dictionary<byte, float> walkStart = new();
+
+        private static bool WearsStillWalk(PlayerControl pc) {
+            try {
+                var hatId = pc.CurrentOutfit != null ? pc.CurrentOutfit.HatId : null;
+                return hatId != null && ByHatId.TryGetValue(hatId, out var c) && c.StillWalk;
+            } catch { return false; }
+        }
+
+        private static bool StillWalkMoving(PlayerControl pc) {
+            try {
+                if (pc.onLadder || pc.inVent || pc.inMovingPlat) return false;
+                var body = pc.MyPhysics != null ? pc.MyPhysics.body : null;
+                return body != null && body.velocity.sqrMagnitude > 0.01f;
+            } catch { return false; }
+        }
+
+        // HandleAnimation picks run or idle from body.velocity. For a still-walk costume the velocity is
+        // zero for the duration of this one call, so the game itself settles on the idle animation
+        // (no run cycle, no bob, no switching back and forth); the physics step runs elsewhere and is
+        // untouched. The facing direction is then set from the real velocity. Ghosts, ladders, vents
+        // and moving platforms keep the vanilla handling.
+        [HarmonyPatch(typeof(PlayerPhysics), nameof(PlayerPhysics.HandleAnimation))]
+        static class StillWalkPatch {
+            static void Prefix(PlayerPhysics __instance, [HarmonyArgument(0)] bool amDead, out Vector2? __state) {
+                __state = null;
+                try {
+                    if (amDead || __instance == null || __instance.body == null || ByHatId.Count == 0) return;
+                    var pc = __instance.myPlayer;
+                    if (pc == null || pc.onLadder || pc.inVent || pc.inMovingPlat || !WearsStillWalk(pc)) return;
+                    __state = __instance.body.velocity;
+                    __instance.body.velocity = Vector2.zero;
+                } catch { __state = null; }
+            }
+
+            static void Postfix(PlayerPhysics __instance, Vector2? __state) {
+                if (__state == null) return;
+                try {
+                    var v = __state.Value;
+                    __instance.body.velocity = v;
+                    // Through the cosmetics layer: it turns body, hat, visor and skin together.
+                    // (PlayerPhysics.FlipX alone turned only the body - playtest 2026-10-17: crewmate
+                    // looking left inside a costume looking right.)
+                    var cos = __instance.myPlayer != null ? __instance.myPlayer.cosmetics : null;
+                    if (cos == null || Mathf.Abs(v.x) <= 0.01f) return;
+                    bool left = v.x < 0f;
+                    if (cos.FlipX != left) cos.SetFlipX(left);
+                } catch { }
+            }
         }
 
         // ==================== costume lock ====================
@@ -595,13 +788,19 @@ namespace UnknownsHalloween {
                 // What the killer LOOKS like right now - a camouflaged or morphed killer shows no costume.
                 if (pc != null && pc.CurrentOutfit != null) hatId = pc.CurrentOutfit.HatId;
                 else if (killer.DefaultOutfit != null) hatId = killer.DefaultOutfit.HatId;
-                return hatId != null && ByHatId.TryGetValue(hatId, out var c) ? c : null;
+                return hatId != null && ByHatId.TryGetValue(hatId, out var c) && c.KillKey != null ? c : null;
             } catch { return null; }
         }
 
         private static int ColorIdOf(NetworkedPlayerInfo info) {
             try { if (info?.DefaultOutfit != null) return info.DefaultOutfit.ColorId; } catch { }
             return 0;
+        }
+
+        // The killer's colour as it looks right now (same outfit CostumeOfKiller read the costume from).
+        private static int KillerColorIdOf(NetworkedPlayerInfo info) {
+            try { var pc = info?.Object; if (pc != null && pc.CurrentOutfit != null) return pc.CurrentOutfit.ColorId; } catch { }
+            return ColorIdOf(info);
         }
 
         [HarmonyPatch(typeof(KillOverlay), nameof(KillOverlay.ShowKillAnimation),
@@ -622,7 +821,7 @@ namespace UnknownsHalloween {
                     if (!__runOriginal || !Enabled || ByHatId.Count == 0) return true;
                     var c = CostumeOfKiller(killer, victim);
                     if (c == null || !CostumeEnabled(c)) return true;
-                    queue.Add((c, PickScene(c), ColorIdOf(victim), Time.time + 20f));
+                    queue.Add((c, PickScene(c), ColorIdOf(victim), KillerColorIdOf(killer), Time.time + 20f));
                     return false;                       // suppress the vanilla overlay
                 } catch (Exception e) {
                     HalloweenPlugin.Logger?.LogError($"[Halloween] kill hook: {e}");
@@ -640,7 +839,7 @@ namespace UnknownsHalloween {
                 key = (key ?? string.Empty).Trim().ToLowerInvariant();
                 bool random = key.EndsWith("random", StringComparison.Ordinal);
                 if (random) key = key.Substring(0, key.Length - "random".Length);
-                var c = Costumes.FirstOrDefault(x => x.Key == key || x.KillKey == key
+                var c = Costumes.Where(x => x.KillKey != null).FirstOrDefault(x => x.Key == key || x.KillKey == key
                                                      || (x.Alt != null && x.Alt.Any(s => s.Key == key))
                                                      || (key.Length >= 3 && x.Key.StartsWith(key)));
                 if (c == null) return "Unbekannt. Moeglich: freddy, jason, jasonlift, jasonrandom, xeno, xenobite, xenomorph (zufaellig), ghost.";
@@ -651,7 +850,14 @@ namespace UnknownsHalloween {
                 queue.Clear();
                 // An alternative's own key plays exactly that scene, the costume's main key the main one.
                 var scene = !random && (key == c.KillKey || (c.Alt != null && c.Alt.Any(s => s.Key == key))) ? PickScene(c, key) : PickScene(c);
-                queue.Add((c, scene, color, Time.time + 20f));
+                // With killer layers the local player is the killer; the victim gets a contrast colour (as in the preview page).
+                int victim = color;
+                if (scene.Killer) {
+                    int n = 18;
+                    try { n = Palette.PlayerColors.Length; } catch { }
+                    victim = (color + 5) % Mathf.Max(1, n);
+                }
+                queue.Add((c, scene, victim, color, Time.time + 20f));
                 return $"Kill-Szene {c.Name} wird abgespielt.";
             } catch (Exception e) {
                 return "Fehler: " + e.Message;
@@ -660,9 +866,14 @@ namespace UnknownsHalloween {
 
         // ==================== kill cutscene: playback ====================
 
-        private static readonly List<(Costume c, KillScene scene, int victimColor, float expires)> queue = new();
-        private static readonly string[] Layers = { "back", "vrest", "vbody", "vshade", "front" };
-        private const int LayerBody = 2, LayerShade = 3;
+        private static readonly List<(Costume c, KillScene scene, int victimColor, int killerColor, float expires)> queue = new();
+        // Back to front. u* = the killer's crewmate under the costume, o* = its parts in front of the costume,
+        // v* = the victim; each split into an untinted rest plus a body and a shade mask (split_victim.py).
+        // Scenes without killer layers (KillScene.Killer false) skip the u*/o* files entirely.
+        private static readonly string[] Layers = { "urest", "ubody", "ushade", "back", "orest", "obody", "oshade", "vrest", "vbody", "vshade", "front" };
+        private static readonly int[] KillerBody = { 1, 5 }, KillerShade = { 2, 6 };
+        private const int LayerBody = 8, LayerShade = 9;
+        private static bool IsKillerLayer(int i) => Layers[i][0] == 'u' || Layers[i][0] == 'o';
         private const float StageWidth = 9.44f;
         private static readonly Color BandDark = new Color(0.588f, 0.055f, 0.078f, 1f);
         private static readonly Color BandFlash = new Color(0.925f, 0.235f, 0.204f, 1f);
@@ -673,9 +884,9 @@ namespace UnknownsHalloween {
         private static float startTime;
         private static int shownFrame;
         private static SpriteRenderer band;
-        private static readonly SpriteRenderer[] layerSr = new SpriteRenderer[5];
-        private static readonly Texture2D[] layerTex = new Texture2D[5];
-        private static readonly Sprite[] layerSprite = new Sprite[5];
+        private static readonly SpriteRenderer[] layerSr = new SpriteRenderer[Layers.Length];
+        private static readonly Texture2D[] layerTex = new Texture2D[Layers.Length];
+        private static readonly Sprite[] layerSprite = new Sprite[Layers.Length];
 
         private static void Tick() {
             try {
@@ -686,7 +897,12 @@ namespace UnknownsHalloween {
                 if (root != null) {
                     if (uiBlocked) { EndSequence(); return; }
                     int frame = Mathf.FloorToInt((Time.time - startTime) * KillFps);
-                    if (frame >= activeScene.Frames) { EndSequence(); return; }
+                    if (frame >= activeScene.Frames) {
+                        // the last frame stays up for the scene's hold (Medusa's statue), then the overlay closes
+                        if (Time.time - startTime < activeScene.Frames / KillFps + activeScene.Hold) return;
+                        EndSequence();
+                        return;
+                    }
                     if (frame != shownFrame) ShowFrame(frame);
                     return;
                 }
@@ -695,7 +911,7 @@ namespace UnknownsHalloween {
                 if (hud == null) return;
                 var next = queue[0];
                 queue.RemoveAt(0);
-                Build(hud, next.c, next.scene, next.victimColor);
+                Build(hud, next.c, next.scene, next.victimColor, next.killerColor);
             } catch (Exception e) {
                 if (!loggedKillError) {
                     loggedKillError = true;
@@ -732,7 +948,7 @@ namespace UnknownsHalloween {
             return sr;
         }
 
-        private static void Build(HudManager hud, Costume c, KillScene scene, int victimColor) {
+        private static void Build(HudManager hud, Costume c, KillScene scene, int victimColor, int killerColor) {
             int layer = hud.gameObject.layer;
             root = new GameObject("HalloweenKill") { layer = layer };
             root.transform.SetParent(hud.transform, false);
@@ -761,27 +977,34 @@ namespace UnknownsHalloween {
                 layerSr[i] = MakeSr(Layers[i], 10 + i, layer);
                 layerSr[i].maskInteraction = SpriteMaskInteraction.None;
             }
-            // Body and shade masks are white; the renderer colour tints them in the victim's colours.
-            Color body = Color.red, shade = new Color(0.5f, 0f, 0f, 1f);
-            try {
-                var bodies = Palette.PlayerColors;
-                var shades = Palette.ShadowColors;
-                if (bodies != null && victimColor >= 0 && victimColor < bodies.Length) body = bodies[victimColor];
-                if (shades != null && victimColor >= 0 && victimColor < shades.Length) shade = shades[victimColor];
-            } catch { }
-            layerSr[LayerBody].color = new Color(body.r, body.g, body.b, 1f);
-            layerSr[LayerShade].color = new Color(shade.r, shade.g, shade.b, 1f);
+            // Body and shade masks are white; the renderer colour tints them in the victim's (v*) or
+            // the killer's (u*, o*) colours.
+            Tint(LayerBody, LayerShade, victimColor);
+            foreach (int k in new[] { 0, 1 }) Tint(KillerBody[k], KillerShade[k], killerColor);
             ShowFrame(0);
             PlayVanillaStinger(hud);
         }
 
+        private static void Tint(int bodyLayer, int shadeLayer, int colorId) {
+            Color body = Color.red, shade = new Color(0.5f, 0f, 0f, 1f);
+            try {
+                var bodies = Palette.PlayerColors;
+                var shades = Palette.ShadowColors;
+                if (bodies != null && colorId >= 0 && colorId < bodies.Length) body = bodies[colorId];
+                if (shades != null && colorId >= 0 && colorId < shades.Length) shade = shades[colorId];
+            } catch { }
+            layerSr[bodyLayer].color = new Color(body.r, body.g, body.b, 1f);
+            layerSr[shadeLayer].color = new Color(shade.r, shade.g, shade.b, 1f);
+        }
+
         // Bytes of the frame each layer currently shows. An identical next file (the layer holds still, 14 % of all
         // layer frames) keeps texture and sprite instead of decoding the same picture again.
-        private static readonly byte[][] layerData = new byte[5][];
+        private static readonly byte[][] layerData = new byte[Layers.Length][];
 
         private static void ShowFrame(int frame) {
             shownFrame = frame;
             for (int i = 0; i < Layers.Length; i++) {
+                if (!activeScene.Killer && IsKillerLayer(i)) continue;
                 byte[] data = ReadResource(Res + $"hk_{activeScene.Key}_{Layers[i]}_{frame + 1:00}.png");
                 if (data == null) continue;
                 if (layerData[i] != null && layerSprite[i] != null && data.AsSpan().SequenceEqual(layerData[i])) continue;
@@ -864,10 +1087,11 @@ namespace UnknownsHalloween {
 
         // "1" = everything, "role" = only the Xenomorph role steps, "corpse" = the corpse probe (HalloweenCorpse).
         private static readonly string DiagMode = Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "";
-        private static readonly bool DiagOn = DiagMode == "1" || DiagMode == "role" || DiagMode == "corpse";
+        private static readonly bool DiagOn = DiagMode == "1" || DiagMode == "role" || DiagMode == "corpse" || DiagMode == "spider" || DiagMode == "masquerade" || DiagMode == "banshee"
+                                             || DiagMode.StartsWith("costumes:", StringComparison.Ordinal);
         private static bool diagHideHat;
         private static string diagRectTag;
-        private static float diagWalk;
+        private static float diagWalk, diagWalkY;
         private static bool diagRunInPlace;
         private static string diagDir;
 
@@ -934,8 +1158,8 @@ namespace UnknownsHalloween {
         static class DiagWalkPatch {
             static void Postfix(PlayerPhysics __instance) {
                 try {
-                    if (!DiagOn || diagWalk == 0f || __instance == null || !__instance.AmOwner || __instance.body == null) return;
-                    __instance.body.velocity = new Vector2(diagWalk * 2.5f, 0f);
+                    if (!DiagOn || (diagWalk == 0f && diagWalkY == 0f) || __instance == null || !__instance.AmOwner || __instance.body == null) return;
+                    __instance.body.velocity = new Vector2(diagWalk * 2.5f, diagWalkY * 2.5f);
                 } catch { }
             }
         }
@@ -960,6 +1184,22 @@ namespace UnknownsHalloween {
         // The corpse probe (HalloweenCorpse.ProbeSteps) walks the player through the same hook.
         internal static void DiagSetWalk(float dir) => diagWalk = dir;
 
+        // Every sprite renderer of the player with everything Unity sorts by (layer, order, queue, world z).
+        private static void DiagDumpRenderers(PlayerControl lp, string tag) {
+            try {
+                var cam = Camera.main;
+                foreach (var sr in lp.GetComponentsInChildren<SpriteRenderer>(true)) {
+                    if (sr == null) continue;
+                    string path = sr.name;
+                    for (var t = sr.transform.parent; t != null && t != lp.transform; t = t.parent) path = t.name + "/" + path;
+                    var mat = sr.sharedMaterial;
+                    HalloweenPlugin.Logger?.LogInfo(FormattableString.Invariant(
+                        $"[Halloween] sr {tag} {path} on {(sr.enabled && sr.gameObject.activeInHierarchy ? 1 : 0)} layer {sr.sortingLayerName}({sr.sortingLayerID}) order {sr.sortingOrder} z {sr.transform.position.z:R} lz {sr.transform.localPosition.z:R} queue {(mat != null ? mat.renderQueue : -1)} mat {(mat != null ? mat.name : "-")} prio {sr.rendererPriority} sprite {(sr.sprite != null ? sr.sprite.name : "-")}"));
+                }
+                if (cam != null) HalloweenPlugin.Logger?.LogInfo(FormattableString.Invariant($"[Halloween] cam z {cam.transform.position.z:R} ortho {cam.orthographic} sortmode {cam.transparencySortMode} axis {cam.transparencySortAxis}"));
+            } catch (Exception e) { HalloweenPlugin.Logger?.LogWarning($"[Halloween] diag dump: {e.Message}"); }
+        }
+
         private static void DiagShot(string name) {
             try {
                 ScreenCapture.CaptureScreenshot(Path.Combine(diagDir, name + ".png"));
@@ -980,6 +1220,106 @@ namespace UnknownsHalloween {
                 return;
             }
 
+            if (DiagMode == "banshee") {
+                // Banshee: become her, walk away from the dummies (some go out of sight), scream
+                Add(3.0f, () => Banshee.DiagMakeLocal());
+                Add(0.5f, () => { diagWalk = 1f; });
+                Add(1.4f, () => { diagWalk = 0f; });
+                Add(0.6f, () => Banshee.DiagScream());
+                Add(0.2f, () => DiagShot("banshee_0"));
+                Add(0.5f, () => DiagShot("banshee_1"));
+                Add(0.8f, () => DiagShot("banshee_2"));
+                Add(1.5f, () => DiagShot("banshee_after"));
+                Add(1.0f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag: all done"));
+                Add(0f, () => Application.Quit());
+                diagSteps = steps;
+                return;
+            }
+            if (DiagMode == "masquerade") {
+                // Masquerade: the freeplay dummies dressed up, then a reshuffle as after a meeting
+                Add(3.0f, () => DiagShot("masq_part0"));
+                Add(0.3f, () => { diagWalk = 0.65f; });
+                Add(0.6f, () => { diagWalk = 0f; DiagShot("masq_part0_walk"); });
+                Add(0.5f, () => Masquerade.DiagNextPart());
+                Add(1.0f, () => DiagShot("masq_part1"));
+                Add(0.5f, () => Masquerade.DiagNextPart());
+                Add(1.0f, () => DiagShot("masq_part2"));
+                Add(1.0f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag: all done"));
+                Add(0f, () => Application.Quit());
+                diagSteps = steps;
+                return;
+            }
+            if (DiagMode.StartsWith("costumes:", StringComparison.Ordinal)) {
+                // UC_HALLOWEEN_DIAG=costumes:vampire,medusa - only these costumes: standing, walking right and left,
+                // then each kill scene with shots through to the end (and after it, to see whether the last frame holds)
+                var keys = DiagMode.Substring("costumes:".Length).Split(',').Select(k => k.Trim()).Where(k => k.Length > 0).ToList();
+                var pick = Costumes.Where(c => c.HatId != null && keys.Contains(c.Key)).ToList();
+                Add(0.5f, () => { try { lp.RpcSetColor(10); } catch { } });
+                foreach (var c in pick) {
+                    var cc = c;
+                    Add(1.6f, () => lp.RpcSetHat(cc.HatId));
+                    Add(0.4f, () => DiagShot(cc.Key + "_idle_0"));
+                    Add(0.5f, () => DiagShot(cc.Key + "_idle_1"));
+                    Add(0.3f, () => { diagWalk = 0.65f; });
+                    for (int k = 0; k < 4; k++) { int kk = k; Add(0.13f, () => DiagShot(cc.Key + "_walk_" + kk)); }
+                    Add(0.1f, () => { diagWalk = -0.65f; });
+                    Add(0.5f, () => DiagShot(cc.Key + "_walkleft"));
+                    Add(0.1f, () => { diagWalk = 0f; });
+                    Add(0.8f, () => { try { lp.RpcSetColor(4); } catch { } });
+                    Add(0.6f, () => DiagShot(cc.Key + "_idle_color4"));
+                    Add(0.2f, () => { try { lp.RpcSetColor(10); } catch { } });
+                }
+                foreach (var c in pick) {
+                    if (c.KillKey == null) continue;
+                    var cc = c;
+                    float len = cc.KillFrames / KillFps;
+                    // shots at 15/35/55/75/95 % of the scene, 0.5 s after its end (Medusa: statue still held) and after the hold
+                    var shots = new List<(string tag, float t)>();
+                    foreach (float f in new[] { 0.15f, 0.35f, 0.55f, 0.75f, 0.95f }) shots.Add(((shots.Count).ToString(), len * f));
+                    shots.Add(("hold", len + 0.5f));
+                    shots.Add(("after", len + cc.KillHold + 1.0f));
+                    Add(shots[0].t + 0.05f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag preview: " + Preview(cc.KillKey)));
+                    for (int i = 0; i < shots.Count; i++) {
+                        string tag = cc.Key + "_kill_" + shots[i].tag;
+                        Add(i + 1 < shots.Count ? shots[i + 1].t - shots[i].t : 0.5f, () => DiagShot(tag));
+                    }
+                }
+                Add(1.0f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag: all done"));
+                Add(0f, () => Application.Quit());
+                diagSteps = steps;
+                return;
+            }
+            if (DiagMode == "spider") {
+                // live legs (SpiderLegs): how the game sorts the player's renderers, then walk, stop, turn
+                var sp = Costumes.FirstOrDefault(c => c.Key == "spider" && c.HatId != null);
+                Add(0.5f, () => { try { lp.RpcSetColor(10); } catch { } });
+                if (sp != null) {
+                    Add(1.0f, () => lp.RpcSetHat(sp.HatId));
+                    Add(1.5f, () => { DiagDumpRenderers(lp, "idle"); DiagShot("spider_idle"); });
+                    // 0.65 x 2.5 units/s ~ 450 bean units/s, what a real round measured (diagWalk 1 = 635)
+                    Add(0.3f, () => { diagWalk = 0.65f; });
+                    for (int k = 0; k < 8; k++) { int kk = k; Add(0.12f, () => DiagShot("spider_walk_" + kk)); }
+                    Add(0.1f, () => DiagDumpRenderers(lp, "walk"));
+                    Add(0.1f, () => { diagWalk = 0f; });
+                    for (int k = 0; k < 6; k++) { int kk = k; Add(0.15f, () => DiagShot("spider_stop_" + kk)); }
+                    Add(0.5f, () => { diagWalk = -0.65f; });
+                    for (int k = 0; k < 6; k++) { int kk = k; Add(0.12f, () => DiagShot("spider_left_" + kk)); }
+                    Add(0.1f, () => { diagWalk = 0f; });
+                    Add(1.2f, () => DiagShot("spider_end"));
+                    // up and down the map (2026-10-17: feet slid and legs folded there)
+                    Add(0.3f, () => { diagWalkY = 0.65f; });
+                    for (int k = 0; k < 6; k++) { int kk = k; Add(0.12f, () => DiagShot("spider_up_" + kk)); }
+                    Add(0.1f, () => { diagWalkY = 0f; });
+                    Add(0.9f, () => { diagWalkY = -0.65f; });
+                    for (int k = 0; k < 6; k++) { int kk = k; Add(0.12f, () => DiagShot("spider_down_" + kk)); }
+                    Add(0.1f, () => { diagWalkY = 0f; });
+                    Add(1.0f, () => DiagShot("spider_end2"));
+                }
+                Add(1.0f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag: all done"));
+                Add(0f, () => Application.Quit());
+                diagSteps = steps;
+                return;
+            }
             Add(0.5f, () => { try { lp.RpcSetColor(10); } catch { } });
             if (DiagMode == "role") worn.Clear();
             if (worn.Count > 0) {
@@ -1044,6 +1384,7 @@ namespace UnknownsHalloween {
             Add(1.4f, () => { Xenomorph.DiagForm(false); Log("form off"); });
             Add(0.6f, () => { Log("reverted"); DiagShot("role_reverted"); });
             foreach (var c in DiagMode == "role" ? new Costume[0] : Costumes) {
+                if (c.KillKey == null) continue;
                 var cc = c;
                 var keys = new List<string> { cc.KillKey };
                 if (cc.Alt != null) foreach (var alt in cc.Alt) keys.Add(alt.Key);
@@ -1086,6 +1427,7 @@ namespace UnknownsHalloween {
             HalloweenCorpse.ResetAll();
             EndSequence();
             queue.Clear();
+            SpiderLegs.Clear();
         }
     }
 }

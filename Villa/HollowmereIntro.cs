@@ -105,7 +105,11 @@ internal static class HollowmereIntro
             if (_diagAt < 0f) { _diagAt = Time.time + 2f; return; }
             if (Time.time < _diagAt) return;
             _diagDone = true;
-            __instance.StartCoroutine(DiagRun().WrapToIl2Cpp());
+            // "villaintro2": wie im echten Rundenstart, ueber dem echten Rollen-Intro des Spiels
+            if ((Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("villaintro2"))
+                __instance.StartCoroutine(DiagRealIntro(__instance).WrapToIl2Cpp());
+            else
+                __instance.StartCoroutine(DiagRun().WrapToIl2Cpp());
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} diag failed: {e}"); _diagDone = true; }
     }
@@ -131,6 +135,64 @@ internal static class HollowmereIntro
             yield return play.Current;
         }
         HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag: intro played to the end");
+    }
+
+    // Echtes Rollen-Intro im Freeplay: Prefab erzeugen und CoBegin starten (der Postfix haengt den Vorspann davor),
+    // dabei fotografieren und alle Renderer von Intro und Vorspann protokollieren. Spieltest 17.10.: im echten
+    // Rundenstart war nur oben ein Streifen des Vorspanns zu sehen, darunter schwarz.
+    private static IEnumerator DiagRealIntro(HudManager hud)
+    {
+        string dir = Path.Combine(BepInEx.Paths.GameRootPath, "AtlasShots");
+        Directory.CreateDirectory(dir);
+        IntroCutscene intro = null;
+        try
+        {
+            intro = Object.Instantiate(hud.IntroPrefab, hud.transform);
+            hud.StartCoroutine(intro.CoBegin());
+            HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag2: real intro started");
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} diag2: intro failed: {e}"); }
+        float t0 = Time.time;
+        float[] at = { 1.0f, 3.0f, 5.5f };
+        int next = 0;
+        bool dumped = false;
+        while (Time.time - t0 < 9f)
+        {
+            float t = Time.time - t0;
+            if (!dumped && t >= 1.5f) { dumped = true; DiagDump(intro); }
+            if (next < at.Length && t >= at[next])
+            {
+                ScreenCapture.CaptureScreenshot(Path.Combine(dir, $"intro2_{at[next]:0.0}s.png".Replace(',', '.')));
+                next++;
+            }
+            yield return null;
+        }
+        HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag: all done");
+        Application.Quit();
+    }
+
+    private static void DiagDump(IntroCutscene intro)
+    {
+        void One(string tag, Renderer r, Transform stop)
+        {
+            if (r == null) return;
+            string path = r.name;
+            for (var t = r.transform.parent; t != null && t != stop; t = t.parent) path = t.name + "/" + path;
+            var b = r.bounds;
+            HalloweenPlugin.Logger.LogInfo(FormattableString.Invariant(
+                $"{LogPrefix} r {tag} {path} on {(r.enabled && r.gameObject.activeInHierarchy ? 1 : 0)} layer {r.sortingLayerName}({SortingLayer.GetLayerValueFromID(r.sortingLayerID)}) order {r.sortingOrder} go {r.gameObject.layer} z {r.transform.position.z:R} bounds {b.min.x:F2},{b.min.y:F2}..{b.max.x:F2},{b.max.y:F2}"));
+        }
+        try
+        {
+            if (intro != null) foreach (var r in intro.GetComponentsInChildren<Renderer>(true)) One("intro", r, intro.transform);
+            if (_root != null) foreach (var r in _root.GetComponentsInChildren<Renderer>(true)) One("villa", r, _root.transform);
+            var fs = HudManager.InstanceExists ? HudManager.Instance.FullScreen : null;
+            if (fs != null) One("hud", fs, null);
+            foreach (var c in Camera.allCameras)
+                HalloweenPlugin.Logger.LogInfo(FormattableString.Invariant(
+                    $"{LogPrefix} cam {c.name} depth {c.depth} mask {c.cullingMask} ortho {c.orthographicSize:F2} pos {c.transform.position.x:F2},{c.transform.position.y:F2},{c.transform.position.z:F2}"));
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} diag dump: {e.Message}"); }
     }
 
     // ------------------------------------------------------------------ Entscheidung des Hosts
@@ -175,10 +237,13 @@ internal static class HollowmereIntro
 
     // ------------------------------------------------------------------ Einhaengen vor dem Rollen-Intro
 
-    internal static void IntroCutscene_CoBegin_Postfix(ref Il2CppSystem.Collections.IEnumerator __result)
+    private static IntroCutscene _intro;            // das Rollen-Intro, vor dem der Vorspann laeuft (Sortierung, Diagnose)
+
+    internal static void IntroCutscene_CoBegin_Postfix(IntroCutscene __instance, ref Il2CppSystem.Collections.IEnumerator __result)
     {
         try
         {
+            _intro = __instance;
             // Diagnose: UC_HALLOWEEN_DIAG=villaintro spielt den Vorspann auch ohne Host-Entscheidung (Freeplay)
             bool diag = (Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("villaintro");
             if ((!_playNext && !diag) || __result == null) return;
@@ -238,15 +303,14 @@ internal static class HollowmereIntro
     {
         if (_frameCount >= 0) return _frameCount;
         int n = 0;
-        var asm = typeof(HollowmereIntro).Assembly;
-        while (asm.GetManifestResourceInfo($"{FramePrefix}{n:000}.jpg") != null) n++;
+        while (HalloweenAssets.Exists($"{FramePrefix}{n:000}.jpg")) n++;
         _frameCount = n;
         return n;
     }
 
     private static byte[] FrameBytes(int i)
     {
-        using Stream s = typeof(HollowmereIntro).Assembly.GetManifestResourceStream($"{FramePrefix}{i:000}.jpg");
+        using Stream s = HalloweenAssets.Open($"{FramePrefix}{i:000}.jpg");
         if (s == null) return null;
         var data = new byte[s.Length];
         int read = 0;
@@ -288,7 +352,28 @@ internal static class HollowmereIntro
             _root.transform.SetParent(cam.transform, false);
             _root.transform.localPosition = new Vector3(0f, 0f, 5f);
         }
+        // Groesse aus der Kamera, die diese Ebene WIRKLICH zeichnet (die UI-Kamera der HUD-Ebene), nicht aus
+        // Camera.main: in der Lobby bzw. auf der Villa zoomt die Hauptkamera anders, dann war der Vorspann
+        // ~1,5x zu gross und verschoben (User 17.10.: nur ein Streifen der Filmklappe oben sichtbar).
+        var view = RenderCameraFor(_layer) ?? cam;
+        if (view != cam)
+        {
+            // mittig vor diese Kamera, mit ausgeglichenem Massstab der Eltern
+            var vp = _root.transform.parent != null ? _root.transform.parent : null;
+            _root.transform.SetParent(view.transform, false);
+            _root.transform.localPosition = new Vector3(0f, 0f, Mathf.Max(view.nearClipPlane + 0.5f, 1f));
+            _root.transform.localRotation = Quaternion.identity;
+            var vls = view.transform.lossyScale;
+            _root.transform.localScale = new Vector3(1f / Mathf.Max(0.0001f, vls.x), 1f / Mathf.Max(0.0001f, vls.y), 1f);
+        }
+        cam = view;
+        // Das Rollen-Intro ist schon aufgebaut, waehrend der Vorspann laeuft (es wartet nur). Seine schwarzen Ebenen
+        // (BackgroundLayer, ForegroundFade, FrontMost) lagen trotz niedrigerer Sortierung VOR dem Vorspann (Tiefe
+        // z -309..-325 gegen -9); sichtbar blieb nur oben ein Streifen bis y 5,40 (Spieltest und Selbsttest 17.10.).
+        // Deshalb wird das Intro fuer die Dauer des Vorspanns ausgeblendet (es hat da noch nicht angefangen).
+        HideIntro();
         float h = cam.orthographicSize * 2f, w = h * cam.aspect;
+        HalloweenPlugin.Logger.LogInfo($"{LogPrefix} drawn by camera '{cam.name}' (ortho {cam.orthographicSize:F2}, aspect {cam.aspect:F2}, layer {_layer})");
         var black = MakeQuad("black", Color.black, 0);
         black.transform.localScale = new Vector3(w * 1.05f, h * 1.05f, 1f);
         var go = new GameObject("frame") { layer = _layer };
@@ -334,6 +419,22 @@ internal static class HollowmereIntro
 
     private static int _layer = 5, _sortLayer, _baseOrder = 32000;
 
+    /// Die orthografische Kamera, die die Ebene zeichnet und am weitesten vorn rendert (hoechste depth).
+    private static Camera RenderCameraFor(int layer)
+    {
+        Camera best = null;
+        try
+        {
+            foreach (var c in Camera.allCameras)
+            {
+                if (c == null || !c.enabled || !c.orthographic || (c.cullingMask & (1 << layer)) == 0) continue;
+                if (best == null || c.depth > best.depth) best = c;
+            }
+        }
+        catch { }
+        return best;
+    }
+
     private static GameObject MakeQuad(string name, Color c, int order)
     {
         var go = new GameObject(name) { layer = _layer };
@@ -349,8 +450,42 @@ internal static class HollowmereIntro
         return go;
     }
 
+    // Renderer des Rollen-Intros, die der Vorspann ausgeblendet hat (werden genau so wieder eingeschaltet).
+    private static readonly System.Collections.Generic.List<Renderer> _hiddenIntro = new();
+    private static float _introMinZ;
+
+    private static void HideIntro()
+    {
+        _hiddenIntro.Clear();
+        _introMinZ = 0f;
+        try
+        {
+            if (_intro == null) return;
+            foreach (var r in _intro.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null) continue;
+                _introMinZ = Mathf.Min(_introMinZ, r.transform.position.z);
+                if (!r.enabled) continue;
+                r.enabled = false;
+                _hiddenIntro.Add(r);
+            }
+            HalloweenPlugin.Logger.LogInfo($"{LogPrefix} role intro hidden while the intro plays ({_hiddenIntro.Count} renderer(s), front z {_introMinZ:F0})");
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} hiding the role intro failed: {e.Message}"); }
+    }
+
+    private static void RestoreIntro()
+    {
+        foreach (var r in _hiddenIntro)
+        {
+            try { if (r != null) r.enabled = true; } catch { }
+        }
+        _hiddenIntro.Clear();
+    }
+
     private static void Cleanup()
     {
+        RestoreIntro();
         try { if (_root != null) Object.Destroy(_root); } catch { }
         try { if (_tex != null) Object.Destroy(_tex); } catch { }
         _root = null;

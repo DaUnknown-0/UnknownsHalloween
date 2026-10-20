@@ -174,7 +174,7 @@ SECRETS = [
     ("tapestry", "wandteppich", (21.0, 7.1), (21.0, 8.9), False, B),         # Seance -> Halle, Einbahn
     ("bookcase", "drehregal", (10.0, 16.5), (11.8, 16.5), True, B),          # Bibliothek <-> Halle
     ("dumbwaiter", "speiseaufzug", (6.3, 5.5), (26.3, 6.8), False, B),       # Kueche -> Funkraum, Einbahn
-    ("tunnel", "tunneleingang", (44.8, 34.2), (1.2, 23.3), False, L),        # Gruft -> Kapelle, Einbahn
+    ("tunnel", "tunneleingang", (44.8, 34.2), (1.4, 22.7), False, L),        # Gruft -> Kapelle, Einbahn; Ausgang einen Schritt VOR der Klappe (lag 17.10. im Hindernis 0.8-1.6/23.1-23.7, man steckte fest)
 ]
 
 # Mitternachtsuhr (Mechanik spaeter): die Standuhr in der Halle
