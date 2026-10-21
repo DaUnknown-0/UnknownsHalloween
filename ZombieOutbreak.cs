@@ -32,7 +32,7 @@
  * rebuilt in the OnGameEnd postfix from the zombie set snapshotted in its prefix; own banner lines (TOR banner
  * slots 17/18).
  *
- * RPC module 240 (shared with Final Girl), subtypes 0-4. Options 2040-2046. See ID-Registry.md.
+ * RPC module 240 (shared with Sole Survivor), subtypes 0-4. Options 2040-2046. See ID-Registry.md.
  */
 
 using System;
@@ -152,7 +152,7 @@ namespace UnknownsHalloween {
             booted = true;
             try {
                 CreateOptions();
-                FinalGirl.CreateOptions();
+                SoleSurvivor.CreateOptions();
                 R.Register();
                 PatchForeign(new Harmony("daunknown.unknownshalloween.zombie"));
             } catch (Exception e) { HalloweenPlugin.Logger?.LogError($"{R.LogPrefix} registration failed: {e}"); }
@@ -471,7 +471,7 @@ namespace UnknownsHalloween {
                         if (currentTarget != null) PlayerControlFixedUpdatePatch.setPlayerOutline(currentTarget, Green);
                     } else currentTarget = null;
 
-                    R.HudLine(started && !FinalGirl.Active ? string.Format(Tr("line"), R.Clock(Remaining()), Humans(), Zombies()) : "");
+                    R.HudLine(started && !SoleSurvivor.Active ? string.Format(Tr("line"), R.Clock(Remaining()), Humans(), Zombies()) : "");
 
                     if (Time.realtimeSinceStartup < nextHostTick) return;
                     nextHostTick = Time.realtimeSinceStartup + 0.25f;
@@ -627,7 +627,7 @@ namespace UnknownsHalloween {
             currentTarget = null;
             try { if (tint != null) UnityEngine.Object.Destroy(tint.gameObject); } catch { }
             tint = null;
-            if (!FinalGirl.Active) R.ClearHud();
+            if (!SoleSurvivor.Active) R.ClearHud();
         }
 
         [HarmonyPatch(typeof(IntroCutscene), nameof(IntroCutscene.OnDestroy))]

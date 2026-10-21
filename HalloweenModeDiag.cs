@@ -5,8 +5,8 @@
  * Self test of the two game modes, only with the environment variable UC_HALLOWEEN_DIAG set to
  *   zombie            infection with the turn, zombie look, meeting lock, zombie win
  *   zombie:survivors  a dummy zombie, the clock runs out, survivor win
- *   finalgirl         a dummy impostor, parity held back, finale with darkness, arrow and exit, escape (crew win)
- *   finalgirl:timeout the same finale, the time runs out (impostor win)
+ *   solesurvivor         a dummy impostor, parity held back, finale with darkness, arrow and exit, escape (crew win)
+ *   solesurvivor:timeout the same finale, the time runs out (impostor win)
  * Needs a freeplay round that starts on its own (Unknown's Atlas ForceMap = vanilla:Skeld). Screenshots go to
  * <game>\UCShots\hw2026zombie\, the run ends with "[HalloweenModes] diag: all done" and quits. The timeline is a
  * Reactor coroutine, so it survives the change into the end screen.
@@ -24,7 +24,7 @@ using R = UnknownsHalloween.HalloweenModeRules;
 namespace UnknownsHalloween {
     internal static class HalloweenModeDiag {
         private static string Mode => ZombieOutbreak.DiagMode;
-        private static bool On => ZombieOutbreak.Diag || FinalGirl.Diag;
+        private static bool On => ZombieOutbreak.Diag || SoleSurvivor.Diag;
         private static bool running;
         private static float roundSeen = -1f;
         private static string dir;
@@ -152,15 +152,15 @@ namespace UnknownsHalloween {
             yield return Quit();
         }
 
-        // ---------------------------------------------------------------- Final Girl
+        // ---------------------------------------------------------------- Sole Survivor
 
         private static IEnumerator Final() {
             var lp = PlayerControl.LocalPlayer;
-            bool timeout = Mode == "finalgirl:timeout";
-            if (timeout) FinalGirl.DiagLimit = 6f;
-            FinalGirl.DiagIgnoreTasks = true;
+            bool timeout = Mode == "solesurvivor:timeout";
+            if (timeout) SoleSurvivor.DiagLimit = 6f;
+            SoleSurvivor.DiagIgnoreTasks = true;
             var dummies = Dummies(lp);
-            Log($"mode {Mode} | dummies {dummies.Length} | {FinalGirl.DiagState()}");
+            Log($"mode {Mode} | dummies {dummies.Length} | {SoleSurvivor.DiagState()}");
             if (dummies.Length < 1) { Log("no dummy"); yield return Quit(); yield break; }
             var imp = dummies[0];
             try { imp.RpcSetRole(RoleTypes.Impostor, true); } catch (Exception e) { Log("RpcSetRole: " + e.Message); }
@@ -176,14 +176,14 @@ namespace UnknownsHalloween {
             yield return Wait(1.0f);
             Log("dummies dead: " + string.Join(", ", dummies.Skip(1).Select(p => $"{p.Data?.PlayerName}={p.Data?.IsDead}")));
             Log($"impostor dummy {R.IsImpostor(imp)}, alive {PlayerControl.AllPlayerControls.ToArray().Count(R.IsAlive)}");
-            FinalGirl.Conditions(out var found, out string why);
+            SoleSurvivor.Conditions(out var found, out string why);
             Log($"conditions: {why}");
             Shot("f01_before");
             // what TOR sends at parity
             try { GameManager.Instance.RpcEndGame(GameOverReason.ImpostorByKill, false); } catch (Exception e) { Log("RpcEndGame: " + e.Message); }
-            Log($"after the parity end: {FinalGirl.DiagState()}");
+            Log($"after the parity end: {SoleSurvivor.DiagState()}");
             yield return Wait(2.5f);
-            Log($"finale | {FinalGirl.DiagState()} | light me {FinalGirl.DiagLight(lp):F2}, impostor {FinalGirl.DiagLight(imp):F2}");
+            Log($"finale | {SoleSurvivor.DiagState()} | light me {SoleSurvivor.DiagLight(lp):F2}, impostor {SoleSurvivor.DiagLight(imp):F2}");
             Shot("f02_finale_start");
             try { lp.CmdReportDeadBody(null); } catch (Exception e) { Log("report: " + e.Message); }
             yield return Wait(1.0f);
@@ -193,13 +193,13 @@ namespace UnknownsHalloween {
             Walk(0f);
             Shot("f03_flashlight");
             if (!timeout) {
-                var exit = FinalGirl.ExitPos;
+                var exit = SoleSurvivor.ExitPos;
                 Snap(lp, exit + new Vector2(-2.6f, 0f));
                 yield return Wait(1.0f);
                 Shot("f04_exit_near");
                 Snap(lp, exit);
                 yield return Wait(1.5f);
-                Log($"at the exit | {FinalGirl.DiagState()}");
+                Log($"at the exit | {SoleSurvivor.DiagState()}");
                 yield return Wait(4.5f);
                 Shot("f05_escaped");
             } else {

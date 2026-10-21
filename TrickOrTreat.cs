@@ -23,6 +23,8 @@
  *   Sub 6 cabinets  host -> all   [n] n x [x short*100][y short*100]   (own maps: the cabinets of the round, once)
  *   Sub 7 search    any  -> host  [phase][cabinet]
  *   Sub 8 searched  host -> all   [phase][cabinet][player][candy or 255]   (the cabinet stands open; a candy follows as Sub 2)
+ *   Sub 9..13       candy bag, Trick Candy (TrickOrTreatPlus.cs)
+ * Sub 2 carries the candy kind at the end; candy 254 = eaten from the bag, 253 = the Sugar Shock, 255 = self test.
  * On the own maps (Atlas and Halloween maps) the candies hide in cabinets instead of lying on the floor, see
  * TrickOrTreatCabinets.cs. A candy in a cabinet travels in Sub 0 with the cabinet's position.
  * Every client keeps the same list of running effects per player, so speed, size, shields, looks, glow, crows
@@ -50,6 +52,9 @@ namespace UnknownsHalloween {
         EchoDrop, RockCandy, FogFudge, ExtraChore, Hiccups, LightsOut, Earmuffs, Jinkies, Butterfingers, Glowing,
         CrowCompany, Gobstopper, HardCandy, Brittle, Nausea, Regurgitate, VolatileStarlight, NothingQ, SwapSweet,
         ShrinkSherbet, BigBite,
+        // 2026-10-21 (Hexenkessel picks)
+        DoubleDip, CandyCornCompass, PeekAPop, StickyToffee, VentMint, FizzPop, HomingHumbug, TattletaleTaffy,
+        BrainFreeze, ReverseGummy, WrapperTrail, SugarCrash, CopycatCaramel, GhostlyGum,
         Count
     }
 
@@ -66,6 +71,7 @@ namespace UnknownsHalloween {
         public int Saved = -1;      // Gobstopper: emergencies before
         public float Next;          // Hiccups: next hiccup (Time.time)
         public float Started;
+        public bool Entered;        // Vent Mint (crew): the one vent trip has begun
     }
 
     public static class TrickOrTreat {
@@ -106,7 +112,8 @@ namespace UnknownsHalloween {
         internal static int seed;
         internal static byte phase;
         private static long mappedKey = long.MinValue;
-        internal static uint roundKinds = TreatSettings.AllKinds, roundEffects = TreatSettings.AllEffects;   // the rules the spawn came with
+        internal static uint roundKinds = TreatSettings.AllKinds;
+        internal static ulong roundEffects = TreatSettings.AllEffects;   // the rules the spawn came with
         private static readonly Treat[] mapping = new Treat[KindCount];
         internal static readonly Dictionary<byte, List<ActiveTreat>> active = new();
         private static readonly Dictionary<byte, ActiveTreat> lastCandy = new();
@@ -136,15 +143,15 @@ namespace UnknownsHalloween {
 
         // The draw of the round: every client derives the same effect per kind from the host's seed and the active
         // effects the spawn message carried. Fewer active effects than kinds: effects are handed out twice.
-        internal static List<Treat> EffectPool(uint mask) {
+        internal static List<Treat> EffectPool(ulong mask) {
             var pool = new List<Treat>();
-            for (int i = 0; i < (int)Treat.Count; i++) if ((mask & (1u << i)) != 0) pool.Add((Treat)i);
+            for (int i = 0; i < (int)Treat.Count; i++) if ((mask & (1UL << i)) != 0) pool.Add((Treat)i);
             if (pool.Count == 0) for (int i = 0; i < (int)Treat.Count; i++) pool.Add((Treat)i);
             return pool;
         }
 
         private static void EnsureMapping() {
-            long key = ((long)seed << 32) ^ ((long)roundEffects * 4099L) ^ roundKinds;
+            long key = ((long)seed << 32) ^ (long)(roundEffects * 4099UL) ^ roundKinds;
             if (mappedKey == key) return;
             mappedKey = key;
             var rng = new System.Random(seed);
@@ -201,7 +208,8 @@ namespace UnknownsHalloween {
                 switch (sub) {
                     case SubSpawn: {
                         int s = r.ReadInt32();
-                        uint kinds = r.ReadUInt16(), effects = r.ReadUInt32();
+                        uint kinds = r.ReadUInt16();
+                        ulong effects = r.ReadUInt64();
                         byte ph = r.ReadByte();
                         int n = r.ReadByte();
                         var list = new List<Candy>();
@@ -220,7 +228,8 @@ namespace UnknownsHalloween {
                     case SubEaten: {
                         byte ph = r.ReadByte(), idx = r.ReadByte(), pid = r.ReadByte(), fx = r.ReadByte(), p1 = r.ReadByte(), p2 = r.ReadByte();
                         bool imp = r.ReadBoolean();
-                        if (UCRpc.RequireHost("Treats.Eaten")) ApplyEaten(ph, idx, pid, (Treat)fx, p1, p2, imp);
+                        byte kind = r.ReadByte();
+                        if (UCRpc.RequireHost("Treats.Eaten")) ApplyEaten(ph, idx, pid, (Treat)fx, p1, p2, imp, kind);
                         break;
                     }
                     case SubShield: {
@@ -237,6 +246,10 @@ namespace UnknownsHalloween {
                     case SubSearchReq:
                     case SubSearched:
                         TreatCabinets.HandleRpc(sub, r);
+                        break;
+                    case TreatPlus.SubTakeReq: case TreatPlus.SubTaken: case TreatPlus.SubBagEatReq:
+                    case TreatPlus.SubTrickReq: case TreatPlus.SubTrickPlaced:
+                        TreatPlus.HandleRpc(sub, r);
                         break;
                     case SubRecomplete: {
                         byte pid = r.ReadByte();
@@ -260,7 +273,8 @@ namespace UnknownsHalloween {
                 if (seed == 0) seed = rnd.Next(1, int.MaxValue);
                 byte ph = (byte)(phase + 1);
                 var rules = TreatSettings.Current;
-                uint kinds = rules.Kinds & TreatSettings.AllKinds, effects = rules.Effects & TreatSettings.AllEffects;
+                uint kinds = rules.Kinds & TreatSettings.AllKinds;
+                ulong effects = rules.Effects & TreatSettings.AllEffects;
                 if (kinds == 0) kinds = TreatSettings.AllKinds;
                 if (effects == 0) effects = TreatSettings.AllEffects;
                 var kindList = Enumerable.Range(0, KindCount).Where(k => (kinds & (1u << k)) != 0).ToList();
@@ -285,8 +299,8 @@ namespace UnknownsHalloween {
                     w.Write(ph);
                     w.Write((byte)list.Count);
                     foreach (var c in list) {
-                        w.Write((short)Mathf.RoundToInt(c.Pos.x * 100f));
-                        w.Write((short)Mathf.RoundToInt(c.Pos.y * 100f));
+                        w.Write(unchecked((ushort)(short)Mathf.RoundToInt(c.Pos.x * 100f)));
+                        w.Write(unchecked((ushort)(short)Mathf.RoundToInt(c.Pos.y * 100f)));
                         w.Write(c.Kind);
                     }
                 });
@@ -298,7 +312,7 @@ namespace UnknownsHalloween {
             }
         }
 
-        private static void ApplySpawn(int s, uint kinds, uint effects, byte ph, List<Candy> list) {
+        private static void ApplySpawn(int s, uint kinds, ulong effects, byte ph, List<Candy> list) {
             seed = s;
             roundKinds = kinds;
             roundEffects = effects;
@@ -315,7 +329,7 @@ namespace UnknownsHalloween {
         // (no collider within the candy radius) also accepted points in the hollow space inside thick walls, which
         // has no collider of its own. So the host samples the room areas once per map and keeps only the points
         // that connect to a known reachable point (players, vents) through a chain of clear circle casts.
-        private const float ReachRadius = 0.25f, ReachStep = 6.5f;
+        private const float ReachRadius = 0.25f, ReachStep = 6.5f, UsableClear = 1.4f;
         internal static IntPtr reachShip;
         internal static readonly List<(Vector2 p, PlainShipRoom room)> reachable = new();
 
@@ -350,8 +364,10 @@ namespace UnknownsHalloween {
                 foreach (var v in ship.AllVents) {
                     if (v == null) continue;
                     var c = (Vector2)v.transform.position;
+                    // the line from the vent must be clear too: a vent close to a wall would otherwise seed a point
+                    // behind it, in the void outside the room, and the chain grew from there (21.10., Skeld engines)
                     foreach (var off in new[] { new Vector2(0.7f, 0f), new Vector2(-0.7f, 0f), new Vector2(0f, -0.6f), new Vector2(0f, 0.6f) })
-                        if (!Blocked(c + off, 0.3f, mask)) known.Add(c + off);
+                        if (!Blocked(c + off, 0.3f, mask) && Clear(c, c + off, mask)) known.Add(c + off);
                 }
             } catch { }
             var samples = new List<(Vector2 p, PlainShipRoom room)>();
@@ -367,6 +383,15 @@ namespace UnknownsHalloween {
                     want--;
                 }
             }
+            // nothing next to something the Use button also wants (consoles, the emergency button, vents): the
+            // vanilla target wins there and the candy could not be eaten (21.10., Midnight Bonbon at the Skeld button)
+            var usable = new List<Vector2>();
+            try { foreach (var c in UnityEngine.Object.FindObjectsOfType<Console>()) if (c != null) usable.Add(c.transform.position); } catch { }
+            try { foreach (var c in UnityEngine.Object.FindObjectsOfType<SystemConsole>()) if (c != null) usable.Add(c.transform.position); } catch { }
+            try { foreach (var v in ship.AllVents) if (v != null) usable.Add(v.transform.position); } catch { }
+            int before = samples.Count;
+            samples.RemoveAll(sp => usable.Any(u => (u - sp.p).sqrMagnitude < UsableClear * UsableClear));
+            HalloweenPlugin.Logger?.LogInfo($"{LogPrefix} spots: {before - samples.Count} sampled points dropped next to {usable.Count} usables");
             var open = new List<(Vector2 p, PlainShipRoom room)>(samples);
             for (int pass = 0; pass < 8 && open.Count > 0 && known.Count > 0; pass++) {
                 int added = 0;
@@ -415,7 +440,7 @@ namespace UnknownsHalloween {
                         if (spots.Count >= n) break;
                         var c = (Vector2)v.transform.position;
                         foreach (var off in new[] { new Vector2(0.7f, 0f), new Vector2(-0.7f, 0f), new Vector2(0f, -0.6f), new Vector2(0f, 0.6f) })
-                            if (!Blocked(c + off, 0.42f, mask) && Spread(c + off)) { spots.Add(c + off); break; }
+                            if (!Blocked(c + off, 0.42f, mask) && Clear(c, c + off, mask) && Spread(c + off)) { spots.Add(c + off); break; }
                     }
                 } catch { }
             }
@@ -449,35 +474,46 @@ namespace UnknownsHalloween {
         internal static void HostEat(PlayerControl eater, byte ph, byte idx, Treat? forced) {
             try {
                 if (!AmHost() || eater == null || !IsAlive(eater) || InMeeting()) return;
-                Treat fx;
-                if (forced.HasValue) {
-                    fx = forced.Value;
-                    idx = byte.MaxValue;
-                } else {
-                    if (ph != phase) return;
-                    var c = candies.FirstOrDefault(k => k.Index == idx);
-                    if (c == null || c.Eaten) return;
-                    float reach = c.Cab != TreatCabinets.None ? TreatCabinets.SearchRange() : Range();
-                    if (Vector2.Distance(eater.GetTruePosition(), c.Pos) > reach + 0.9f) return;   // latency slack
-                    if (c.Kind == PoisonKind) { HostPoison(eater, ph, idx); return; }
-                    fx = EffectOf(c.Kind);
-                }
-                byte p1 = byte.MaxValue, p2 = byte.MaxValue;
-                if (fx == Treat.VolatileStarlight) {
-                    var pool = EffectPool(roundEffects).Where(t => t != Treat.VolatileStarlight && t != Treat.Regurgitate).ToList();
-                    if (pool.Count == 0) pool = EffectPool(TreatSettings.AllEffects).Where(t => t != Treat.VolatileStarlight && t != Treat.Regurgitate).ToList();
-                    var real = pool[rnd.Next(pool.Count)];
-                    p1 = (byte)real;
-                    p2 = RollParam(real, eater);
-                } else p1 = RollParam(fx, eater);
-                bool imp = IsImp(eater);
-                byte pid = eater.PlayerId;
-                Send(SubEaten, w => { w.Write(ph); w.Write(idx); w.Write(pid); w.Write((byte)fx); w.Write(p1); w.Write(p2); w.Write(imp); });
-                ApplyEaten(ph, idx, pid, fx, p1, p2, imp);
-                HostSideEffects(eater, fx == Treat.VolatileStarlight ? (Treat)p1 : fx, imp);
+                if (forced.HasValue) { HostResolve(eater, phase, byte.MaxValue, forced.Value, byte.MaxValue); return; }
+                if (ph != phase) return;
+                var c = candies.FirstOrDefault(k => k.Index == idx);
+                if (c == null || c.Eaten) return;
+                float reach = c.Cab != TreatCabinets.None ? TreatCabinets.SearchRange() : Range();
+                if (Vector2.Distance(eater.GetTruePosition(), c.Pos) > reach + 0.9f) return;   // latency slack
+                if (c.Kind == PoisonKind) { HostPoison(eater, ph, idx); return; }
+                // a Trick Candy (TrickOrTreatPlus.cs) looks like any other kind but always hinders
+                var fx = TreatPlus.HostTakeTrick(c.Index) ? TreatPlus.HostTrickEffect() : EffectOf(c.Kind);
+                HostResolve(eater, ph, idx, fx, c.Kind);
             } catch (Exception e) {
                 HalloweenPlugin.Logger?.LogError($"{LogPrefix} HostEat failed: {e}");
             }
+        }
+
+        // Effects that stand for another one: the card names the stand-in, the player gets the real one (P1).
+        internal static bool IsStandIn(Treat fx) => fx == Treat.VolatileStarlight || fx == Treat.CopycatCaramel;
+
+        /// <summary>Host: the candy is gone already (floor, cabinet, bag); roll the random parts and tell everyone.
+        /// idx: the candy, 254 from the bag, 253 the Sugar Shock, 255 the self test.</summary>
+        internal static void HostResolve(PlayerControl eater, byte ph, byte idx, Treat fx, byte kind) {
+            byte p1 = byte.MaxValue, p2 = byte.MaxValue;
+            if (fx == Treat.VolatileStarlight || fx == Treat.CopycatCaramel) {
+                Treat real;
+                if (fx == Treat.CopycatCaramel && TreatPlus.HostLastOtherEffect(eater.PlayerId, out var copied)) real = copied;
+                else {
+                    var pool = EffectPool(roundEffects).Where(t => !IsStandIn(t) && t != Treat.Regurgitate).ToList();
+                    if (pool.Count == 0) pool = EffectPool(TreatSettings.AllEffects).Where(t => !IsStandIn(t) && t != Treat.Regurgitate).ToList();
+                    real = pool[rnd.Next(pool.Count)];
+                }
+                p1 = (byte)real;
+                p2 = RollParam(real, eater);
+            } else p1 = RollParam(fx, eater);
+            bool imp = IsImp(eater);
+            byte pid = eater.PlayerId;
+            Send(SubEaten, w => { w.Write(ph); w.Write(idx); w.Write(pid); w.Write((byte)fx); w.Write(p1); w.Write(p2); w.Write(imp); w.Write(kind); });
+            ApplyEaten(ph, idx, pid, fx, p1, p2, imp, kind);
+            var realFx = IsStandIn(fx) ? (Treat)p1 : fx;
+            HostSideEffects(eater, realFx, imp);
+            TreatPlus.HostAfterEat(eater, realFx, idx);
         }
 
         // ---- Midnight Bonbon: the eater dies on the spot, the body stays (a kill without a killer) ----
@@ -490,8 +526,8 @@ namespace UnknownsHalloween {
                 if (!AmHost() || !IsAlive(eater) || InMeeting()) return;
                 byte pid = eater.PlayerId;
                 bool imp = IsImp(eater);
-                Send(SubEaten, w => { w.Write(ph); w.Write(idx); w.Write(pid); w.Write(FxPoison); w.Write(byte.MaxValue); w.Write(byte.MaxValue); w.Write(imp); });
-                ApplyEaten(ph, idx, pid, (Treat)FxPoison, byte.MaxValue, byte.MaxValue, imp);
+                Send(SubEaten, w => { w.Write(ph); w.Write(idx); w.Write(pid); w.Write(FxPoison); w.Write(byte.MaxValue); w.Write(byte.MaxValue); w.Write(imp); w.Write(PoisonKind); });
+                ApplyEaten(ph, idx, pid, (Treat)FxPoison, byte.MaxValue, byte.MaxValue, imp, PoisonKind);
                 if (FreePlay()) {
                     HideNextKillAnimation();
                     eater.MurderPlayer(eater, MurderResultFlags.Succeeded);
@@ -655,12 +691,13 @@ namespace UnknownsHalloween {
         }
 
         // ================================================================ applying an eaten candy (every client)
-        private static void ApplyEaten(byte ph, byte idx, byte pid, Treat fx, byte p1, byte p2, bool imp) {
-            var c = idx == byte.MaxValue ? null : candies.FirstOrDefault(k => k.Index == idx);
+        private static void ApplyEaten(byte ph, byte idx, byte pid, Treat fx, byte p1, byte p2, bool imp, byte kind) {
+            var c = idx >= TreatPlus.IdxSugarShock ? null : candies.FirstOrDefault(k => k.Index == idx);
             if (c != null && ph == phase) { c.Eaten = true; c.Pending = false; TreatFx.RemoveCandy(c); }
+            if (idx == TreatPlus.IdxBag) TreatPlus.RemoveFromBag(pid, kind);
             var p = Helpers.playerById(pid);
             if (p == null) return;
-            try { HwTitles.OnCandyEaten(pid, (byte)fx == FxPoison); } catch { }   // titles of the evening (HwTitles.cs)
+            if (idx != TreatPlus.IdxSugarShock) { try { HwTitles.OnCandyEaten(pid, (byte)fx == FxPoison); } catch { } }   // titles of the evening (HwTitles.cs)
             bool local = PlayerControl.LocalPlayer != null && PlayerControl.LocalPlayer.PlayerId == pid;
             if ((byte)fx == FxPoison) {
                 poisoned.Add(pid);
@@ -668,11 +705,11 @@ namespace UnknownsHalloween {
                 HalloweenPlugin.Logger?.LogInfo($"{LogPrefix} {p.Data?.PlayerName} ate the Midnight Bonbon.");
                 return;
             }
-            string kindName = c != null ? KindNames[c.Kind] : "Test Candy";
+            string kindName = idx == TreatPlus.IdxSugarShock ? TreatPlus.SugarShockName() : kind < KindNames.Length ? KindNames[kind] : "Test Candy";
             Treat shown = fx;
             Treat real = fx;
             byte param = p1;
-            if (fx == Treat.VolatileStarlight) { real = (Treat)p1; param = p2; }
+            if (IsStandIn(fx)) { real = (Treat)p1; param = p2; }
             string extra = null;
 
             if (real == Treat.Regurgitate) {
@@ -689,7 +726,7 @@ namespace UnknownsHalloween {
             }
             if (local) {
                 TreatFx.Munch();
-                TreatFx.ShowPopup(c != null ? c.Kind : (byte)0, kindName, shown, real, imp, param, extra);
+                TreatFx.ShowPopup(kind < KindNames.Length ? kind : (byte)0, kindName, shown, real, imp, param, extra);
             }
             HalloweenPlugin.Logger?.LogInfo($"{LogPrefix} {p.Data?.PlayerName} ate {kindName}: {shown}{(shown != real ? " as " + real : "")}{(imp ? " (impostor)" : "")}.");
         }
@@ -716,13 +753,26 @@ namespace UnknownsHalloween {
                 case Treat.Nausea: return 20f;
                 case Treat.NothingQ: return 12f;
                 case Treat.SwapSweet: return 30f;
+                case Treat.CandyCornCompass: return 15f;
+                case Treat.PeekAPop: return 5f;
+                case Treat.FizzPop: return 15f;
+                case Treat.BrainFreeze: return 3f;
+                case Treat.ReverseGummy: return 10f;
+                case Treat.WrapperTrail: return 30f;
+                case Treat.SugarCrash: return 40f;
+                case Treat.GhostlyGum: return 20f;
+                case Treat.DoubleDip: case Treat.TattletaleTaffy: return float.MaxValue;   // until the next meeting is over
                 default: return 0f;
             }
         }
 
         internal static bool IsRound(Treat fx) =>
             fx == Treat.IronTaffy || fx == Treat.CinnamonStick || fx == Treat.NightOwl || fx == Treat.Gobstopper
-            || fx == Treat.HardCandy || fx == Treat.Brittle || fx == Treat.ShrinkSherbet || fx == Treat.BigBite;
+            || fx == Treat.HardCandy || fx == Treat.Brittle || fx == Treat.ShrinkSherbet || fx == Treat.BigBite
+            || fx == Treat.StickyToffee || fx == Treat.VentMint || fx == Treat.HomingHumbug;
+
+        /// <summary>Lives through the next meeting and ends when it is over (the vote, the meeting report).</summary>
+        internal static bool IsMeetingBound(Treat fx) => fx == Treat.DoubleDip || fx == Treat.TattletaleTaffy;
 
         private static ActiveTreat Start(PlayerControl p, Treat fx, bool imp, byte param, ref string extra) {
             bool local = p == PlayerControl.LocalPlayer;
@@ -780,6 +830,9 @@ namespace UnknownsHalloween {
                 case Treat.Hiccups:
                     a.Next = Time.time + 1.2f;
                     break;
+                default:
+                    TreatPlus.OnBegin(p, a, ref extra);
+                    break;
             }
         }
 
@@ -802,6 +855,7 @@ namespace UnknownsHalloween {
                         break;
                 }
             } catch { }
+            TreatPlus.OnEnd(p, a);
             TreatFx.OnEnd(a);
             HalloweenPlugin.Logger?.LogInfo($"{LogPrefix} {a.Fx} of player {a.Owner} ended ({why}).");
         }
@@ -873,7 +927,7 @@ namespace UnknownsHalloween {
 
         // ================================================================ queries for the patches
         internal static float SpeedMult(byte pid) {
-            if (!active.TryGetValue(pid, out var l) || l.Count == 0) return 1f;
+            if (!active.TryGetValue(pid, out var l) || l.Count == 0) return TreatPlus.StuckMult(pid);
             float m = 1f;
             foreach (var a in l) {
                 switch (a.Fx) {
@@ -885,9 +939,11 @@ namespace UnknownsHalloween {
                     case Treat.Nausea: m *= 1.2f; break;
                     case Treat.ShrinkSherbet: m *= 1.05f; break;
                     case Treat.BigBite: m *= 0.95f; break;
+                    case Treat.BrainFreeze: m = 0f; break;
+                    case Treat.SugarCrash: m *= a.Left > 20f ? 1.3f : 0.7f; break;
                 }
             }
-            return m;
+            return m * TreatPlus.StuckMult(pid);
         }
 
         internal static float VisionMult(byte pid, out bool lightsOut) {
@@ -979,17 +1035,21 @@ namespace UnknownsHalloween {
                 TreatMenu.Tick();
                 TrickOrTreatDiag.Tick();
                 if (!InRound()) {
-                    if (candies.Count > 0 || active.Count > 0 || TreatCabinets.Any) FullReset();
+                    if (candies.Count > 0 || active.Count > 0 || TreatCabinets.Any || TreatPlus.Any) FullReset();
                     return;
                 }
-                if (!On()) { if (candies.Count > 0 || active.Count > 0 || TreatCabinets.Any) FullReset(); return; }
+                if (!On()) { if (candies.Count > 0 || active.Count > 0 || TreatCabinets.Any || TreatPlus.Any) FullReset(); return; }
                 if (InMeeting()) {
                     wasMeeting = true;
                     TreatFx.Tick(true);
+                    TreatPlus.Tick(true);
                     return;
                 }
                 if (wasMeeting) {
                     wasMeeting = false;
+                    foreach (var kv in active.ToList())
+                        foreach (var a in kv.Value.ToList()) if (IsMeetingBound(a.Fx)) End(a, "meeting over");
+                    TreatPlus.OnMeetingEnd();
                     if (AmHost()) HostSpawn();
                 }
                 float dt = Time.deltaTime;
@@ -1008,6 +1068,7 @@ namespace UnknownsHalloween {
                 }
                 RecompleteTick();
                 TreatFx.Tick(false);
+                TreatPlus.Tick(false);
                 TreatUse.Tick();
             } catch (Exception e) {
                 if (!tickErrorLogged) { tickErrorLogged = true; HalloweenPlugin.Logger?.LogError($"{LogPrefix} tick failed (logged once): {e}"); }
@@ -1017,8 +1078,10 @@ namespace UnknownsHalloween {
 
         /// <summary>Meeting start: timed effects end, whole-round effects count one meeting down, the candies go.</summary>
         internal static void OnMeetingStart() {
+            TreatPlus.OnMeetingStart();
             foreach (var kv in active.ToList())
                 foreach (var a in kv.Value.ToList()) {
+                    if (IsMeetingBound(a.Fx)) continue;          // ends when the meeting is over
                     if (!a.Round) { End(a, "meeting"); continue; }
                     a.Meetings--;
                     if (a.Meetings <= 0) End(a, "meetings over");
@@ -1041,6 +1104,7 @@ namespace UnknownsHalloween {
             pendingKillDelta = 0f;
             recompleteIds.Clear();
             TreatFx.Clear();
+            TreatPlus.Clear();
             TreatCabinets.Clear();
             TreatUse.Release();
         }
@@ -1081,10 +1145,12 @@ namespace UnknownsHalloween {
                 try {
                     if (!__instance.AmOwner || __instance.myPlayer == null || __instance.myPlayer.Data == null) return;
                     TrickOrTreatDiag.DriveWalk(__instance);
-                    if (active.Count == 0) return;
-                    float m = SpeedMult(__instance.myPlayer.PlayerId);
-                    if (Mathf.Abs(m - 1f) < 0.0001f) return;
+                    if (active.Count == 0 && !TreatPlus.AnyStuck) return;
                     if (__instance.myPlayer.Data.IsDead || !__instance.myPlayer.CanMove) return;
+                    byte pid = __instance.myPlayer.PlayerId;
+                    if (Has(pid, Treat.ReverseGummy)) __instance.body.velocity = -__instance.body.velocity;   // the owner's input only
+                    float m = SpeedMult(pid);
+                    if (Mathf.Abs(m - 1f) < 0.0001f) return;
                     __instance.body.velocity *= m;
                 } catch { }
             }
@@ -1094,7 +1160,7 @@ namespace UnknownsHalloween {
         static class SpeedRemotePatch {
             public static void Postfix(CustomNetworkTransform __instance) {
                 try {
-                    if (active.Count == 0 || __instance.AmOwner || __instance.myPlayer == null || __instance.myPlayer.Data == null) return;
+                    if ((active.Count == 0 && !TreatPlus.AnyStuck) || __instance.AmOwner || __instance.myPlayer == null || __instance.myPlayer.Data == null) return;
                     float m = SpeedMult(__instance.myPlayer.PlayerId);
                     if (Mathf.Abs(m - 1f) < 0.0001f || __instance.myPlayer.Data.IsDead) return;
                     __instance.body.velocity *= m;

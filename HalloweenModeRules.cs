@@ -2,7 +2,7 @@
 // Licensed under GPL-3.0-or-later. See LICENSE for details.
 
 /*
- * Shared plumbing of the two game modes Zombie Outbreak (ZombieOutbreak.cs) and Final Girl (FinalGirl.cs):
+ * Shared plumbing of the two game modes Zombie Outbreak (ZombieOutbreak.cs) and Sole Survivor (SoleSurvivor.cs):
  *
  *   - one RPC module byte (240 on UC's channel 230): subtypes 0-9 belong to the zombies, 10-19 to the finale;
  *   - the locks both modes need while they run: no meetings (report and emergency button, the pattern of
@@ -49,7 +49,7 @@ namespace UnknownsHalloween {
         internal static bool German() { try { return UCLocalization.ActiveCode == "german"; } catch { return false; } }
 
         /// Meetings, sabotage and the per-mode vent/ghost rules are in force.
-        internal static bool Locked => ZombieOutbreak.Active || FinalGirl.Active;
+        internal static bool Locked => ZombieOutbreak.Active || SoleSurvivor.Active;
 
         // ---------------------------------------------------------------- RPC
 
@@ -70,7 +70,7 @@ namespace UnknownsHalloween {
             try {
                 byte sub = r.ReadByte();
                 if (sub < 10) ZombieOutbreak.HandleRpc(sub, r);
-                else FinalGirl.HandleRpc(sub, r);
+                else SoleSurvivor.HandleRpc(sub, r);
             } catch (Exception e) { HalloweenPlugin.Logger?.LogError($"{LogPrefix} rpc failed: {e}"); }
         }
 
@@ -225,7 +225,7 @@ namespace UnknownsHalloween {
                                        [HarmonyArgument(1)] ref bool canUse, [HarmonyArgument(2)] ref bool couldUse) {
                 try {
                     if (!Locked || pc == null || pc.Object == null) return;
-                    bool allow = FinalGirl.Active ? false : ZombieOutbreak.MayVent(pc.Object);
+                    bool allow = SoleSurvivor.Active ? false : ZombieOutbreak.MayVent(pc.Object);
                     if (allow) return;
                     if (pc.Object.inVent) return;   // never trap somebody inside
                     canUse = couldUse = false;
@@ -234,14 +234,14 @@ namespace UnknownsHalloween {
             }
         }
 
-        // Ghost tasks are locked in the finale (the task win is server-authoritative, see FinalGirl.cs).
+        // Ghost tasks are locked in the finale (the task win is server-authoritative, see SoleSurvivor.cs).
         [HarmonyPatch(typeof(Console), nameof(Console.CanUse))]
         static class GhostTaskPatch {
             [HarmonyPriority(Priority.Low)]
             public static void Postfix([HarmonyArgument(0)] NetworkedPlayerInfo pc, ref float __result,
                                        [HarmonyArgument(1)] ref bool canUse, [HarmonyArgument(2)] ref bool couldUse) {
                 try {
-                    if (!FinalGirl.Active || pc == null || !pc.IsDead) return;
+                    if (!SoleSurvivor.Active || pc == null || !pc.IsDead) return;
                     canUse = couldUse = false;
                     __result = float.MaxValue;
                 } catch { }

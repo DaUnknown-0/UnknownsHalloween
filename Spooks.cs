@@ -124,8 +124,8 @@ namespace UnknownsHalloween {
                     w.Write(s);
                     w.Write((byte)list.Count);
                     foreach (var p in list) {
-                        w.Write((short)Mathf.RoundToInt(p.Pos.x * 100f));
-                        w.Write((short)Mathf.RoundToInt(p.Pos.y * 100f));
+                        w.Write(unchecked((ushort)(short)Mathf.RoundToInt(p.Pos.x * 100f)));
+                        w.Write(unchecked((ushort)(short)Mathf.RoundToInt(p.Pos.y * 100f)));
                         w.Write((byte)p.Kind);
                         w.Write(p.Param);
                     }

@@ -64,6 +64,7 @@ namespace UnknownsHalloween {
             booted = true;
             try {
                 On = CustomOption.Create(2140, CustomOption.CustomOptionType.General, "Halloween Tasks", true, null, true, null, "Halloween Tasks");
+                HwHauntedTasks.Create();               // option 2141 right below
                 UnknownsCollection.UCFx.RegisterTick(Tick);
                 if (DiagOn) UnknownsCollection.UCFx.RegisterTick(HwTaskSkinsDiag.Tick);
                 Log("registered (fuel, asteroids, garbage, shields, divert power).");

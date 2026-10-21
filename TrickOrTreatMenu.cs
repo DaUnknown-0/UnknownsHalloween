@@ -5,6 +5,7 @@
  * Trick or Treat menu (2026-10-20, replaces the TOR options 1940-1943): one card with
  *   on/off, the deadly Midnight Bonbon (on/off), candies per meeting, how many meetings whole-round effects last, pickup range,
  *   one switch per candy kind (which kinds show up) and one per effect (which effects go into the pot),
+ *   the candy bag, the impostors' Trick Candy and the Sugar Shock (2026-10-21, TrickOrTreatPlus.cs),
  *   "all on" / "all off" per list.
  * At least one kind and one effect stay on. With fewer active effects than active kinds the effects are
  * handed out twice (TrickOrTreat.EnsureMapping), so any combination is valid.
@@ -35,8 +36,11 @@ namespace UnknownsHalloween {
         public int Meetings = 1;
         public int Range = 1;
         public uint Kinds = TreatSettings.AllKinds;
-        public uint Effects = TreatSettings.AllEffects;
+        public ulong Effects = TreatSettings.AllEffects;
         public bool Poison = true;              // one Midnight Bonbon per spawn
+        public bool Bag = true;                 // carry up to two candies, eat them later
+        public bool Trick = true;               // impostors lay one Trick Candy between two meetings
+        public bool Shock = true;               // the third candy between two meetings brings a Sugar Crash
 
         public TreatRules Clone() => (TreatRules)MemberwiseClone();
 
@@ -48,27 +52,31 @@ namespace UnknownsHalloween {
             w.Write((ushort)Kinds);
             w.Write(Effects);
             w.Write(Poison);
+            w.Write(Bag);
+            w.Write(Trick);
+            w.Write(Shock);
         }
 
         public static TreatRules Read(MessageReader r) => new TreatRules {
             Enabled = r.ReadBoolean(), Count = r.ReadByte(), Meetings = r.ReadByte(), Range = r.ReadByte(),
-            Kinds = r.ReadUInt16(), Effects = r.ReadUInt32(), Poison = r.ReadBoolean(),
+            Kinds = r.ReadUInt16(), Effects = r.ReadUInt64(), Poison = r.ReadBoolean(),
+            Bag = r.ReadBoolean(), Trick = r.ReadBoolean(), Shock = r.ReadBoolean(),
         };
 
         public override string ToString() =>
-            $"on {Enabled}, {Count} per meeting, {Meetings} meeting(s), range {Range}, kinds {Count1(Kinds)}/12, effects {Count1(Effects)}/{(int)Treat.Count}, deadly {Poison}";
-        internal static int Count1(uint m) { int n = 0; while (m != 0) { n += (int)(m & 1); m >>= 1; } return n; }
+            $"on {Enabled}, {Count} per meeting, {Meetings} meeting(s), range {Range}, kinds {Count1(Kinds)}/12, effects {Count1(Effects)}/{(int)Treat.Count}, deadly {Poison}, bag {Bag}, trick {Trick}, shock {Shock}";
+        internal static int Count1(ulong m) { int n = 0; while (m != 0) { n += (int)(m & 1); m >>= 1; } return n; }
     }
 
     internal static class TreatSettings {
         internal const uint AllKinds = (1u << TrickOrTreat.KindCount) - 1;
-        internal static readonly uint AllEffects = (1u << (int)Treat.Count) - 1;
+        internal static readonly ulong AllEffects = (1UL << (int)Treat.Count) - 1;
 
         /// <summary>The rules that apply right now: the host's own, or the last ones the host sent.</summary>
         internal static TreatRules Current = new TreatRules();
 
         private static ConfigFile cfg;
-        private static ConfigEntry<bool> cEnabled, cPoison;
+        private static ConfigEntry<bool> cEnabled, cPoison, cBag, cTrick, cShock;
         private static ConfigEntry<int> cCount, cMeetings, cRange;
         private static ConfigEntry<string> cKindsOff, cEffectsOff;
 
@@ -80,6 +88,9 @@ namespace UnknownsHalloween {
                 cMeetings = cfg.Bind("Trick or Treat", "Round Effects Last Meetings", 1, "Whole-round effects end with this meeting after eating (1-3).");
                 cRange = cfg.Bind("Trick or Treat", "Pickup Range", 1, "0 short, 1 normal, 2 long.");
                 cPoison = cfg.Bind("Trick or Treat", "Deadly Candy", true, "One Midnight Bonbon per spawn: whoever eats it dies.");
+                cBag = cfg.Bind("Trick or Treat", "Candy Bag", true, "Players carry up to two candies and eat them later.");
+                cTrick = cfg.Bind("Trick or Treat", "Trick Candy", true, "Impostors lay one Trick Candy between two meetings: it always hinders.");
+                cShock = cfg.Bind("Trick or Treat", "Sugar Shock", true, "The third candy between two meetings brings a Sugar Crash on top.");
                 cKindsOff = cfg.Bind("Trick or Treat", "Disabled Candies", "", "Candy kinds that do not show up, comma separated.");
                 cEffectsOff = cfg.Bind("Trick or Treat", "Disabled Effects", "", "Effects that are not in the pot, comma separated.");
                 Current = FromConfig();
@@ -97,12 +108,15 @@ namespace UnknownsHalloween {
             r.Meetings = Mathf.Clamp(cMeetings.Value, 1, 3);
             r.Range = Mathf.Clamp(cRange.Value, 0, 2);
             r.Poison = cPoison.Value;
+            r.Bag = cBag.Value;
+            r.Trick = cTrick.Value;
+            r.Shock = cShock.Value;
             var koff = Split(cKindsOff.Value);
             r.Kinds = 0;
             for (int k = 0; k < TrickOrTreat.KindCount; k++) if (!koff.Contains(TrickOrTreat.KindNames[k])) r.Kinds |= 1u << k;
             var eoff = Split(cEffectsOff.Value);
             r.Effects = 0;
-            for (int i = 0; i < (int)Treat.Count; i++) if (!eoff.Contains(((Treat)i).ToString())) r.Effects |= 1u << i;
+            for (int i = 0; i < (int)Treat.Count; i++) if (!eoff.Contains(((Treat)i).ToString())) r.Effects |= 1UL << i;
             if (r.Kinds == 0) r.Kinds = AllKinds;
             if (r.Effects == 0) r.Effects = AllEffects;
             return r;
@@ -119,8 +133,11 @@ namespace UnknownsHalloween {
             cMeetings.Value = r.Meetings;
             cRange.Value = r.Range;
             cPoison.Value = r.Poison;
+            cBag.Value = r.Bag;
+            cTrick.Value = r.Trick;
+            cShock.Value = r.Shock;
             cKindsOff.Value = string.Join(",", Enumerable.Range(0, TrickOrTreat.KindCount).Where(k => (r.Kinds & (1u << k)) == 0).Select(k => TrickOrTreat.KindNames[k]));
-            cEffectsOff.Value = string.Join(",", Enumerable.Range(0, (int)Treat.Count).Where(i => (r.Effects & (1u << i)) == 0).Select(i => ((Treat)i).ToString()));
+            cEffectsOff.Value = string.Join(",", Enumerable.Range(0, (int)Treat.Count).Where(i => (r.Effects & (1UL << i)) == 0).Select(i => ((Treat)i).ToString()));
             try { cfg.Save(); } catch { }
         }
 
@@ -151,7 +168,7 @@ namespace UnknownsHalloween {
             r.Count = Mathf.Clamp(r.Count, 1, 20);
             r.Meetings = Mathf.Clamp(r.Meetings, 1, 3);
             r.Range = Mathf.Clamp(r.Range, 0, 2);
-            bool changed = r.ToString() != Current.ToString() || r.Kinds != Current.Kinds || r.Effects != Current.Effects || r.Poison != Current.Poison;
+            bool changed = r.ToString() != Current.ToString() || r.Kinds != Current.Kinds || r.Effects != Current.Effects;
             Current = r;
             if (changed) {
                 HalloweenPlugin.Logger?.LogInfo($"{TrickOrTreat.LogPrefix} rules from the host: {r}");
@@ -210,7 +227,7 @@ namespace UnknownsHalloween {
         private static readonly string[] RangeNames = { "Short", "Normal", "Long" };
         private static readonly string[] RangeNamesDe = { "Kurz", "Normal", "Weit" };
 
-        private const float W = 1580f, H = 960f, Pad = 34f;
+        private const float W = 1580f, H = 1010f, Pad = 34f;
 
         internal static void Open() {
             try {
@@ -267,7 +284,14 @@ namespace UnknownsHalloween {
                 pimg.sprite = TreatFx.KindSprite(TrickOrTreat.PoisonKind);
                 pimg.preserveAspect = true;
                 pimg.raycastTarget = false;
-                y -= 96f;
+                y -= 82f;
+
+                // ---- rules on top (2026-10-21) ----
+                x = Pad;
+                RuleToggle(card, ref x, y, T("Candy bag (2)", "Süßigkeiten-Tüte (2)"), r.Bag, Do(() => r.Bag = !r.Bag));
+                RuleToggle(card, ref x, y, T("Trick Candy (impostors)", "Trick Candy (Impostoren)"), r.Trick, Do(() => r.Trick = !r.Trick));
+                RuleToggle(card, ref x, y, T("Sugar Shock (3rd candy)", "Zuckerschock (3. Süßigkeit)"), r.Shock, Do(() => r.Shock = !r.Shock));
+                y -= 64f;
 
                 // ---- candy kinds ----
                 y = Section(card, y, T("Candies", "Süßigkeiten") + $"  ({TreatRules.Count1(r.Kinds)}/12)",
@@ -299,19 +323,19 @@ namespace UnknownsHalloween {
                 int eOn = TreatRules.Count1(r.Effects), kOn = TreatRules.Count1(r.Kinds);
                 string note = eOn < kOn ? T($"  fewer effects than candies: some are handed out twice", $"  weniger Effekte als Sorten: manche werden doppelt vergeben") : "";
                 y = Section(card, y, T("Effects", "Effekte") + $"  ({eOn}/{(int)Treat.Count}){note}",
-                    Do(() => r.Effects = TreatSettings.AllEffects), Do(() => r.Effects = 1u << (int)Treat.SugarRush));
-                const int eCols = 5;
+                    Do(() => r.Effects = TreatSettings.AllEffects), Do(() => r.Effects = 1UL << (int)Treat.SugarRush));
+                const int eCols = 8;
                 float ew = (W - 2 * Pad - (eCols - 1) * 12f) / eCols;
                 for (int i = 0; i < (int)Treat.Count; i++) {
                     int ii = i;
-                    bool on = (r.Effects & (1u << i)) != 0;
-                    var pos = new Vector2(Pad + (i % eCols) * (ew + 12f), y - (i / eCols) * 54f);
+                    bool on = (r.Effects & (1UL << i)) != 0;
+                    var pos = new Vector2(Pad + (i % eCols) * (ew + 12f), y - (i / eCols) * 50f);
                     var col = on ? Dim(TreatFx.Tint((Treat)i)) : HalloweenUI.Grey;
-                    HalloweenUI.Button(card, TreatFx.Name((Treat)i), pos, new Vector2(ew, 44f), col,
-                        Do(() => { uint m = r.Effects ^ (1u << ii); if (m != 0) r.Effects = m; }), out var txt, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), 18f);
+                    HalloweenUI.Button(card, TreatFx.Name((Treat)i), pos, new Vector2(ew, 42f), col,
+                        Do(() => { ulong m = r.Effects ^ (1UL << ii); if (m != 0) r.Effects = m; }), out var txt, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), 16f);
                     if (!on) txt.color = HalloweenUI.Muted;
                 }
-                y -= 6 * 54f;
+                y -= ((int)Treat.Count + eCols - 1) / eCols * 50f;
                 HalloweenUI.Text(card, T("Green: helps, red: hinders, purple: odd. The effect of each kind is drawn anew every round.",
                                           "Grün: hilft, Rot: stört, Lila: seltsam. Welche Sorte was bewirkt, wird jede Runde neu gelost."),
                     16f, HalloweenUI.Muted, new Vector2(Pad, y - 6f), new Vector2(W - 2 * Pad, 26f));
@@ -319,6 +343,13 @@ namespace UnknownsHalloween {
                 HalloweenPlugin.Logger?.LogWarning($"{TrickOrTreat.LogPrefix} menu failed: {e}");
                 Close();
             }
+        }
+
+        private static void RuleToggle(GameObject card, ref float x, float y, string label, bool on, Action flip) {
+            HalloweenUI.Button(card, label, new Vector2(x, y), new Vector2(360f, 48f), on ? HalloweenUI.Green : HalloweenUI.Grey, flip,
+                out var txt, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), 19f);
+            if (!on) txt.color = HalloweenUI.Muted;
+            x += 380f;
         }
 
         private static Color Dim(Color c) => new Color(c.r * 0.62f, c.g * 0.62f, c.b * 0.62f, 1f);

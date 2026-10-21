@@ -20,6 +20,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using HarmonyLib;
+using BepInEx.Unity.IL2CPP.Utils.Collections;
 using UnityEngine;
 using TheOtherRoles;
 
@@ -37,6 +39,37 @@ namespace UnknownsHalloween {
         private static float walk;
 
         private static void Log(string s) => HalloweenPlugin.Logger?.LogInfo($"{P} {s}");
+
+        // The candy test enters freeplay on its own (Atlas only does that together with its TaskTest setting).
+        // The cabinet test needs an Atlas map and keeps using Atlas' ForceMap + TaskTest.
+        [HarmonyPatch(typeof(MainMenuManager), nameof(MainMenuManager.Start))]
+        static class EnterFreeplayPatch {
+            static bool fired;
+            static void Postfix(MainMenuManager __instance) {
+                if (Mode != "candy" || fired) return;
+                fired = true;
+                __instance.StartCoroutine(EnterFreeplay().WrapToIl2Cpp());
+            }
+        }
+
+        private static System.Collections.IEnumerator EnterFreeplay() {
+            Log("waiting for the login ...");
+            float t0 = Time.time;
+            while (true) {
+                bool ok = false;
+                try { ok = EOSManager.Instance != null && EOSManager.Instance.HasFinishedLoginFlow(); } catch { }
+                if (ok) break;
+                if (Time.time - t0 > 90f) { Log("login timeout"); yield break; }
+                yield return null;
+            }
+            try {
+                var popover = UnityEngine.Object.FindObjectOfType<FreeplayPopover>(true);
+                for (var t = popover.transform; t != null; t = t.parent) if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
+                popover.Show();
+                popover.PlayMap(MapNames.Skeld);
+                Log("freeplay on the Skeld started");
+            } catch (Exception e) { Log($"freeplay failed: {e.Message}"); }
+        }
 
         internal static void DriveWalk(PlayerPhysics ph) {
             if (!On || walk == 0f || ph.body == null) return;
@@ -152,7 +185,8 @@ namespace UnknownsHalloween {
                 r.Enabled = true;
                 r.Count = 9;
                 r.Kinds = (1u << 0) | (1u << 4) | (1u << 10);
-                r.Effects = (1u << (int)Treat.SugarRush) | (1u << (int)Treat.NightOwl);
+                r.Effects = (1UL << (int)Treat.SugarRush) | (1UL << (int)Treat.NightOwl);
+                r.Bag = r.Trick = r.Shock = false;          // the first part checks the 20.10. behaviour; Batch2 below turns them on
                 TreatSettings.Changed();
                 TreatMenu.RefreshIfOpen();
                 Log($"menu changed: {TreatSettings.Current}");
@@ -164,7 +198,7 @@ namespace UnknownsHalloween {
                 var r = TreatSettings.Current;
                 var normal = TrickOrTreat.candies.Where(c => c.Kind != TrickOrTreat.PoisonKind).ToList();
                 bool kindsOk = normal.All(c => (r.Kinds & (1u << c.Kind)) != 0);
-                bool fxOk = normal.All(c => (r.Effects & (1u << (int)TrickOrTreat.EffectOf(c.Kind))) != 0);
+                bool fxOk = normal.All(c => (r.Effects & (1UL << (int)TrickOrTreat.EffectOf(c.Kind))) != 0);
                 Log($"rules check: {normal.Count} candies (want 9) + {PoisonCount()} deadly (want 1), kinds only active {kindsOk}, effects only active {fxOk}: "
                     + string.Join(" ", normal.Select(c => TrickOrTreat.KindNames[c.Kind] + "=" + TrickOrTreat.EffectOf(c.Kind))));
                 r.Kinds = TreatSettings.AllKinds;
@@ -356,6 +390,7 @@ namespace UnknownsHalloween {
                 }
             });
             Add(0.5f, () => Log($"after the dummy died: '{TrickOrTreat.DiagState()}'"));
+            Batch2(lp, Add);
             // the real path once more: walk to a fresh candy and press E-equivalent
             Add(0.3f, () => {
                 var c = TrickOrTreat.candies.FirstOrDefault(k => !k.Eaten);
@@ -379,6 +414,159 @@ namespace UnknownsHalloween {
             Add(0.5f, () => Application.Quit());
             steps = s;
         }
+
+        // ================================================================ 2026-10-21: bag, Trick Candy, Sugar Shock, new effects
+        private static void Batch2(PlayerControl lp, Action<float, Action> Add) {
+            Vector2 home = Vector2.zero;
+            TrickOrTreat.Candy A = null, B = null, C = null;
+            float x0 = 0f;
+            int bag0 = 0;
+            TrickOrTreat.Candy Fresh(params TrickOrTreat.Candy[] not) =>
+                TrickOrTreat.candies.Where(k => !k.Eaten && k.Kind != TrickOrTreat.PoisonKind && k.Cab == TreatCabinets.None && !not.Contains(k))
+                    .OrderBy(k => Vector2.Distance(k.Pos, lp.GetTruePosition())).FirstOrDefault();
+            byte me = lp.PlayerId;
+
+            Add(0.3f, () => {
+                ClearLocal();
+                var r = TreatSettings.Current;
+                r.Bag = r.Trick = r.Shock = true;
+                TreatSettings.Changed();
+                TrickOrTreat.DiagMeeting();        // fresh candies, the eat counter starts at 0
+                home = lp.GetTruePosition();
+                Log($"batch2: rules {TreatSettings.Current}");
+            });
+            // ---- the bag ----
+            Add(1.0f, () => { A = Fresh(); if (A != null) lp.NetTransform.SnapTo(A.Pos + new Vector2(0.45f, 0.05f)); });
+            Add(1.0f, () => { Log($"bag: near A use '{TreatUse.Label}' (want TAKE/NEHMEN)"); Shot("bag_take"); TreatUse.OnClick(); });
+            Add(0.5f, () => { Log($"bag: after A bag {TreatPlus.BagCount(me)}, A eaten {A?.Eaten}, state '{TrickOrTreat.DiagState()}'"); B = Fresh(A); if (B != null) lp.NetTransform.SnapTo(B.Pos + new Vector2(0.45f, 0.05f)); });
+            Add(1.0f, () => { TreatUse.OnClick(); });
+            Add(0.5f, () => { Log($"bag: after B bag {TreatPlus.BagCount(me)}"); C = Fresh(A, B); if (C != null) lp.NetTransform.SnapTo(C.Pos + new Vector2(0.45f, 0.05f)); });
+            Add(1.0f, () => { Log($"bag: full, near C use '{TreatUse.Label}' (want EAT/ESSEN)"); lp.NetTransform.SnapTo(home); });
+            Add(1.0f, () => { Log($"bag: nothing around, use owned {TreatUse.Owned} (want False), bag button {TreatPlus.DiagBagButton}"); TreatBagMenu.Toggle(); });
+            Add(0.8f, () => { Log($"bag: menu open {TreatBagMenu.IsOpen}"); Shot("bag_menu"); bag0 = TreatPlus.BagCount(me); TreatPlus.RequestBagEat(1); });
+            Add(1.0f, () => { Log($"bag: ate slot 1, bag {bag0} -> {TreatPlus.BagCount(me)}, menu open {TreatBagMenu.IsOpen}, eats {TreatPlus.DiagEats(me)}, state '{TrickOrTreat.DiagState()}'"); TreatPlus.RequestBagEat(0); });
+            Add(1.0f, () => { Log($"bag: ate slot 0, bag {TreatPlus.BagCount(me)}, eats {TreatPlus.DiagEats(me)}, menu open {TreatBagMenu.IsOpen} (want False), state '{TrickOrTreat.DiagState()}'"); ClearLocal(); TreatSettings.Current.Bag = false; TreatSettings.Changed(); if (C != null) lp.NetTransform.SnapTo(C.Pos + new Vector2(0.45f, 0.05f)); });
+            // ---- third candy since the meeting: Sugar Shock ----
+            Add(1.0f, () => { TreatUse.OnClick(); });
+            Add(0.6f, () => { Log($"shock: eats {TreatPlus.DiagEats(me)} (want 3), Sugar Crash {TrickOrTreat.Has(me, Treat.SugarCrash)}, state '{TrickOrTreat.DiagState()}'"); Shot("sugar_shock"); ClearLocal(); });
+            // ---- Trick Candy: laid at a dummy's feet, always hinders ----
+            Add(0.6f, () => {
+                var d = Dummy(lp);
+                Log($"trick: local impostor {TrickOrTreat.IsImp(lp)}, button {TreatPlus.DiagButton}, dummy {(d != null ? d.Data.PlayerName : "none")}");
+                TreatPlus.DiagTrickAs(d);
+                var t = TrickOrTreat.candies.LastOrDefault();
+                // only the Trick Candy within reach: the others of the round move away for this step
+                foreach (var o in TrickOrTreat.candies) if (o != t && !o.Eaten && Vector2.Distance(o.Pos, t.Pos) < 3f) o.Pos += new Vector2(40f, 40f);
+                if (t != null) lp.NetTransform.SnapTo(t.Pos + new Vector2(0.15f, 0.05f));
+            });
+            Add(1.0f, () => { Shot("trick_candy"); TreatUse.OnClick(); });
+            Add(0.6f, () => {
+                var bad = TrickOrTreat.List(me).Select(a => a.Fx).ToList();
+                Log($"trick: state '{TrickOrTreat.DiagState()}', all bad {bad.Count > 0 && bad.All(TreatPlus.IsBad)}");
+                ClearLocal();
+                lp.NetTransform.SnapTo(home);
+            });
+            // ---- the new effects one by one ----
+            Add(0.6f, () => { TrickOrTreat.DiagEat(Treat.DoubleDip); Log($"double dip: state '{TrickOrTreat.DiagState()}'"); });
+            Add(0.2f, () => { TrickOrTreat.DiagMeeting(); Log($"double dip through the meeting start: has {TrickOrTreat.Has(me, Treat.DoubleDip)} (want True)"); });
+            Add(1.2f, () => { Log($"double dip after the meeting: has {TrickOrTreat.Has(me, Treat.DoubleDip)} (want False)"); ClearLocal(); TrickOrTreat.DiagEat(Treat.CandyCornCompass); });
+            Add(0.8f, () => { Log($"compass: arrow {TreatPlus.DiagCompass}"); Shot("fx_compass"); ClearLocal(); });
+            Add(0.3f, () => { Log($"compass over: arrow {TreatPlus.DiagCompass}"); TrickOrTreat.DiagEat(Treat.PeekAPop); });
+            Add(0.8f, () => { Log($"peek: admin map open {TreatPlus.DiagPeek}"); Shot("fx_peek"); });
+            Add(5.0f, () => { Log($"peek after 5 s: open {MapBehaviour.Instance != null && MapBehaviour.Instance.IsOpen}, state '{TrickOrTreat.DiagState()}'"); });
+            Add(0.3f, () => { TrickOrTreat.DiagEat(Treat.BrainFreeze); x0 = lp.transform.position.x; walk = 1f; });
+            Add(1.0f, () => { Log(FormattableString.Invariant($"brain freeze: walked {lp.transform.position.x - x0:F2} (want ~0), frost {TreatPlus.DiagFrost}")); Shot("fx_freeze"); });
+            Add(2.5f, () => { walk = 0f; Log($"brain freeze over: state '{TrickOrTreat.DiagState()}', frost {TreatPlus.DiagFrost}"); TrickOrTreat.DiagEat(Treat.ReverseGummy); x0 = lp.transform.position.x; walk = -1f; });
+            Add(0.6f, () => { walk = 0f; Log(FormattableString.Invariant($"reverse gummy: pushed left, moved {lp.transform.position.x - x0:F2} (want > 0)")); ClearLocal(); lp.NetTransform.SnapTo(home); });
+            Add(0.3f, () => { TrickOrTreat.DiagEat(Treat.SugarCrash); Log(FormattableString.Invariant($"sugar crash: mult {TrickOrTreat.SpeedMult(me):F2} (want 1.30)")); var a = TrickOrTreat.Get(me, Treat.SugarCrash); if (a != null) a.Left = 12f; });
+            Add(0.2f, () => { Log(FormattableString.Invariant($"sugar crash later: mult {TrickOrTreat.SpeedMult(me):F2} (want 0.70)")); ClearLocal(); TrickOrTreat.DiagEat(Treat.WrapperTrail); x0 = lp.transform.position.x; walk = 1f; });
+            Add(1.5f, () => { walk = 0f; Log($"wrapper trail: {TreatPlus.DiagWrappers} wrappers"); Shot("fx_wrappers"); ClearLocal(); lp.NetTransform.SnapTo(home); });
+            Add(0.4f, () => { TrickOrTreat.DiagEat(Treat.FizzPop); });
+            Add(1.6f, () => { Shot("fx_fizz"); ClearLocal(); TrickOrTreat.DiagEat(Treat.GhostlyGum); });
+            Add(0.5f, () => { float a = -1f; try { a = lp.cosmetics.GetPhantomRoleAlpha(); } catch { } Log(FormattableString.Invariant($"ghostly gum: alpha {a:F2} (want 0.40)")); Shot("fx_ghostly"); ClearLocal(); });
+            Add(0.3f, () => { float a = -1f; try { a = lp.cosmetics.GetPhantomRoleAlpha(); } catch { } Log(FormattableString.Invariant($"ghostly gum over: alpha {a:F2} (want 1.00)")); TrickOrTreat.DiagEat(Treat.CopycatCaramel); Log($"copycat: state '{TrickOrTreat.DiagState()}'"); ClearLocal(); });
+            Add(0.3f, () => {
+                TrickOrTreat.DiagEat(Treat.HomingHumbug);
+                Log($"homing: button {TreatPlus.DiagButton}");
+                lp.NetTransform.SnapTo(home + new Vector2(6f, 0f));
+            });
+            Add(0.8f, () => { TreatPlus.DiagHome(); });
+            Add(0.8f, () => { Log(FormattableString.Invariant($"homing: {Vector2.Distance(lp.GetTruePosition(), ShipStatus.Instance.MeetingSpawnCenter):F2} from the meeting spot, has {TrickOrTreat.Has(me, Treat.HomingHumbug)} (want False)")); lp.NetTransform.SnapTo(home); });
+            Add(0.5f, () => {
+                var d = Dummy(lp);
+                if (d == null) { Log("sticky: no dummy"); return; }
+                TrickOrTreat.DiagEatAs(d, Treat.StickyToffee);
+                lp.MurderPlayer(d, MurderResultFlags.Succeeded);
+                Log(FormattableString.Invariant($"sticky: dummy dead {d.Data.IsDead}, my speed {TrickOrTreat.SpeedMult(me):F2} (want 0.50)"));
+            });
+            Add(5.5f, () => Log(FormattableString.Invariant($"sticky after 5 s: my speed {TrickOrTreat.SpeedMult(me):F2} (want 1.00)")));
+            Add(0.3f, () => {
+                var d = Dummy(lp);
+                if (d != null) TrickOrTreat.DiagEatAs(d, Treat.TattletaleTaffy);
+                TrickOrTreat.DiagMeeting();
+                Log($"tattletale notes at the meeting: '{TreatPlus.DiagTattle}'");
+            });
+            Add(1.2f, () => {
+                ClearLocal();
+                TrickOrTreat.DiagEat(Treat.VentMint);
+                Log($"vent mint: impostor {TrickOrTreat.IsImp(lp)}, linked vents {TreatPlus.DiagLinks}, state '{TrickOrTreat.DiagState()}'");
+                if (TrickOrTreat.IsImp(lp)) return;
+                var v = ShipStatus.Instance.AllVents.ToArray().Where(x => x != null).OrderBy(x => Vector2.Distance(x.transform.position, lp.GetTruePosition())).FirstOrDefault();
+                if (v != null) { ventMint = v; lp.NetTransform.SnapTo((Vector2)v.transform.position + new Vector2(0f, 0.15f)); }
+            });
+            Add(1.0f, () => {
+                if (ventMint == null) return;
+                ventMint.CanUse(lp.Data, out bool can, out bool could);
+                Log($"vent mint: at vent {ventMint.Id}, can use {can}, could {could}");
+                if (can) ventMint.Use();
+            });
+            Add(1.5f, () => { Log($"vent mint: in vent {lp.inVent}"); if (ventMint != null && lp.inVent) ventMint.Use(); });
+            Add(1.5f, () => {
+                Log($"vent mint: out again {!lp.inVent}, still has it {TrickOrTreat.Has(me, Treat.VentMint)} (want False)");
+                if (ventMint != null) { ventMint.CanUse(lp.Data, out bool can, out _); Log($"vent mint: second try can use {can} (want False)"); }
+                ClearLocal();
+                lp.NetTransform.SnapTo(home);
+            });
+            // ---- Haunted Tasks (forced to 100 % in the self test): Fix Wiring ----
+            Add(0.6f, () => {
+                wireConsole = null;
+                foreach (var c in UnityEngine.Object.FindObjectsOfType<Console>()) {
+                    var t = c != null ? c.FindTask(lp) : null;
+                    if (t != null && t.TaskType == TaskTypes.FixWiring && !t.IsComplete) { wireConsole = c; break; }
+                }
+                if (wireConsole == null)            // no wiring this round: any normal task, the panel has to slam shut
+                    foreach (var c in UnityEngine.Object.FindObjectsOfType<Console>()) {
+                        var t = c != null ? c.FindTask(lp) : null;
+                        if (t != null && !t.IsComplete && t.TryCast<NormalPlayerTask>() != null) { wireConsole = c; break; }
+                    }
+                Log($"haunted: wire console {(wireConsole != null ? wireConsole.name : "none")}");
+                if (wireConsole != null) lp.NetTransform.SnapTo((Vector2)wireConsole.transform.position + new Vector2(0f, -0.35f));
+            });
+            Add(1.0f, () => { if (wireConsole != null) { try { wireConsole.Use(); } catch (Exception e) { Log($"haunted: use failed {e.Message}"); } } });
+            Add(1.2f, () => {
+                var wm = Minigame.Instance != null ? Minigame.Instance.TryCast<WireMinigame>() : null;
+                Log($"haunted: minigame {(Minigame.Instance != null ? Minigame.Instance.GetType().Name : "none")}, plan {HwHauntedTasks.DiagPlan}");
+                if (wm == null) return;
+                wm.ActualWires[0] = wm.ExpectedWires[0];      // as if the first wire was put right
+                try { wm.UpdateLights(); } catch { }
+            });
+            Add(4.5f, () => {
+                var wm = Minigame.Instance != null ? Minigame.Instance.TryCast<WireMinigame>() : null;
+                if (wm != null) Log($"haunted: wire 0 now {wm.ActualWires[0]} (want -1), plan {HwHauntedTasks.DiagPlan}");
+                else Log($"haunted: after 4.5 s minigame {(Minigame.Instance != null ? Minigame.Instance.GetType().Name : "none (slammed shut)")}");
+                Shot("haunted_wires");
+                try { Minigame.Instance?.Close(); } catch { }
+                lp.NetTransform.SnapTo(home);
+            });
+            Add(0.8f, () => {
+                var r = TreatSettings.Current;
+                r.Bag = false; r.Trick = false; r.Shock = false;
+                TreatSettings.Changed();
+                Log("batch2 done");
+            });
+        }
+        private static Vent ventMint;
+        private static Console wireConsole;
 
         // ================================================================ cabinets
         private static string Cab(TreatCabinets.Cabinet c) {

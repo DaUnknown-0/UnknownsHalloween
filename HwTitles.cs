@@ -10,7 +10,7 @@
  * Registered once UTS has published the contract (tried on the main menu, in the lobby and every few seconds of the
  * tick); without UTS nothing happens.
  *
- *   Final Girl      most often the last crewmate alive when a round ends (no impostor, no neutral)
+ *   Sole Survivor      most often the last crewmate alive when a round ends (no impostor, no neutral)
  *   Candy Glutton   most candies eaten (Trick or Treat, the Midnight Bonbon included)
  *   Midnight Snack  most often caught by the Midnight Bonbon
  *   Most Haunted    most often the first to die in a round (disconnects do not count)
@@ -40,7 +40,7 @@ namespace UnknownsHalloween {
         private static void Log(string s) => HalloweenPlugin.Logger?.LogInfo($"{LogPrefix} {s}");
         private static void Warn(string s) => HalloweenPlugin.Logger?.LogWarning($"{LogPrefix} {s}");
 
-        internal const string FinalGirlId = "hw.finalgirl", CandyId = "hw.candy", MidnightId = "hw.midnight",
+        internal const string SoleSurvivorId = "hw.solesurvivor", CandyId = "hw.candy", MidnightId = "hw.midnight",
                               HauntedId = "hw.haunted", MirrorId = "hw.mirror";
 
         private const string AddTitleKey = "UTS.SessionStats.AddTitle", CountKey = "UTS.SessionStats.Count";
@@ -68,9 +68,9 @@ namespace UnknownsHalloween {
                 if (AppDomain.CurrentDomain.GetData(AddTitleKey) is not Action<string, int, Func<string>, Func<int, string>> add) return;
                 count = AppDomain.CurrentDomain.GetData(CountKey) as Action<string, byte, int>;
                 // after UTS' own nine titles, in the order of the idea list
-                add(FinalGirlId, 100, () => "Final Girl",
+                add(SoleSurvivorId, 100, () => "Sole Survivor",
                     n => De() ? $"{n}x als letzte Crew übrig" : $"last crewmate standing {n}x");
-                add(CandyId, 101, () => "Candy Glutton",
+                add(CandyId, 101, () => De() ? "Naschkatze" : "Candy Glutton",
                     n => De() ? $"{n} Süßigkeiten gegessen" : $"{n} {(n == 1 ? "candy" : "candies")} eaten");
                 add(MidnightId, 102, () => "Midnight Snack",
                     n => De() ? $"{n}x vom Midnight Bonbon erwischt" : $"caught by the Midnight Bonbon {n}x");
@@ -168,7 +168,7 @@ namespace UnknownsHalloween {
                     crew.Add(p);
                 }
                 if (crew.Count == 1) {
-                    Count(FinalGirlId, crew[0].PlayerId);
+                    Count(SoleSurvivorId, crew[0].PlayerId);
                     Log($"last crewmate standing: {crew[0].Data?.PlayerName}");
                 }
             } catch (Exception e) { Warn($"round end: {e.Message}"); }
@@ -222,10 +222,10 @@ namespace UnknownsHalloween {
                 OnCandyEaten(ps[0].PlayerId, true);
                 OnCandyEaten(ps[0].PlayerId, true);
                 Count(HauntedId, ps[Mathf.Min(1, ps.Count - 1)].PlayerId, 3);
-                Count(FinalGirlId, ps[ps.Count - 1].PlayerId, 2);
+                Count(SoleSurvivorId, ps[ps.Count - 1].PlayerId, 2);
                 Count(MirrorId, ps[Mathf.Min(2, ps.Count - 1)].PlayerId, 4);
                 RoundEnded();
-                Log($"diag: {Counted - before} count(s) handed to UTS (candy 7, midnight 2, haunted 1, final girl 1 + RoundEnded, mirror 1)");
+                Log($"diag: {Counted - before} count(s) handed to UTS (candy 7, midnight 2, haunted 1, sole survivor 1 + RoundEnded, mirror 1)");
             } catch (Exception e) { Warn($"diag failed: {e}"); }
             Log("diag: titles done");
         }

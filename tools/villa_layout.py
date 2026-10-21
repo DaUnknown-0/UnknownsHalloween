@@ -255,7 +255,7 @@ GLASS = [
 # werden gezeichnet und sortiert wie Props, sperren aber weder Weg noch Sicht.
 OPAQUE += [
     (("rect", 10.1, 1.2, 10.75, 2.4), "kupferkessel", B),           # Laundry, Ostwand
-    (("rect", 23.25, 3.0, 23.7, 6.0), "bandregal", B),               # Radio Room, Westwand
+    (("rect", 24.5, 3.0, 24.95, 6.0), "bandregal", B),                # Radio Room, frei vor der Westwand (stand bis 21.10. direkt vor der Tuer)
     (("rect", 33.3, 1.6, 33.75, 3.6), "maskenregal", B),             # Prop Store, Ostwand
     (("rect", 8.25, 12.2, 8.7, 13.9), "garderobe", B),               # Long Library, Nordarm Westwand
     (("rect", 0.4, 19.3, 1.2, 19.9), "engelsstatue_tuch", B),        # Chapel, Nordwestecke
@@ -279,7 +279,7 @@ GLASS += [
     (("rect", 7.3, 4.0, 8.6, 4.8), "mangel", B),                     # Laundry
     (("rect", 7.3, 7.0, 8.0, 7.75), "seifenkisten", B),              # Laundry, Suedwestecke
     (("circle", 13.0, 6.5, 0.35), "kristallkugel_tisch", B),         # Seance Parlour
-    (("rect", 21.5, 1.2, 22.4, 1.9), "phonograph", B),               # Seance Parlour
+    (("rect", 20.2, 0.9, 21.1, 1.6), "phonograph", B),               # Seance Parlour, neben Vent 3 (stand bis 21.10. darauf)
     (("rect", 26.3, 3.2, 26.75, 4.0), "walkie_station", B),          # Radio Room, Ostwand
     (("circle", 24.4, 2.2, 0.3), "drehstuhl", B),                    # Radio Room
     (("rect", 28.5, 0.3, 31.0, 0.7), "kleiderstange", B),            # Prop Store, Nordwand

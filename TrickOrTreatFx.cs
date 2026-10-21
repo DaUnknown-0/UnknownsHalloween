@@ -58,6 +58,20 @@ namespace UnknownsHalloween {
                 case Treat.SwapSweet: return "Swap Sweet";
                 case Treat.ShrinkSherbet: return "Shrink Sherbet";
                 case Treat.BigBite: return "Big Bite";
+                case Treat.DoubleDip: return "Double Dip";
+                case Treat.CandyCornCompass: return "Candy Corn Compass";
+                case Treat.PeekAPop: return "Peek-a-Pop";
+                case Treat.StickyToffee: return "Sticky Toffee";
+                case Treat.VentMint: return "Vent Mint";
+                case Treat.FizzPop: return "Fizz Pop";
+                case Treat.HomingHumbug: return "Homing Humbug";
+                case Treat.TattletaleTaffy: return "Tattletale Taffy";
+                case Treat.BrainFreeze: return "Brain Freeze";
+                case Treat.ReverseGummy: return "Reverse Gummy";
+                case Treat.WrapperTrail: return "Wrapper Trail";
+                case Treat.SugarCrash: return "Sugar Crash";
+                case Treat.CopycatCaramel: return "Copycat Caramel";
+                case Treat.GhostlyGum: return "Ghostly Gum";
                 default: return fx.ToString();
             }
         }
@@ -114,6 +128,21 @@ namespace UnknownsHalloween {
                 }
                 case Treat.ShrinkSherbet: return de ? $"Du bist kleiner und 5 % schneller, {r}." : $"You are smaller and 5% faster, {r}.";
                 case Treat.BigBite: return de ? $"Du bist größer und 5 % langsamer, {r}." : $"You are bigger and 5% slower, {r}.";
+                case Treat.DoubleDip: return de ? "Deine Stimme zählt im nächsten Meeting doppelt." : "Your vote counts twice in the next meeting.";
+                case Treat.CandyCornCompass: return de ? "15 s lang zeigt ein Pfeil zum nächsten lebenden Spieler." : "For 15 s an arrow points to the nearest living player.";
+                case Treat.PeekAPop: return de ? "5 s lang siehst du die Admin-Karte." : "You see the admin map for 5 s.";
+                case Treat.StickyToffee: return de ? $"Wer dich tötet, klebt danach 5 s lang fest ({r})." : $"Whoever kills you is stuck for 5 s afterwards ({r}).";
+                case Treat.VentMint:
+                    return imp ? (de ? $"Zwei Vents sind für dich verbunden, {r}." : $"Two vents are linked for you, {r}.")
+                               : (de ? $"Du darfst einmal venten ({r})." : $"You may use a vent once ({r}).");
+                case Treat.FizzPop: return de ? "15 s lang siehst du die Fußspuren aller Spieler." : "For 15 s you see everyone's footprints.";
+                case Treat.HomingHumbug: return de ? $"Ein Knopf bringt dich einmal zurück zum Treffpunkt ({r})." : $"A button takes you back to the meeting spot once ({r}).";
+                case Treat.TattletaleTaffy: return de ? "Die Impostoren sehen dich 10 s lang, im nächsten Meeting alle, wo du warst." : "The impostors see you for 10 s, the next meeting tells everyone where you were.";
+                case Treat.BrainFreeze: return de ? "3 s lang eingefroren." : "Frozen for 3 s.";
+                case Treat.ReverseGummy: return de ? "10 s lang ist deine Steuerung vertauscht." : "Your controls are reversed for 10 s.";
+                case Treat.WrapperTrail: return de ? "30 s lang hinterlässt du eine Spur aus Bonbonpapier." : "For 30 s you leave a trail of candy wrappers.";
+                case Treat.SugarCrash: return de ? "20 s lang 30 % schneller, dann 20 s lang 30 % langsamer." : "30% faster for 20 s, then 30% slower for 20 s.";
+                case Treat.GhostlyGum: return de ? "20 s lang bist du für alle halb durchsichtig." : "You are half see-through for everyone for 20 s.";
                 default: return "";
             }
         }
@@ -123,9 +152,12 @@ namespace UnknownsHalloween {
             switch (fx) {
                 case Treat.IronTaffy: case Treat.SugarRush: case Treat.CinnamonStick: case Treat.NightOwl: case Treat.ShortcutCaramel:
                 case Treat.PrizeInside: case Treat.GuidingMint: case Treat.LuckyLolly: case Treat.EchoDrop:
+                case Treat.DoubleDip: case Treat.CandyCornCompass: case Treat.PeekAPop: case Treat.StickyToffee: case Treat.VentMint:
+                case Treat.FizzPop: case Treat.HomingHumbug:
                     return new Color(0.55f, 1f, 0.45f);
                 case Treat.RockCandy: case Treat.FogFudge: case Treat.ExtraChore: case Treat.Hiccups: case Treat.LightsOut:
                 case Treat.Earmuffs: case Treat.Jinkies: case Treat.Butterfingers: case Treat.Glowing: case Treat.CrowCompany: case Treat.Gobstopper:
+                case Treat.TattletaleTaffy: case Treat.BrainFreeze: case Treat.ReverseGummy: case Treat.WrapperTrail:
                     return new Color(1f, 0.45f, 0.4f);
                 default:
                     return new Color(0.85f, 0.6f, 1f);
@@ -732,7 +764,7 @@ namespace UnknownsHalloween {
             return sr;
         }
 
-        private static void Cover(SpriteRenderer sr, float z) {
+        internal static void Cover(SpriteRenderer sr, float z) {
             var uiCam = UiCam();
             if (uiCam == null || sr == null) return;
             var c = uiCam.transform.position;
@@ -797,12 +829,16 @@ namespace UnknownsHalloween {
                 string name = TreatFx.Name(shown);
                 var tint = Tint(real);
                 string body;
-                if (shown == Treat.VolatileStarlight) {
+                if (TrickOrTreat.IsStandIn(shown)) {
                     body = (TrickOrTreat.De() ? "wirkt wie " : "acts as ") + $"<color=#{Hex(Tint(real))}>{TreatFx.Name(real)}</color>: " + Line(real, imp, param);
-                    tint = Tint(Treat.VolatileStarlight);
+                    tint = Tint(shown);
                 } else body = Line(real, imp, param);
                 if (!string.IsNullOrEmpty(extra)) body = real == Treat.Regurgitate || real == Treat.GuidingMint || real == Treat.SwapSweet ? extra : body + " " + extra;
-                if (EffectsHidden) SetCardText(kindName, null, null);
+                // User 2026-10-21: the card names the candy and the effect, without the line that explains it
+                if (EffectsHidden) {
+                    string real2 = TrickOrTreat.IsStandIn(shown) ? $" <color=#{Hex(Tint(real))}>({TreatFx.Name(real)})</color>" : "";
+                    SetCardText(kindName, $"<color=#{Hex(tint)}>{name}</color>{real2}", "");
+                }
                 else SetCardText(kindName, $"<color=#{Hex(tint)}>{name}</color>", body);
                 popupAt = Time.time;
                 popupRoot.SetActive(true);
@@ -810,8 +846,8 @@ namespace UnknownsHalloween {
             } catch (Exception e) { HalloweenPlugin.Logger?.LogWarning($"{LogPrefix} card failed: {e.Message}"); }
         }
 
-        // User 2026-10-20: in a game nobody learns which candy does what, not even after eating it. The card only
-        // names the candy; the effect has to be noticed. Kept as a switch so the texts stay available.
+        // User 2026-10-20: the card does not explain the effect. Since 2026-10-21 it names candy and effect (no line
+        // text). Kept as a switch so the explaining texts stay available.
         internal static bool EffectsHidden => true;
 
         internal static string PoisonLine(bool de) => de
@@ -822,8 +858,7 @@ namespace UnknownsHalloween {
             ShowPopup(TrickOrTreat.PoisonKind, TrickOrTreat.KindNames[TrickOrTreat.PoisonKind], Treat.NothingQ, Treat.NothingQ, false, byte.MaxValue, null);
             if (popupText == null) return;
             bool de = TrickOrTreat.De();
-            if (EffectsHidden) return;
-            SetCardText(TrickOrTreat.KindNames[TrickOrTreat.PoisonKind], $"<color=#B98CFF>{(de ? "Tödlich" : "Deadly")}</color>", PoisonLine(de));
+            SetCardText(TrickOrTreat.KindNames[TrickOrTreat.PoisonKind], $"<color=#B98CFF>{(de ? "Tödlich" : "Deadly")}</color>", EffectsHidden ? "" : PoisonLine(de));
         }
 
         // ---- a short line in the middle of the screen (an empty cabinet), only on the searcher's client ----
@@ -971,7 +1006,8 @@ namespace UnknownsHalloween {
             var sb = new System.Text.StringBuilder();
             bool de = TrickOrTreat.De();
             foreach (var a in mine) {
-                string left = a.Round ? (de ? $"{a.Meetings} M." : $"{a.Meetings} mtg") : $"{Mathf.CeilToInt(Mathf.Max(0f, a.Left))}s";
+                string left = a.Round ? (de ? $"{a.Meetings} M." : $"{a.Meetings} mtg")
+                    : TrickOrTreat.IsMeetingBound(a.Fx) ? (de ? "Meeting" : "meeting") : $"{Mathf.CeilToInt(Mathf.Max(0f, a.Left))}s";
                 sb.Append($"<color=#{Hex(Tint(a.Fx))}>{Name(a.Fx)}</color> <color=#FFFFFFAA>{left}</color>\n");
             }
             string s = sb.ToString();
@@ -1276,7 +1312,7 @@ namespace UnknownsHalloween {
         // ================================================================ sounds (synthesised once)
         private static AudioClip hicClip, munchClip, alarmClip;
 
-        private static void Play(AudioClip clip, float vol, float pan) {
+        internal static void Play(AudioClip clip, float vol, float pan) {
             try {
                 if (clip == null || !Constants.ShouldPlaySfx() || SoundManager.Instance == null) return;
                 var src = SoundManager.Instance.PlaySound(clip, false, vol);
@@ -1284,7 +1320,7 @@ namespace UnknownsHalloween {
             } catch { }
         }
 
-        private static AudioClip MakeClip(string name, float len, Func<float, float, float> f) {
+        internal static AudioClip MakeClip(string name, float len, Func<float, float, float> f) {
             const int rate = 44100;
             int n = (int)(rate * len);
             var data = new float[n];
@@ -1395,7 +1431,8 @@ namespace UnknownsHalloween {
             }
             if (current == null) return;
             if (ub.graphic != null) ub.graphic.sprite = Icon(current.Kind);
-            if (ub.buttonLabelText != null) ub.buttonLabelText.text = TrickOrTreat.De() ? "ESSEN" : "EAT";
+            bool take = TreatPlus.BagOn() && PlayerControl.LocalPlayer != null && TreatPlus.BagCount(PlayerControl.LocalPlayer.PlayerId) < TreatPlus.BagSize;
+            if (ub.buttonLabelText != null) ub.buttonLabelText.text = take ? (TrickOrTreat.De() ? "NEHMEN" : "TAKE") : (TrickOrTreat.De() ? "ESSEN" : "EAT");
         }
 
         [HarmonyPatch(typeof(HudManager), nameof(HudManager.Update))]
@@ -1451,7 +1488,8 @@ namespace UnknownsHalloween {
             if (current == null) return;
             var c = current;
             current = null;
-            TrickOrTreat.RequestEat(c);
+            if (TreatPlus.BagOn() && PlayerControl.LocalPlayer != null && TreatPlus.BagCount(PlayerControl.LocalPlayer.PlayerId) < TreatPlus.BagSize) TreatPlus.RequestTake(c);
+            else TrickOrTreat.RequestEat(c);
         }
     }
 }

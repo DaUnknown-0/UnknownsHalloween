@@ -3,7 +3,7 @@
 // Based on The Other Roles (https://github.com/TheOtherRolesAU/TheOtherRoles), GPL-3.0.
 
 /*
- * FINAL GIRL (evening event, Halloween idea B2, default off)
+ * SOLE SURVIVOR (evening event, Halloween idea B2, default off)
  *
  * Would the Impostors win by parity (kill or vote), is no killing neutral alive any more, and has the last
  * crewmate (or have the last two, option) done all of their own tasks, the round does not end: the finale starts.
@@ -47,7 +47,7 @@ using Types = TheOtherRoles.CustomOption.CustomOptionType;
 using R = UnknownsHalloween.HalloweenModeRules;
 
 namespace UnknownsHalloween {
-    public static class FinalGirl {
+    public static class SoleSurvivor {
         internal static readonly Color Pink = new Color(1f, 0.45f, 0.70f);
         private const int Banner = 19;
 
@@ -71,13 +71,13 @@ namespace UnknownsHalloween {
 
         internal static void CreateOptions() {
             try {
-                Enabled = CustomOption.Create(2050, Types.General, "Final Girl", false, null, true, null, "Final Girl");
-                Survivors = Make(2051, "Final Girl: Last Survivors", SurvivorLabels, "1-2", Enabled);
-                DeadTasks = Make(2052, "Final Girl: Dead Crew Tasks Needed", DeadTaskLabels, "50%", Enabled);
-                EscapeTime = Make(2053, "Final Girl: Escape Time", EscapeLabels, "60s", Enabled);
-                Freeze = Make(2054, "Final Girl: Killer Freeze", FreezeLabels, "5s", Enabled);
-                SurvivorSpeed = Make(2055, "Final Girl: Survivor Speed", SpeedLabels, "110%", Enabled);
-            } catch (Exception e) { HalloweenPlugin.Logger?.LogError($"{R.LogPrefix} final girl options failed: {e}"); }
+                Enabled = CustomOption.Create(2050, Types.General, "Sole Survivor", false, null, true, null, "Sole Survivor");
+                Survivors = Make(2051, "Sole Survivor: Last Survivors", SurvivorLabels, "1-2", Enabled);
+                DeadTasks = Make(2052, "Sole Survivor: Dead Crew Tasks Needed", DeadTaskLabels, "50%", Enabled);
+                EscapeTime = Make(2053, "Sole Survivor: Escape Time", EscapeLabels, "60s", Enabled);
+                Freeze = Make(2054, "Sole Survivor: Killer Freeze", FreezeLabels, "5s", Enabled);
+                SurvivorSpeed = Make(2055, "Sole Survivor: Survivor Speed", SpeedLabels, "110%", Enabled);
+            } catch (Exception e) { HalloweenPlugin.Logger?.LogError($"{R.LogPrefix} sole survivor options failed: {e}"); }
         }
 
         private static int Sel(CustomOption o, int fallback) { try { return o == null ? fallback : o.getSelection(); } catch { return fallback; } }
@@ -88,7 +88,7 @@ namespace UnknownsHalloween {
         private static float SpeedFactor() => 1f + 0.1f * Mathf.Clamp(Sel(SurvivorSpeed, 1), 0, SpeedLabels.Length - 1);
 
         // ---- self test (HalloweenModeDiag) ----
-        internal static readonly bool Diag = ZombieOutbreak.DiagMode == "finalgirl" || ZombieOutbreak.DiagMode.StartsWith("finalgirl:", StringComparison.Ordinal);
+        internal static readonly bool Diag = ZombieOutbreak.DiagMode == "solesurvivor" || ZombieOutbreak.DiagMode.StartsWith("solesurvivor:", StringComparison.Ordinal);
         internal static float DiagLimit = -1f;
         internal static bool DiagIgnoreTasks;
 
@@ -113,15 +113,15 @@ namespace UnknownsHalloween {
         private static string Tr(string key) {
             bool de = R.German();
             switch (key) {
-                case "start_s": return de ? "FINAL GIRL: Das Licht ist aus. Folge dem Pfeil zum Ausgang und entkomme!" : "FINAL GIRL: the lights are out. Follow the arrow to the exit and get out!";
-                case "start_i": return de ? "FINAL GIRL: Die Letzten fliehen zum Ausgang. Gleich kannst du dich bewegen. Lass niemanden entkommen!" : "FINAL GIRL: the last ones run for the exit. You can move in a moment. Let nobody escape!";
-                case "start_g": return de ? "FINAL GIRL: das Finale läuft. Geister-Aufgaben sind gesperrt." : "FINAL GIRL: the finale is on. Ghost tasks are locked.";
-                case "line_s": return de ? "FINAL GIRL  {0}   Finde den Ausgang!" : "FINAL GIRL  {0}   Find the exit!";
-                case "line_i": return de ? "FINAL GIRL  {0}   Lass sie nicht entkommen!" : "FINAL GIRL  {0}   Do not let them escape!";
-                case "line_f": return de ? "FINAL GIRL  {0}   Eingefroren: {1}" : "FINAL GIRL  {0}   Frozen: {1}";
-                case "line_g": return "FINAL GIRL  {0}";
+                case "start_s": return de ? "SOLE SURVIVOR: Das Licht ist aus. Folge dem Pfeil zum Ausgang und entkomme!" : "SOLE SURVIVOR: the lights are out. Follow the arrow to the exit and get out!";
+                case "start_i": return de ? "SOLE SURVIVOR: Die Letzten fliehen zum Ausgang. Gleich kannst du dich bewegen. Lass niemanden entkommen!" : "SOLE SURVIVOR: the last ones run for the exit. You can move in a moment. Let nobody escape!";
+                case "start_g": return de ? "SOLE SURVIVOR: das Finale läuft. Geister-Aufgaben sind gesperrt." : "SOLE SURVIVOR: the finale is on. Ghost tasks are locked.";
+                case "line_s": return de ? "SOLE SURVIVOR  {0}   Finde den Ausgang!" : "SOLE SURVIVOR  {0}   Find the exit!";
+                case "line_i": return de ? "SOLE SURVIVOR  {0}   Lass sie nicht entkommen!" : "SOLE SURVIVOR  {0}   Do not let them escape!";
+                case "line_f": return de ? "SOLE SURVIVOR  {0}   Eingefroren: {1}" : "SOLE SURVIVOR  {0}   Frozen: {1}";
+                case "line_g": return "SOLE SURVIVOR  {0}";
                 case "escaped": return de ? "{0} ist entkommen!" : "{0} escaped!";
-                case "win_c": return de ? "Das Final Girl ist entkommen" : "The Final Girl Escaped";
+                case "win_c": return de ? "Sole Survivor entkommen" : "The Sole Survivor Escaped";
                 case "win_i": return de ? "Niemand ist entkommen" : "Nobody Escaped";
                 default: return key;
             }
@@ -195,7 +195,7 @@ namespace UnknownsHalloween {
                     if (!OptionOn || used || !R.InRound()) return true;
                     if (endReason != GameOverReason.ImpostorByKill && endReason != GameOverReason.ImpostorByVote) return true;
                     if (!Conditions(out var found, out string why)) {
-                        if (why != lastWhy) { lastWhy = why; R.Log($"Final Girl: no finale ({why})."); }
+                        if (why != lastWhy) { lastWhy = why; R.Log($"Sole Survivor: no finale ({why})."); }
                         return true;
                     }
                     used = true;
@@ -203,10 +203,10 @@ namespace UnknownsHalloween {
                     pendingClearSince = -1f;
                     survivors.Clear();
                     foreach (var p in found) survivors.Add(p.PlayerId);
-                    R.Log($"Final Girl: parity win ({(int)endReason}) held back - {why}.");
+                    R.Log($"Sole Survivor: parity win ({(int)endReason}) held back - {why}.");
                     return false;
                 } catch (Exception e) {
-                    HalloweenPlugin.Logger?.LogError($"{R.LogPrefix} final girl guard failed: {e}");
+                    HalloweenPlugin.Logger?.LogError($"{R.LogPrefix} sole survivor guard failed: {e}");
                     return true;
                 }
             }
@@ -263,7 +263,7 @@ namespace UnknownsHalloween {
             var p = Helpers.playerById(id);
             if (!R.IsAlive(p) || !IsSurvivor(p)) return;
             float d = Vector2.Distance(p.GetTruePosition(), exitPos);
-            if (d > 2.0f) { R.Warn($"Final Girl: {p.Data.PlayerName} reported the exit from {d:F1} away - ignored."); return; }
+            if (d > 2.0f) { R.Warn($"Sole Survivor: {p.Data.PlayerName} reported the exit from {d:F1} away - ignored."); return; }
             try {
                 var w = R.Begin(SubEscaped); w.Write(id);
                 AmongUsClient.Instance.FinishRpcImmediately(w);
@@ -281,7 +281,7 @@ namespace UnknownsHalloween {
                     int n = r.ReadByte();
                     var ids = new List<byte>();
                     for (int i = 0; i < n; i++) ids.Add(r.ReadByte());
-                    if (UCRpc.RequireHost("FinalGirl.Start")) ApplyStart(new Vector2(x, y), fr, lim, ids);
+                    if (UCRpc.RequireHost("SoleSurvivor.Start")) ApplyStart(new Vector2(x, y), fr, lim, ids);
                     break;
                 }
                 case SubReached: {
@@ -289,7 +289,7 @@ namespace UnknownsHalloween {
                     if (R.AmHost && UCRpc.Sender != null && UCRpc.Sender.PlayerId == id) HostReached(id);
                     break;
                 }
-                case SubEscaped: { byte id = r.ReadByte(); if (UCRpc.RequireHost("FinalGirl.Escaped")) ApplyEscaped(id); break; }
+                case SubEscaped: { byte id = r.ReadByte(); if (UCRpc.RequireHost("SoleSurvivor.Escaped")) ApplyEscaped(id); break; }
             }
         }
 
@@ -358,7 +358,7 @@ namespace UnknownsHalloween {
             try {
                 if (portalGo != null) UnityEngine.Object.Destroy(portalGo);
                 // layer 11: the ship camera does not render procedural world objects on the default layer
-                portalGo = new GameObject("FinalGirlExit") { layer = 11 };
+                portalGo = new GameObject("SoleSurvivorExit") { layer = 11 };
                 portalGo.transform.position = new Vector3(exitPos.x, exitPos.y, exitPos.y / 1000f - 0.05f);
                 portalSr = portalGo.AddComponent<SpriteRenderer>();
                 portalSr.sprite = HalloweenModeArt.ExitPortal()[0];
@@ -394,7 +394,7 @@ namespace UnknownsHalloween {
             // darkness with the flashlight cone: survivors only (in the world just in front of the players, behind the HUD)
             if (surv) {
                 if (dark == null) {
-                    var go = new GameObject("FinalGirlDark") { layer = lp.gameObject.layer };
+                    var go = new GameObject("SoleSurvivorDark") { layer = lp.gameObject.layer };
                     dark = go.AddComponent<SpriteRenderer>();
                     dark.sprite = HalloweenModeArt.FlashlightCone();
                 }
@@ -436,7 +436,7 @@ namespace UnknownsHalloween {
                     nextHostTick = Time.realtimeSinceStartup + 0.25f;
                     if (R.AmHost && (pending || active)) HostTick();
                 } catch (Exception e) {
-                    if (!tickLogged) { tickLogged = true; HalloweenPlugin.Logger?.LogError($"{R.LogPrefix} final girl tick failed (logged once): {e}"); }
+                    if (!tickLogged) { tickLogged = true; HalloweenPlugin.Logger?.LogError($"{R.LogPrefix} sole survivor tick failed (logged once): {e}"); }
                 }
             }
         }

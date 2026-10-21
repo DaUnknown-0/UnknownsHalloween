@@ -302,7 +302,7 @@ namespace UnknownsHalloween {
                 list.Add(new Cabinet { Index = (byte)i, Pos = R(picked[i].Foot), Front = picked[i].Front, Room = picked[i].Room != null ? picked[i].Room.RoomId.ToString() : "?" });
             TrickOrTreat.Send(TrickOrTreat.SubCabinets, w => {
                 w.Write((byte)list.Count);
-                foreach (var c in list) { w.Write((short)Mathf.RoundToInt(c.Pos.x * 100f)); w.Write((short)Mathf.RoundToInt(c.Pos.y * 100f)); }
+                foreach (var c in list) { w.Write(unchecked((ushort)(short)Mathf.RoundToInt(c.Pos.x * 100f))); w.Write(unchecked((ushort)(short)Mathf.RoundToInt(c.Pos.y * 100f))); }
             });
             Apply(list);
         }
@@ -392,7 +392,7 @@ namespace UnknownsHalloween {
                 byte pid = p.PlayerId;
                 TrickOrTreat.Send(TrickOrTreat.SubSearched, w => { w.Write(ph); w.Write(idx); w.Write(pid); w.Write(ci); });
                 ApplySearched(ph, idx, pid, ci);
-                if (candy != null) TrickOrTreat.HostEat(p, ph, candy.Index, null);
+                if (candy != null) TreatPlus.HostTakeOrEat(p, ph, candy.Index);
             } catch (Exception e) { HalloweenPlugin.Logger?.LogError($"{LogPrefix} HostSearch failed: {e}"); }
         }
 

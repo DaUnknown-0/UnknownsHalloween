@@ -2,15 +2,15 @@
 // Licensed under GPL-3.0-or-later. See LICENSE for details.
 
 /*
- * Artwork of the two game modes (Zombie Outbreak, Final Girl).
+ * Artwork of the two game modes (Zombie Outbreak, Sole Survivor).
  *
  * Every picture is looked up first as a delivered file under Resources/hw2026/zombie/ (embedded through the
  * wildcard in UnknownsHalloween.csproj, or from an asset package), and only when it is missing a placeholder is
  * painted at runtime. The graphics session can therefore drop the real files in without any code change:
  *   zombie_infect_button.png  256 x 256   the infect button
  *   zombie_tint_overlay.png   256 x 256   seamless tile, the zombie's own green view (drawn tiled, faint)
- *   exit_portal_<1-8>.png     200 x 200   the Final Girl exit, eight animation frames
- *   finalgirl_arrow.png        64 x 64    the survivors' arrow to the exit (pointing right, like TOR's arrow)
+ *   exit_portal_<1-8>.png     200 x 200   the Sole Survivor exit, eight animation frames
+ *   solesurvivor_arrow.png        64 x 64    the survivors' arrow to the exit (pointing right, like TOR's arrow)
  */
 
 using System;
@@ -121,7 +121,7 @@ namespace UnknownsHalloween {
         }
 
         // ---- arrow to the exit: pointing right like TOR's Arrow.png (150 px at 200 ppu -> 64 px at 85 ppu) ----
-        internal static Sprite Arrow() => Get("arrow", () => Delivered("finalgirl_arrow.png", 85f, false) ?? Painted(64, 64, 85f, false, (x, y) => {
+        internal static Sprite Arrow() => Get("arrow", () => Delivered("solesurvivor_arrow.png", 85f, false) ?? Painted(64, 64, 85f, false, (x, y) => {
             float px = x + 0.5f, py = y + 0.5f - 32f;
             // triangle from (8, +-26) to (58, 0) with a notch at the back
             float t = (px - 8f) / 50f;
