@@ -437,7 +437,14 @@ namespace UnknownsHalloween {
             });
             // ---- the bag ----
             Add(1.0f, () => { A = Fresh(); if (A != null) lp.NetTransform.SnapTo(A.Pos + new Vector2(0.45f, 0.05f)); });
-            Add(1.0f, () => { Log($"bag: near A use '{TreatUse.Label}' (want TAKE/NEHMEN)"); Shot("bag_take"); TreatUse.OnClick(); });
+            Add(1.0f, () => {
+                string why = "";
+                try {
+                    var ub = HudManager.Instance.UseButton;
+                    why = FormattableString.Invariant($"canMove {lp.CanMove}, inVent {lp.inVent}, minigame {Minigame.Instance != null}, useTarget {(ub.currentTarget != null ? ub.currentTarget.ToString() : "none")}, dist {(A != null ? Vector2.Distance(lp.GetTruePosition(), A.Pos) : -1f):F2}, atlasUse {TreatCabinets.AtlasOwnsUse()}, alive {TrickOrTreat.IsAlive(lp)}");
+                } catch (Exception e) { why = e.Message; }
+                Log($"bag: near A use '{TreatUse.Label}' (want TAKE/NEHMEN) | {why}"); Shot("bag_take"); TreatUse.OnClick();
+            });
             Add(0.5f, () => { Log($"bag: after A bag {TreatPlus.BagCount(me)}, A eaten {A?.Eaten}, state '{TrickOrTreat.DiagState()}'"); B = Fresh(A); if (B != null) lp.NetTransform.SnapTo(B.Pos + new Vector2(0.45f, 0.05f)); });
             Add(1.0f, () => { TreatUse.OnClick(); });
             Add(0.5f, () => { Log($"bag: after B bag {TreatPlus.BagCount(me)}"); C = Fresh(A, B); if (C != null) lp.NetTransform.SnapTo(C.Pos + new Vector2(0.45f, 0.05f)); });

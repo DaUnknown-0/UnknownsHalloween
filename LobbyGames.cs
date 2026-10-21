@@ -287,7 +287,9 @@ namespace UnknownsHalloween {
 
         [HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnPlayerLeft))]
         static class PlayerLeftPatch {
-            public static void Postfix() {
+            public static void Postfix([HarmonyArgument(0)] InnerNet.ClientData data) {
+                // PlayerIds are handed out again in the same lobby: a vanilla newcomer must not inherit "has the mod" (audit N-2)
+                try { if (data?.Character != null) modded.Remove(data.Character.PlayerId); } catch { }
                 try { if (AmHost()) { PumpkinCarving.HostDropLeavers(); BooTag.HostDropLeavers(); } } catch { }
             }
         }

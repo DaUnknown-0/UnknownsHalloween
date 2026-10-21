@@ -92,7 +92,7 @@ namespace UnknownsHalloween {
         internal static float DiagLimit = -1f;
         internal static bool DiagIgnoreTasks;
 
-        private static bool OptionOn { get { if (Diag) return true; try { return Enabled != null && Enabled.getBool(); } catch { return false; } } }
+        internal static bool OptionOn { get { if (Diag) return true; try { return Enabled != null && Enabled.getBool(); } catch { return false; } } }
 
         // ---- state ----
         private static bool used, pending, active, ending;
@@ -242,6 +242,9 @@ namespace UnknownsHalloween {
                 if (pendingClearSince < 0f) { pendingClearSince = Time.time; return; }
                 if (Time.time - pendingClearSince < 1.5f) return;
                 pending = false;
+                // a meeting in the waiting time can change everything (the last impostor voted out): ask again, and
+                // without a finale TOR's end check runs normally on the next frame (audit N-9)
+                if (!Conditions(out _, out string why)) { R.Log($"Sole Survivor: finale dropped after the wait ({why})."); used = true; return; }
                 SendStart(PickExit(alive), FreezeFor(), Limit(), alive.Select(p => p.PlayerId).ToList());
                 return;
             }

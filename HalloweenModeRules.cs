@@ -221,17 +221,31 @@ namespace UnknownsHalloween {
         [HarmonyPatch(typeof(Vent), nameof(Vent.CanUse))]
         static class VentPatch {
             [HarmonyPriority(Priority.Low)]
-            public static void Postfix([HarmonyArgument(0)] NetworkedPlayerInfo pc, ref float __result,
+            public static void Postfix(Vent __instance, [HarmonyArgument(0)] NetworkedPlayerInfo pc, ref float __result,
                                        [HarmonyArgument(1)] ref bool canUse, [HarmonyArgument(2)] ref bool couldUse) {
                 try {
                     if (!Locked || pc == null || pc.Object == null) return;
                     bool allow = SoleSurvivor.Active ? false : ZombieOutbreak.MayVent(pc.Object);
-                    if (allow) return;
+                    if (allow) { AllowVent(__instance, pc, ref __result, ref canUse, ref couldUse); return; }
                     if (pc.Object.inVent) return;   // never trap somebody inside
                     canUse = couldUse = false;
                     __result = float.MaxValue;
                 } catch { }
             }
+        }
+
+        /// <summary>Lets pc use the vent although his role cannot (zombies, the transformed Xenomorph). The allowing side of
+        /// these rules lives in a postfix on TOR's managed Helpers.roleCanUseVents, which tiered compilation can drop
+        /// silently; this Il2Cpp Vent.CanUse postfix computes the same answer itself (audit N-7, TOR's VentCanUsePatch).</summary>
+        internal static void AllowVent(Vent v, NetworkedPlayerInfo pc, ref float result, ref bool canUse, ref bool couldUse) {
+            if (couldUse || v == null || pc == null || pc.IsDead || pc.Object == null) return;
+            if (v.name.StartsWith("JackInTheBoxVent_")) return;
+            var o = pc.Object;
+            couldUse = o.CanMove || o.inVent;
+            Vector3 center = o.Collider.bounds.center, at = v.transform.position;
+            float d = Vector2.Distance(center, at);
+            canUse = couldUse && d <= v.UsableDistance && !PhysicsHelpers.AnythingBetween(o.Collider, center, at, Constants.ShipOnlyMask, false);
+            result = d;
         }
 
         // Ghost tasks are locked in the finale (the task win is server-authoritative, see SoleSurvivor.cs).

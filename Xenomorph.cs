@@ -186,7 +186,7 @@ namespace UnknownsHalloween {
         private static void GuesserSyncPostfix(bool add) {
             try {
                 guesserSetEntry ??= AccessTools.Method(typeof(UCGuesser), "SetEntry");
-                bool want = add && SpawnRate != null && SpawnRate.getSelection() > 0 && TeslaVersionHandshake.EveryoneHasMod();
+                bool want = add && SpawnRate != null && SpawnRate.getSelection() > 0 && HalloweenHandshake.Ready();
                 guesserSetEntry?.Invoke(null, new object[] { XenomorphInfo(), want, RoleInfo.crewmate });
             } catch { }
         }
@@ -371,10 +371,14 @@ namespace UnknownsHalloween {
                     if (!AmHost()) return;
                     if (UCRoleDraft.DraftWillRun()) return;
                     if (SpawnRate == null || SpawnRate.getSelection() <= 0) return;
-                    if (!TeslaVersionHandshake.EveryoneHasMod()) return;
+                    if (!HalloweenHandshake.Ready()) return;
                     if (LobbyPlayerCount() < (SpawnMinPlayers?.getFloat() ?? 7f)) return;
                     if (!AllowedBesideJackal()) {
                         HalloweenPlugin.Logger?.LogInfo("[Xenomorph] a Jackal is in the round - not rolled (exclusion option).");
+                        return;
+                    }
+                    if (!NeutralSlotFree()) {
+                        HalloweenPlugin.Logger?.LogInfo("[Xenomorph] the neutral roles are at their maximum - not rolled.");
                         return;
                     }
                     if (rnd.Next(1, 101) > SpawnRate.getSelection() * 10) return;
@@ -386,6 +390,20 @@ namespace UnknownsHalloween {
                     HalloweenPlugin.Logger?.LogError($"[Xenomorph] IntroEnd pick failed: {e}");
                 }
             }
+        }
+
+        // TOR's "Maximum Neutral Roles" counts the Xenomorph too (audit M-7). The same count as UCPromotion.NeutralSlotFree
+        // (private in UC): TOR's neutrals and the UC ones already handed out (their RoleInfos are isNeutral).
+        private static bool NeutralSlotFree() {
+            try {
+                int max = TheOtherRoles.CustomOptionHolder.neutralRolesCountMax.getSelection();
+                int n = 0;
+                foreach (var p in PlayerControl.AllPlayerControls) {
+                    if (p == null || p.Data == null || p.Data.Disconnected) continue;
+                    if (RoleInfo.getRoleInfoForPlayer(p, false).Any(r => r != null && r.isNeutral)) n++;
+                }
+                return n < max;
+            } catch { return true; }
         }
 
         // ---- buttons ----
@@ -517,6 +535,17 @@ namespace UnknownsHalloween {
                 try {
                     if (!active || player == null || player.PlayerId != xenoPlayerId) return;
                     if (formActive && (CanVent?.getBool() ?? true)) __result = true;
+                } catch { }
+            }
+        }
+
+        // The same on the Il2Cpp side: survives the loss of the managed detour above (audit N-7).
+        [HarmonyPatch(typeof(Vent), nameof(Vent.CanUse))]
+        static class VentCanUsePatch {
+            public static void Postfix(Vent __instance, [HarmonyArgument(0)] NetworkedPlayerInfo pc, ref float __result, ref bool canUse, ref bool couldUse) {
+                try {
+                    if (!active || !formActive || pc == null || pc.PlayerId != xenoPlayerId || !(CanVent?.getBool() ?? true)) return;
+                    HalloweenModeRules.AllowVent(__instance, pc, ref __result, ref canUse, ref couldUse);
                 } catch { }
             }
         }

@@ -135,7 +135,7 @@ namespace UnknownsHalloween {
         private static void GuesserSyncPostfix(bool add) {
             try {
                 guesserSetEntry ??= AccessTools.Method(typeof(UCGuesser), "SetEntry");
-                bool want = add && SpawnRate != null && SpawnRate.getSelection() > 0 && TeslaVersionHandshake.EveryoneHasMod();
+                bool want = add && SpawnRate != null && SpawnRate.getSelection() > 0 && HalloweenHandshake.Ready();
                 guesserSetEntry?.Invoke(null, new object[] { BansheeInfo(), want, RoleInfo.crewmate });
             } catch { }
         }
@@ -231,7 +231,7 @@ namespace UnknownsHalloween {
                     if (!AmHost()) return;
                     if (UCRoleDraft.DraftWillRun()) return;
                     if (SpawnRate == null || SpawnRate.getSelection() <= 0) return;
-                    if (!TeslaVersionHandshake.EveryoneHasMod()) return;
+                    if (!HalloweenHandshake.Ready()) return;
                     if (rnd.Next(1, 101) > SpawnRate.getSelection() * 10) return;
                     var candidates = PlayerControl.AllPlayerControls.ToArray()
                         .Where(p => UCPromotion.IsPlainCrewmate(p)).ToList();

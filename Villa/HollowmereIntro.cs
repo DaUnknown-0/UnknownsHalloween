@@ -43,6 +43,7 @@ internal static class HollowmereIntro
     public static CustomOption Mode;                // 0 = erste Runde, 1 = jede Runde, 2 = aus
     private static bool _playNext;                  // Entscheidung des Hosts fuer die naechste Runde
     private static bool _hostShownThisLobby;
+    private static int _lobbyGameId = int.MinValue;   // OnGameJoined also fires when a round ends in the same lobby
     private static int _frameCount = -1;
 
     internal static void Init()
@@ -206,8 +207,7 @@ internal static class HollowmereIntro
             bool villa = UnknownsAtlas.AtlasMaps.SelectedKey == HollowmereMap.Key;
             int mode = Mode?.getSelection() ?? 0;
             bool play = villa && FrameCount() > 0 && (mode == 1 || (mode == 0 && !_hostShownThisLobby));
-            if (play && mode == 0) _hostShownThisLobby = true;
-            _playNext = play;
+            _playNext = play;                       // "shown" is set only when the intro really starts (an aborted countdown keeps it)
             var w = UCRpc.Begin(RpcModule);
             w.Write(SubIntro);
             w.Write(play);
@@ -232,7 +232,10 @@ internal static class HollowmereIntro
     internal static void AmongUsClient_OnGameJoined_Postfix()
     {
         _playNext = false;
-        _hostShownThisLobby = false;
+        // "First Round" means the first round of this lobby, not of every return to it (audit N-3)
+        int id = int.MinValue;
+        try { id = AmongUsClient.Instance != null ? AmongUsClient.Instance.GameId : int.MinValue; } catch { }
+        if (id != _lobbyGameId) { _lobbyGameId = id; _hostShownThisLobby = false; }
     }
 
     // ------------------------------------------------------------------ Einhaengen vor dem Rollen-Intro
@@ -248,6 +251,7 @@ internal static class HollowmereIntro
             bool diag = (Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("villaintro");
             if ((!_playNext && !diag) || __result == null) return;
             _playNext = false;
+            _hostShownThisLobby = true;
             if (UnknownsAtlas.AtlasMaps.ActiveKey != HollowmereMap.Key) return;
             __result = Wrap(__result).WrapToIl2Cpp();
         }

@@ -254,7 +254,7 @@ namespace UnknownsHalloween {
         internal static void EnsureDrawn() {
             try {
                 if (drawn || !TrickOrTreat.AmHost() || !TrickOrTreat.InRound()) return;
-                if (!TrickOrTreat.FreePlay() && !TeslaVersionHandshake.EveryoneHasMod()) { drawn = true; return; }
+                if (!TrickOrTreat.FreePlay() && !HalloweenHandshake.Ready()) { drawn = true; return; }
                 drawn = true;
                 if (On()) {
                     var pot = Enumerable.Range(0, (int)Omen.Count).Where(i => (OmenSettings.Current.Pot & (1 << i)) != 0).Select(i => (Omen)i).ToList();

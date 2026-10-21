@@ -174,6 +174,7 @@ namespace UnknownsHalloween {
             Pre(typeof(UCRoleDraft), "DraftWillRun", nameof(FalseWhenOn));
             Pre(AccessTools.Inner(typeof(Xenomorph), "IntroEndPickPatch"), "Postfix", nameof(SkipWhenOnQuiet));
             Pre(AccessTools.Inner(typeof(Banshee), "IntroEndPickPatch"), "Postfix", nameof(SkipWhenOnQuiet));
+            Pre(AccessTools.Inner(typeof(HwScaredyCat), "IntroEndPickPatch"), "Postfix", nameof(SkipWhenOnQuiet));
         }
 
         private static bool SkipWhenOn() {

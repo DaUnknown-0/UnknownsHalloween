@@ -45,6 +45,9 @@ namespace UnknownsHalloween {
             }
         }
 
+        /// <summary>The mode switch as the host set it (HalloweenHandshake gates the start on everybody's packages).</summary>
+        internal static bool ModeOn => On(Mode, false);
+
         private static bool On(CustomOption o, bool fallback) {
             if (Diag && o == Mode) return true;
             try { return o == null ? fallback : o.getBool(); } catch { return fallback; }

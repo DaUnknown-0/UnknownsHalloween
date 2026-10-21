@@ -121,7 +121,7 @@ namespace UnknownsHalloween {
             public static void Postfix() {
                 try {
                     if (!HwMechanics.AmHost() || active || !Enabled()) return;
-                    if (!TeslaVersionHandshake.EveryoneHasMod()) return;
+                    if (!HalloweenHandshake.Ready()) return;
                     if (rnd.Next(1, 101) > SpawnRate.getSelection() * 10) return;
                     var candidates = PlayerControl.AllPlayerControls.ToArray().Where(IsCandidate).ToList();
                     if (candidates.Count == 0) return;

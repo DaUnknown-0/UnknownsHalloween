@@ -107,7 +107,12 @@ namespace UnknownsHalloween {
         internal const byte SubCabinets = 6, SubSearchReq = 7, SubSearched = 8;
 
         // ---- state (same on every client) ----
-        internal sealed class Candy { public byte Index; public Vector2 Pos; public byte Kind; public bool Eaten; public bool Pending; public byte Cab = TreatCabinets.None; }
+        internal sealed class Candy {
+            public byte Index; public Vector2 Pos; public byte Kind; public bool Eaten; public byte Cab = TreatCabinets.None;
+            // asked the host, no answer yet; a silent refusal (distance, phase) frees the candy again after 3 s (audit N-1)
+            private float pendingAt = -10f;
+            public bool Pending { get => Time.time - pendingAt < 3f; set => pendingAt = value ? Time.time : -10f; }
+        }
         internal static readonly List<Candy> candies = new();
         internal static int seed;
         internal static byte phase;
@@ -234,6 +239,14 @@ namespace UnknownsHalloween {
                     }
                     case SubShield: {
                         byte target = r.ReadByte(), fx = r.ReadByte();
+                        // only a living killer next to the target may say a shield took his kill (audit N-8)
+                        var killer = UCRpc.Sender;
+                        var victim = Helpers.playerById(target);
+                        if (killer == null || victim == null || killer.PlayerId == target || !IsAlive(killer)
+                            || Vector2.Distance(killer.GetTruePosition(), victim.GetTruePosition()) > 4f) {
+                            HalloweenPlugin.Logger?.LogWarning($"{LogPrefix} shield message for {target} from {killer?.Data?.PlayerName ?? "?"} ignored.");
+                            break;
+                        }
                         ApplyShieldUsed(target, (Treat)fx, false);
                         break;
                     }
@@ -269,7 +282,7 @@ namespace UnknownsHalloween {
         internal static void HostSpawn() {
             try {
                 if (!AmHost() || !On() || ShipStatus.Instance == null) return;
-                if (!FreePlay() && !TeslaVersionHandshake.EveryoneHasMod()) return;
+                if (!FreePlay() && !HalloweenHandshake.Ready()) return;
                 if (seed == 0) seed = rnd.Next(1, int.MaxValue);
                 byte ph = (byte)(phase + 1);
                 var rules = TreatSettings.Current;
@@ -609,7 +622,7 @@ namespace UnknownsHalloween {
             try {
                 if (fx == Treat.PrizeInside && imp) {
                     var sab = GetSab();
-                    if (sab != null) sab.Timer = 0f;
+                    if (sab != null) { sab.Timer = 0f; sab.IsDirty = true; }      // dirty: the guests' sabotage menus hear it too (audit M-5)
                     HalloweenPlugin.Logger?.LogInfo($"{LogPrefix} Prize Inside: sabotage cooldown reset ({(sab != null ? "ok" : "no system")}).");
                 } else if (fx == Treat.ExtraChore && !imp) {
                     HostExtraTask(eater);
@@ -1207,6 +1220,8 @@ namespace UnknownsHalloween {
             public static void Postfix([HarmonyArgument(0)] PlayerControl killer, [HarmonyArgument(1)] PlayerControl target, ref MurderAttemptResult __result) {
                 try {
                     if (active.Count == 0 || __result != MurderAttemptResult.PerformKill) return;
+                    // the Bomber probes checkMuderAttempt(bomber, bomber) before planting: not a kill (audit M-6)
+                    if (killer != null && target != null && killer.PlayerId == target.PlayerId) return;
                     if (KillBlocked(killer)) { __result = MurderAttemptResult.SuppressKill; return; }
                     var a = ShieldFor(killer, target);
                     if (a == null) return;
