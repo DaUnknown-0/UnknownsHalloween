@@ -678,8 +678,10 @@ namespace UnknownsHalloween {
             try {
                 foreach (var v in ship.AllVents.ToArray().Where(v => v != null).OrderBy(v => v.Id)) {
                     var c = (Vector2)v.transform.position;
+                    // a clear line from the vent as well: a vent close to a wall would otherwise put a node into the void
+                    // behind it and the phantoms could walk there (the same fix as the candy spots, audit 21.10.)
                     foreach (var off in new[] { new Vector2(0.7f, 0f), new Vector2(-0.7f, 0f), new Vector2(0f, -0.6f), new Vector2(0f, 0.6f) })
-                        if (!Blocked(c + off, 0.3f, mask)) { ventNodes.Add(Nodes.Count); Nodes.Add(c + off); }
+                        if (!Blocked(c + off, 0.3f, mask) && Clear(c, c + off, mask)) { ventNodes.Add(Nodes.Count); Nodes.Add(c + off); }
                 }
             } catch { }
             var rooms = new List<PlainShipRoom>();

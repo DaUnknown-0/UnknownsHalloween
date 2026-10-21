@@ -183,7 +183,11 @@ internal sealed class GraveyardWorld : IAtlasMapWorld
             _fogSprite.hideFlags |= HideFlags.HideAndDontSave;
         }
         int layer = _root.gameObject.layer;
-        var rnd = new System.Random(_d.Key.GetHashCode() ^ 0x5eed);
+        // a STABLE hash: string.GetHashCode is random per process under .NET 6, so every client laid the
+        // banks somewhere else and one player stood in thick fog where another stood free (audit 21.10.)
+        int seed = unchecked((int)2166136261);
+        foreach (char ch in _d.Key ?? "") seed = unchecked((seed ^ ch) * 16777619);
+        var rnd = new System.Random(seed ^ 0x5eed);
         float W = _d.MaxX - _d.MinX, H = _d.MaxY - _d.MinY;
         int count = 22;
         for (int i = 0; i < count; i++)

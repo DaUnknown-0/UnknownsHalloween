@@ -274,17 +274,21 @@ namespace UnknownsHalloween {
         private static void Need(float urgency, int i) { needUrg[needCount] = urgency; needIdx[needCount] = i; needCount++; }
 
         // ---------------------------------------------------------------- sprites
+        // file -> Time.time of the next try (a package that arrives later is still picked up)
+        private static readonly Dictionary<string, float> missing = new Dictionary<string, float>();
         private static Sprite PartSprite(Part p) {
             if (p == null) return null;
             if (sprites.TryGetValue(p.File, out var s) && s != null) return s;
+            // a part that failed is not opened again every frame, only every 10 s (audit 21.10.)
+            if (missing.TryGetValue(p.File, out float retry) && Time.time < retry) return null;
             try {
                 using var stream = HalloweenAssets.Open(Res + p.File);
-                if (stream == null) return null;
+                if (stream == null) { missing[p.File] = Time.time + 10f; return null; }
                 var data = new byte[stream.Length];
                 int read = 0;
                 while (read < data.Length) { int n = stream.Read(data, read, data.Length - read); if (n <= 0) break; read += n; }
                 var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!ImageConversion.LoadImage(tex, data, false)) return null;
+                if (!ImageConversion.LoadImage(tex, data, false)) { UnityEngine.Object.Destroy(tex); missing[p.File] = Time.time + 10f; return null; }
                 tex.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
                 // p.Ppu pixels per bean unit -> pixels per hat unit
                 s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(p.PivotX, p.PivotY), p.Ppu / BeanToHat);

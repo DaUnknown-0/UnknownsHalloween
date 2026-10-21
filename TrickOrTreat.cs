@@ -613,6 +613,7 @@ namespace UnknownsHalloween {
                     return others.Count == 0 ? byte.MaxValue : others[rnd.Next(others.Count)].PlayerId;
                 }
                 case Treat.NothingQ: return (byte)rnd.Next(4);
+                case Treat.VentMint: return IsImp(eater) ? TreatPlus.HostPickVentPair() : byte.MaxValue;   // the pair for everybody
                 default: return byte.MaxValue;
             }
         }

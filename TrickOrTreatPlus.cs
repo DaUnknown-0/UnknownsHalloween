@@ -269,7 +269,8 @@ namespace UnknownsHalloween {
                     if (local) OpenAdmin();
                     break;
                 case Treat.VentMint:
-                    if (local && a.Imp && !LinkVents())
+                    // every client links the same pair (the host drew it, P1); only the eater may use it
+                    if (a.Imp && !LinkPair(a.P1, a.Owner) && local)
                         extra = TrickOrTreat.De() ? "Auf dieser Karte ist kein Vent mehr frei." : "No vent left to link on this map.";
                     break;
                 case Treat.HomingHumbug:
@@ -285,7 +286,7 @@ namespace UnknownsHalloween {
                     if (local) CloseAdmin();
                     break;
                 case Treat.VentMint:
-                    if (local && a.Imp) UnlinkVents();
+                    if (a.Imp) UnlinkVents(a.Owner);
                     if (local && !a.Imp) HideVentButton();
                     break;
                 case Treat.GhostlyGum:
@@ -399,46 +400,91 @@ namespace UnknownsHalloween {
             } catch { }
         }
 
-        // Impostor: two vents with a free arrow get linked, on the eater's client only.
-        private static readonly List<(Vent vent, int slot)> links = new();
+        // Impostor: two vents with a free arrow get linked. Since 21.10. on EVERY client (audit): a link only the eater
+        // knew made the host and the others disagree about his vent jump. The host draws the pair as an index into a
+        // list every client builds the same way (vents by Id); a TryMoveToVent prefix keeps everybody else off it.
+        private static readonly List<(Vent vent, int slot, byte owner)> links = new();
 
         private static Vent SlotGet(Vent v, int s) => s == 0 ? v.Left : s == 1 ? v.Right : v.Center;
         private static void SlotSet(Vent v, int s, Vent to) { if (s == 0) v.Left = to; else if (s == 1) v.Right = to; else v.Center = to; }
         private static int FreeSlot(Vent v) { for (int s = 0; s < 3; s++) if (SlotGet(v, s) == null) return s; return -1; }
         private static bool Linked(Vent a, Vent b) { for (int s = 0; s < 3; s++) if (SlotGet(a, s) == b) return true; return false; }
 
-        private static bool LinkVents() {
-            UnlinkVents();
+        /// <summary>All candidate pairs, the same list on every client: vents with a free arrow by Id, not linked yet,
+        /// more than 4 m apart.</summary>
+        private static List<(Vent a, Vent b, float d)> VentPairs() {
+            var pairs = new List<(Vent a, Vent b, float d)>();
+            var ship = ShipStatus.Instance;
+            if (ship == null) return pairs;
+            var free = ship.AllVents.ToArray().Where(v => v != null && !v.name.StartsWith("JackInTheBoxVent_") && FreeSlot(v) >= 0)
+                .OrderBy(v => v.Id).ToList();
+            for (int i = 0; i < free.Count; i++)
+                for (int j = i + 1; j < free.Count; j++) {
+                    if (Linked(free[i], free[j])) continue;
+                    float d = Vector2.Distance(free[i].transform.position, free[j].transform.position);
+                    if (d > 4f) pairs.Add((free[i], free[j], d));
+                }
+            return pairs;
+        }
+
+        /// <summary>Host: one of the farther half, as an index into VentPairs (255: none).</summary>
+        internal static byte HostPickVentPair() {
             try {
-                var ship = ShipStatus.Instance;
-                if (ship == null) return false;
-                var free = ship.AllVents.ToArray().Where(v => v != null && !v.name.StartsWith("JackInTheBoxVent_") && FreeSlot(v) >= 0).ToList();
-                var pairs = new List<(Vent a, Vent b, float d)>();
-                for (int i = 0; i < free.Count; i++)
-                    for (int j = i + 1; j < free.Count; j++) {
-                        if (Linked(free[i], free[j])) continue;
-                        float d = Vector2.Distance(free[i].transform.position, free[j].transform.position);
-                        if (d > 4f) pairs.Add((free[i], free[j], d));
-                    }
-                if (pairs.Count == 0) return false;
-                // prefer a long jump: one of the farther half
-                var far = pairs.OrderByDescending(x => x.d).Take(Math.Max(1, pairs.Count / 2)).ToList();
-                var (va, vb, dist) = far[rnd.Next(far.Count)];
+                var pairs = VentPairs();
+                if (pairs.Count == 0) return byte.MaxValue;
+                var far = Enumerable.Range(0, Math.Min(pairs.Count, 254)).OrderByDescending(i => pairs[i].d).Take(Math.Max(1, pairs.Count / 2)).ToList();
+                return (byte)far[rnd.Next(far.Count)];
+            } catch { return byte.MaxValue; }
+        }
+
+        private static bool LinkPair(byte index, byte owner) {
+            try {
+                var pairs = VentPairs();
+                if (index == byte.MaxValue || index >= pairs.Count) return false;
+                var (va, vb, dist) = pairs[index];
                 int sa = FreeSlot(va), sb = FreeSlot(vb);
+                if (sa < 0 || sb < 0) return false;
                 SlotSet(va, sa, vb);
                 SlotSet(vb, sb, va);
-                links.Add((va, sa));
-                links.Add((vb, sb));
-                Log($"Vent Mint: vents {va.Id} and {vb.Id} linked ({dist:F0} m).");
+                links.Add((va, sa, owner));
+                links.Add((vb, sb, owner));
+                Log($"Vent Mint: vents {va.Id} and {vb.Id} linked for player {owner} ({dist:F0} m).");
                 return true;
             } catch (Exception e) { HalloweenPlugin.Logger?.LogWarning($"{LogPrefix} vent link failed: {e.Message}"); return false; }
         }
 
-        private static void UnlinkVents() {
-            foreach (var (v, s) in links) { try { if (v != null) SlotSet(v, s, null); } catch { } }
-            if (links.Count > 0) Log("Vent Mint: vent link removed.");
-            links.Clear();
+        private static void UnlinkVents(byte? owner = null) {
+            int n = 0;
+            for (int i = links.Count - 1; i >= 0; i--) {
+                var (v, s, o) = links[i];
+                if (owner.HasValue && o != owner.Value) continue;
+                try { if (v != null) SlotSet(v, s, null); } catch { }
+                links.RemoveAt(i);
+                n++;
+            }
+            if (n > 0) Log("Vent Mint: vent link removed.");
         }
+
+        private static bool IsForeignLink(Vent from, Vent to) {
+            var lp = PlayerControl.LocalPlayer;
+            if (from == null || to == null || lp == null) return false;
+            foreach (var (v, s, o) in links)
+                if (v == from && SlotGet(v, s) == to) return o != lp.PlayerId;
+            return false;
+        }
+
+        // A link that belongs to another player: the arrow may show, the jump does not happen.
+        [HarmonyPatch(typeof(Vent), nameof(Vent.TryMoveToVent))]
+        static class ForeignLinkPatch {
+            public static bool Prefix(Vent __instance, [HarmonyArgument(0)] Vent otherVent, ref bool __result) {
+                try {
+                    if (links.Count == 0 || !IsForeignLink(__instance, otherVent)) return true;
+                    __result = false;
+                    return false;
+                } catch { return true; }
+            }
+        }
+
 
         // ================================================================ Peek-a-Pop
         private static bool peekOpened;
@@ -542,6 +588,12 @@ namespace UnknownsHalloween {
 
         private static bool WantsHome(PlayerControl lp) => TrickOrTreat.IsAlive(lp) && TrickOrTreat.Has(lp.PlayerId, Treat.HomingHumbug);
 
+        // No snap halfway up a ladder, on a zipline or a moving platform (Airship, Fungle): the other clients keep the
+        // ride going and the player ends up in two places (audit 21.10.; CanMove alone does not say so for sure).
+        private static bool FreeToSnap(PlayerControl lp) {
+            try { return lp.CanMove && !lp.inVent && !lp.onLadder && !lp.inMovingPlat && !lp.walkingToVent; } catch { return false; }
+        }
+
         [HarmonyPatch(typeof(HudManager), nameof(HudManager.Start))]
         static class HudStartPatch {
             [HarmonyPriority(Priority.Low)]
@@ -550,7 +602,7 @@ namespace UnknownsHalloween {
                     candyButton = new CustomButton(
                         OnButton,
                         () => { var lp = PlayerControl.LocalPlayer; return lp != null && (WantsHome(lp) || CanTrick(lp)); },
-                        () => { var lp = PlayerControl.LocalPlayer; return lp != null && lp.CanMove && !lp.inVent && !(WantsHome(lp) && IsSubmerged()); },
+                        () => { var lp = PlayerControl.LocalPlayer; return lp != null && FreeToSnap(lp) && !(WantsHome(lp) && IsSubmerged()); },
                         () => { if (candyButton != null) candyButton.Timer = 0f; },
                         TrickSprite(), CustomButton.ButtonPositions.lowerRowLeft, __instance, null, false, "TRICK");
                     candyButton.MaxTimer = 0f;
@@ -598,7 +650,7 @@ namespace UnknownsHalloween {
 
         private static void GoHome(PlayerControl lp) {
             var a = TrickOrTreat.Get(lp.PlayerId, Treat.HomingHumbug);
-            if (a == null || IsSubmerged()) return;
+            if (a == null || IsSubmerged() || !FreeToSnap(lp)) return;
             try {
                 var ship = ShipStatus.Instance;
                 var at = ship.MeetingSpawnCenter + new Vector2(0.35f * Mathf.Cos(lp.PlayerId * 1.3f), 0.25f * Mathf.Sin(lp.PlayerId * 1.3f));
@@ -697,7 +749,7 @@ namespace UnknownsHalloween {
             foreach (var w in wrappers) if (w.sr != null) UnityEngine.Object.Destroy(w.sr.gameObject);
             wrappers.Clear();
             lastDrop.Clear();
-            foreach (var pid in ghostly.ToList()) SetAlpha(Helpers.playerById(pid), 1f);
+            foreach (var pid in ghostly.ToList()) SetAlpha(Helpers.playerById(pid), 1f, true);
             ghostly.Clear();
             foreach (var sr in stickyGlows.Values) if (sr != null) UnityEngine.Object.Destroy(sr.gameObject);
             stickyGlows.Clear();
@@ -818,13 +870,17 @@ namespace UnknownsHalloween {
             }
             foreach (var id in ghostly.ToList()) {
                 if (TrickOrTreat.Has(id, Treat.GhostlyGum)) continue;
-                SetAlpha(Helpers.playerById(id), 1f);
+                // still in a vent: try again next frame (audit 21.10.: removed anyway, he stayed see-through)
+                var p = Helpers.playerById(id);
+                if (p != null && p.inVent) continue;
+                SetAlpha(p, 1f);
                 ghostly.Remove(id);
             }
         }
 
-        private static void SetAlpha(PlayerControl p, float a) {
-            try { if (p != null && p.cosmetics != null && !p.inVent) p.cosmetics.SetPhantomRoleAlpha(a); } catch { }
+        // force: the round reset, where nobody is left to try again later
+        private static void SetAlpha(PlayerControl p, float a, bool force = false) {
+            try { if (p != null && p.cosmetics != null && (force || !p.inVent)) p.cosmetics.SetPhantomRoleAlpha(a); } catch { }
         }
 
         // ---- Sticky Toffee (every client): a caramel glow under the stuck killer while it lasts ----

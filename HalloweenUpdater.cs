@@ -390,9 +390,9 @@ namespace UnknownsHalloween {
             popUp.gameObject.SetActive(true);
 
             Announcement nightfallAnnouncement = new() {
-                Id = "atlasAnnouncement",
+                Id = "halloweenAnnouncement",       // own id and number (were Atlas' copied ones, audit 21.10.)
                 Language = 0,
-                Number = 6975,
+                Number = 6976,
                 Title = title == "" ? "Unknown's Halloween Update" : title,
                 ShortTitle = shortTitle,
                 SubTitle = "",

@@ -1160,6 +1160,19 @@ namespace UnknownsHalloween {
             else if (!want && muted) { AudioListener.volume = mutedFrom <= 0.001f ? 1f : mutedFrom; muted = false; }
         }
 
+        // The end screen and the main menu have no HUD, so no Tick turns the sound back on: a round that
+        // ended under Earmuffs had a silent jingle and a silent menu until the next lobby (audit 21.10.).
+        [HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnGameEnd))]
+        static class UnmuteAtGameEndPatch {
+            [HarmonyPrefix]
+            public static void Prefix() { try { TickMute(false); } catch { } }
+        }
+
+        [HarmonyPatch(typeof(MainMenuManager), nameof(MainMenuManager.Start))]
+        static class UnmuteInMenuPatch {
+            public static void Postfix() { try { TickMute(false); } catch { } }
+        }
+
         // ---- Nothing?: a fake sabotage only the eater sees ----
         private static SpriteRenderer fakeSr;
         private static ActiveTreat fake;
