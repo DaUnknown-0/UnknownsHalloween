@@ -89,10 +89,11 @@ namespace UnknownsHalloween {
             bool iAmDead = me != null && me.Data != null && me.Data.IsDead;
             bool meeting = HwMechanics.InMeeting();
             int shown = 0;
+            bool anyShown = on && iAmDead && !meeting;   // the living never see them: no lookup for them
             foreach (var kv in ghosts) {
                 var g = kv.Value;
                 PlayerControl p = null;
-                try { p = Helpers(kv.Key); } catch { }
+                if (anyShown) try { p = TheOtherRoles.Helpers.playerById(kv.Key); } catch { }
                 bool show = on && iAmDead && !meeting && p != null && p.Data != null && p.Data.IsDead && p.Visible && !p.inVent;
                 if (show) show = Ensure(p, g);
                 if (g.R != null) {
@@ -101,11 +102,6 @@ namespace UnknownsHalloween {
                 }
             }
             DiagShown = shown;
-        }
-
-        private static PlayerControl Helpers(byte id) {
-            foreach (var p in PlayerControl.AllPlayerControls.ToArray()) if (p != null && p.PlayerId == id) return p;
-            return null;
         }
 
         private static void Drop(byte id) {

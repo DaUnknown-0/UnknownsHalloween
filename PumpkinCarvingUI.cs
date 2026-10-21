@@ -280,13 +280,31 @@ namespace UnknownsHalloween {
             Img(parent, LobbyArt.UiSprite("lantern", LobbyArt.Lantern()), topLeft, new Vector2(size, size)).raycastTarget = false;
             string key = Convert.ToBase64String(bits);
             if (!uiFaces.TryGetValue(key, out var tex) || tex == null) {
-                if (uiFaces.Count > 64) uiFaces.Clear();
+                if (uiFaces.Count > 64) TrimFaces();
                 tex = LobbyArt.FaceTexture(bits, PumpkinCarving.Lit);
                 uiFaces[key] = tex;
             }
             Raw(parent, tex, topLeft + new Vector2(LobbyArt.LanternFaceX * s, -LobbyArt.LanternFaceY * s),
                 new Vector2(LobbyArt.LanternFaceW * s, LobbyArt.LanternFaceW * s)).raycastTarget = false;
             if (crown) Img(parent, LobbyArt.UiSprite("crown", LobbyArt.Crown()), topLeft + new Vector2(size * 0.32f, size * 0.14f), new Vector2(size * 0.36f, size * 0.36f)).raycastTarget = false;
+        }
+
+        // The cache was emptied without Destroy, the textures (DontUnloadUnusedAsset) stayed for the whole session
+        // (audit 21.10.). Rare (more than 64 faces): every face no open window shows right now is destroyed.
+        private static void TrimFaces() {
+            var inUse = new HashSet<IntPtr>();
+            try {
+                foreach (var ri in UnityEngine.Object.FindObjectsOfType<RawImage>())
+                    if (ri != null && ri.texture != null) inUse.Add(ri.texture.Pointer);
+            } catch { }
+            var keep = new Dictionary<string, Texture2D>();
+            foreach (var kv in uiFaces) {
+                if (kv.Value == null) continue;
+                if (inUse.Contains(kv.Value.Pointer)) keep[kv.Key] = kv.Value;
+                else UnityEngine.Object.Destroy(kv.Value);
+            }
+            uiFaces.Clear();
+            foreach (var kv in keep) uiFaces[kv.Key] = kv.Value;
         }
 
         private static Image Img(GameObject parent, Sprite sprite, Vector2 topLeft, Vector2 size) {

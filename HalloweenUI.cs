@@ -16,6 +16,52 @@ using UnityEngine.UI;
 namespace UnknownsHalloween {
 
     internal static class HalloweenUI {
+        // ---- Modal lock (audit 21.10.) ----
+        // A uGUI backdrop only swallows uGUI clicks. The game's own buttons are collider-based PassiveButtons and
+        // kept reacting under a menu, and with mouse control a click on a card also walked the player towards
+        // the cursor. While a menu is open the player stands still and every PassiveButton outside it is off;
+        // only the ones switched off here are switched back on (same remedy as the UTS panels).
+        private static readonly HashSet<string> lockOwners = new HashSet<string>();
+        private static readonly List<PassiveButton> blocked = new List<PassiveButton>();
+        private static bool frozeHim;
+
+        // A menu that dies with its scene (leaving the lobby, the round ending) never calls Close: forget every
+        // lock then, or the next menu's lock would be swallowed and buttons stay off.
+        [HarmonyLib.HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnGameJoined))]
+        static class ModalResetJoin { public static void Postfix() => ModalReset(); }
+        [HarmonyLib.HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnGameEnd))]
+        static class ModalResetEnd { public static void Postfix() => ModalReset(); }
+        [HarmonyLib.HarmonyPatch(typeof(MainMenuManager), nameof(MainMenuManager.Start))]
+        static class ModalResetMenu { public static void Postfix() => ModalReset(); }
+
+        internal static void ModalReset() {
+            try {
+                foreach (var b in blocked) try { if (b != null) b.enabled = true; } catch { }
+            } catch { }
+            blocked.Clear();
+            lockOwners.Clear();
+            frozeHim = false;
+        }
+
+        internal static void ModalLock(string owner, GameObject root, bool on) {
+            try {
+                if (on) {
+                    if (!lockOwners.Add(owner) || lockOwners.Count > 1) return;
+                    var lp = PlayerControl.LocalPlayer;
+                    if (lp != null && lp.moveable) { lp.moveable = false; frozeHim = true; }
+                    foreach (var b in UnityEngine.Object.FindObjectsOfType<PassiveButton>())
+                        if (b != null && b.enabled && (root == null || !b.transform.IsChildOf(root.transform))) { b.enabled = false; blocked.Add(b); }
+                } else {
+                    if (!lockOwners.Remove(owner) || lockOwners.Count > 0) return;
+                    foreach (var b in blocked) try { if (b != null) b.enabled = true; } catch { }
+                    blocked.Clear();
+                    var lp = PlayerControl.LocalPlayer;
+                    if (frozeHim && lp != null && MeetingHud.Instance == null) lp.moveable = true;
+                    frozeHim = false;
+                }
+            } catch { }
+        }
+
         internal static readonly Color Frame = new Color(0.72f, 0.78f, 0.84f);         // thick pale outline
         internal static readonly Color Body = new Color(0.09f, 0.11f, 0.15f);
         internal static readonly Color Field = new Color(0.14f, 0.17f, 0.22f);          // section boxes, rows

@@ -690,14 +690,13 @@ namespace UnknownsHalloween {
                 return;
             }
             var mine = TrickOrTreat.active.TryGetValue(lp.PlayerId, out var l) ? l : null;
-            bool Has(Treat fx) => mine != null && mine.Any(a => a.Fx == fx);
             TickStatus(mine);
-            TickArrow(Has(Treat.GuidingMint) ? lp : null);
-            TickEcho(Has(Treat.EchoDrop) ? lp : null);
-            TickBlur(Has(Treat.Jinkies));
-            TickSway(Has(Treat.Nausea));
-            TickMute(Has(Treat.Earmuffs));
-            TickFake(mine?.FirstOrDefault(a => a.Fx == Treat.NothingQ));
+            TickArrow(HasFx(mine, Treat.GuidingMint) ? lp : null);
+            TickEcho(HasFx(mine, Treat.EchoDrop) ? lp : null);
+            TickBlur(HasFx(mine, Treat.Jinkies));
+            TickSway(HasFx(mine, Treat.Nausea));
+            TickMute(HasFx(mine, Treat.Earmuffs));
+            TickFake(FirstFx(mine, Treat.NothingQ));
             TickFlash();
             TickCrows(false);
             TickGlow(false);
@@ -989,6 +988,24 @@ namespace UnknownsHalloween {
 
         // ---- running effects of the local player, left edge ----
         private static TextMeshPro statusText;
+        // Per-frame helpers without LINQ or closures (audit 21.10.: a closure and a delegate every frame).
+        private static bool HasFx(List<ActiveTreat> mine, Treat fx) {
+            if (mine == null) return false;
+            foreach (var a in mine) if (a.Fx == fx) return true;
+            return false;
+        }
+        private static ActiveTreat FirstFx(List<ActiveTreat> mine, Treat fx) {
+            if (mine == null) return null;
+            foreach (var a in mine) if (a.Fx == fx) return a;
+            return null;
+        }
+        // reused instead of a new set and a key copy per frame
+        private static readonly HashSet<byte> wantBuf = new HashSet<byte>();
+        private static readonly List<byte> keyBuf = new List<byte>();
+        private static List<byte> KeysOf<T>(Dictionary<byte, T> d) { keyBuf.Clear(); keyBuf.AddRange(d.Keys); return keyBuf; }
+        private static readonly System.Text.StringBuilder statusSb = new System.Text.StringBuilder();
+        private static float statusNext;
+
         private static void TickStatus(List<ActiveTreat> mine) {
             if (mine == null || mine.Count == 0) { if (statusText != null) statusText.gameObject.SetActive(false); return; }
             if (statusText == null) {
@@ -1003,7 +1020,11 @@ namespace UnknownsHalloween {
             var p = uiCam.ViewportToWorldPoint(new Vector3(0.012f, 0.6f, 10f));
             statusText.transform.position = new Vector3(p.x, p.y, -55f);
             statusText.transform.localScale = Vector3.one * 0.3f;
-            var sb = new System.Text.StringBuilder();
+            statusText.gameObject.SetActive(true);
+            if (Time.time < statusNext) return;   // the seconds shown change four times a second at most
+            statusNext = Time.time + 0.25f;
+            var sb = statusSb;
+            sb.Clear();
             bool de = TrickOrTreat.De();
             foreach (var a in mine) {
                 string left = a.Round ? (de ? $"{a.Meetings} M." : $"{a.Meetings} mtg")
@@ -1047,7 +1068,7 @@ namespace UnknownsHalloween {
         private static readonly Dictionary<byte, SpriteRenderer> echoes = new();
         private static Material silhouetteMat;
         private static void TickEcho(PlayerControl lp) {
-            var want = new HashSet<byte>();
+            var want = wantBuf; want.Clear();
             if (lp != null) {
                 try {
                     if (silhouetteMat == null) {
@@ -1077,7 +1098,7 @@ namespace UnknownsHalloween {
                     }
                 } catch (Exception e) { HalloweenPlugin.Logger?.LogWarning($"{LogPrefix} echo: {e.Message}"); }
             }
-            foreach (var id in echoes.Keys.ToList()) {
+            foreach (var id in KeysOf(echoes)) {
                 if (want.Contains(id)) continue;
                 if (echoes[id] != null) UnityEngine.Object.Destroy(echoes[id].gameObject);
                 echoes.Remove(id);
@@ -1088,7 +1109,13 @@ namespace UnknownsHalloween {
         private static Camera blurCam;
         private static RenderTexture blurRt;
         private static Texture2D blurTex;
+        private static Sprite blurSpr;
         private static SpriteRenderer blurSr, blurSr2;
+        // texture and sprite went with nothing before (a leak per Jinkies, audit 21.10.)
+        private static void DropBlurTex() {
+            if (blurSpr != null) { UnityEngine.Object.Destroy(blurSpr); blurSpr = null; }
+            if (blurTex != null) { UnityEngine.Object.Destroy(blurTex); blurTex = null; }
+        }
         private static bool blurFailed;
         private static void TickBlur(bool want) {
             if (!want || blurFailed) {
@@ -1096,6 +1123,7 @@ namespace UnknownsHalloween {
                 if (blurSr2 != null) { UnityEngine.Object.Destroy(blurSr2.gameObject); blurSr2 = null; }
                 if (blurCam != null) { UnityEngine.Object.Destroy(blurCam.gameObject); blurCam = null; }
                 if (blurRt != null) { blurRt.Release(); UnityEngine.Object.Destroy(blurRt); blurRt = null; }
+                DropBlurTex();
                 if (!want) blurFailed = false;
                 return;
             }
@@ -1103,12 +1131,17 @@ namespace UnknownsHalloween {
                 var main = Camera.main; var uiCam = UiCam();
                 if (main == null || uiCam == null) return;
                 int w = Mathf.Max(32, Screen.width / 12), h = Mathf.Max(18, Screen.height / 12);
+                bool fresh = false;
                 if (blurRt == null || blurRt.width != w || blurRt.height != h) {
                     if (blurRt != null) { blurRt.Release(); UnityEngine.Object.Destroy(blurRt); }
+                    DropBlurTex();
+                    fresh = true;
                     blurRt = new RenderTexture(w, h, 16) { filterMode = FilterMode.Bilinear };
                     blurTex = new Texture2D(w, h, TextureFormat.RGB24, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
                     blurTex.hideFlags |= HideFlags.HideAndDontSave;
                     var spr = Sprite.Create(blurTex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), h / (uiCam.orthographicSize * 2f));
+                    spr.hideFlags |= HideFlags.HideAndDontSave;
+                    blurSpr = spr;
                     if (blurSr == null) blurSr = UiSr("TreatBlur", spr, -1000); else blurSr.sprite = spr;
                     if (blurSr2 == null) blurSr2 = UiSr("TreatBlur2", spr, -999); else blurSr2.sprite = spr;
                 }
@@ -1118,14 +1151,18 @@ namespace UnknownsHalloween {
                     blurCam = go.AddComponent<Camera>();
                     blurCam.enabled = false;
                 }
-                blurCam.CopyFrom(main);
-                blurCam.targetTexture = blurRt;
-                blurCam.Render();
-                var prev = RenderTexture.active;
-                RenderTexture.active = blurRt;
-                blurTex.ReadPixels(new Rect(0, 0, w, h), 0, 0, false);
-                blurTex.Apply(false);
-                RenderTexture.active = prev;
+                // the read-back stalls the GPU, so the blurred picture is renewed every second frame only:
+                // a blur needs no full frame rate
+                if (fresh || (Time.frameCount & 1) == 0) {
+                    blurCam.CopyFrom(main);
+                    blurCam.targetTexture = blurRt;
+                    blurCam.Render();
+                    var prev = RenderTexture.active;
+                    RenderTexture.active = blurRt;
+                    blurTex.ReadPixels(new Rect(0, 0, w, h), 0, 0, false);
+                    blurTex.Apply(false);
+                    RenderTexture.active = prev;
+                }
                 var c = uiCam.transform.position;
                 float t = Time.time;
                 blurSr.transform.position = new Vector3(c.x, c.y, -40f);
@@ -1231,7 +1268,7 @@ namespace UnknownsHalloween {
         // ---- Glowing (every client): a soft halo above the shadow, within normal sight of the viewer ----
         private static readonly Dictionary<byte, SpriteRenderer> glows = new();
         private static void TickGlow(bool hide, bool destroy = false) {
-            var want = new HashSet<byte>();
+            var want = wantBuf; want.Clear();
             var lp = PlayerControl.LocalPlayer;
             if (!hide && lp != null) {
                 float reach = 6f;
@@ -1252,7 +1289,7 @@ namespace UnknownsHalloween {
                     sr.enabled = true;
                 }
             }
-            foreach (var id in glows.Keys.ToList()) {
+            foreach (var id in KeysOf(glows)) {
                 if (want.Contains(id)) continue;
                 if (glows[id] != null) { if (destroy || !TrickOrTreat.Has(id, Treat.Glowing)) UnityEngine.Object.Destroy(glows[id].gameObject); else { glows[id].enabled = false; continue; } }
                 glows.Remove(id);
@@ -1262,7 +1299,7 @@ namespace UnknownsHalloween {
         // ---- Crow Company (every client): three crows circling over the eater, world layer ----
         private static readonly Dictionary<byte, SpriteRenderer[]> crows = new();
         private static void TickCrows(bool hide, bool destroy = false) {
-            var want = new HashSet<byte>();
+            var want = wantBuf; want.Clear();
             if (!hide) {
                 foreach (var kv in TrickOrTreat.active) {
                     if (!kv.Value.Any(a => a.Fx == Treat.CrowCompany)) continue;
@@ -1293,7 +1330,7 @@ namespace UnknownsHalloween {
                     }
                 }
             }
-            foreach (var id in crows.Keys.ToList()) {
+            foreach (var id in KeysOf(crows)) {
                 if (want.Contains(id)) continue;
                 bool keep = !destroy && TrickOrTreat.Has(id, Treat.CrowCompany);
                 foreach (var sr in crows[id]) if (sr != null) { if (keep) sr.enabled = false; else UnityEngine.Object.Destroy(sr.gameObject); }

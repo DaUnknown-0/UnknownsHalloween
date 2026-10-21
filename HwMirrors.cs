@@ -258,18 +258,34 @@ namespace UnknownsHalloween {
             return true;
         }
 
+        // reused every frame instead of a LINQ chain per mirror (audit 21.10.)
+        private static readonly List<PlayerControl> playersBuf = new List<PlayerControl>();
+        private static readonly List<(PlayerControl p, float d, Vector2 pos)> nearBuf = new List<(PlayerControl, float, Vector2)>();
+
         internal static void Tick() {
             if (!Enabled() || !HwMechanics.InRound()) { if (mirrors.Count > 0 || root != null) Clear(); DiagShown = 0; return; }
             EnsurePlaced();
             if (mirrors.Count == 0) return;
             bool meeting = HwMechanics.InMeeting();
             int shown = 0;
-            var players = meeting ? new List<PlayerControl>() : PlayerControl.AllPlayerControls.ToArray().Where(Reflectable).ToList();
+            var players = playersBuf;
+            players.Clear();
+            if (!meeting) foreach (var p in PlayerControl.AllPlayerControls) if (Reflectable(p)) players.Add(p);
             foreach (var m in mirrors) {
                 if (m.Go == null) continue;
                 var front = m.Foot + new Vector2(0f, -0.55f);
-                var near = players.Select(p => (p, d: (p.GetTruePosition() - front).magnitude, pos: p.GetTruePosition()))
-                    .Where(x => x.d < Reach && x.pos.y < m.Foot.y + 0.2f).OrderBy(x => x.d).Take(MaxShown).ToList();
+                var near = nearBuf;
+                near.Clear();
+                foreach (var p in players) {
+                    var pos = p.GetTruePosition();
+                    float d = (pos - front).magnitude;
+                    if (d >= Reach || pos.y >= m.Foot.y + 0.2f) continue;
+                    int at = near.Count;
+                    while (at > 0 && near[at - 1].d > d) at--;   // sorted insert, nearest first
+                    if (at >= MaxShown) continue;
+                    near.Insert(at, (p, d, pos));
+                    if (near.Count > MaxShown) near.RemoveAt(MaxShown);
+                }
                 // fog: after a reflection stayed for 1.5 s, the glass fogs up
                 float fog = FogFor();
                 bool fogged = m.FogUntil > Time.time;

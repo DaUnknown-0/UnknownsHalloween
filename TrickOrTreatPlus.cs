@@ -702,9 +702,21 @@ namespace UnknownsHalloween {
         }
 
         // ================================================================ per frame
+        // Per-frame helpers without LINQ, closures or fresh collections (audit 21.10.).
+        private static bool HasFx(List<ActiveTreat> l, Treat fx) {
+            if (l == null) return false;
+            foreach (var a in l) if (a.Fx == fx) return true;
+            return false;
+        }
+        private static readonly HashSet<byte> wantBuf = new HashSet<byte>();
+        private static readonly List<byte> keyBuf = new List<byte>();
+        private static List<byte> KeysOf<T>(Dictionary<byte, T> d) { keyBuf.Clear(); keyBuf.AddRange(d.Keys); return keyBuf; }
+        private static List<byte> Copy(HashSet<byte> h) { keyBuf.Clear(); keyBuf.AddRange(h); return keyBuf; }
+
         internal static void Tick(bool meeting) {
             TreatBagMenu.Tick(meeting);
-            foreach (var id in stuckUntil.Where(kv => Time.time >= kv.Value).Select(kv => kv.Key).ToList()) stuckUntil.Remove(id);
+            if (stuckUntil.Count > 0)
+                foreach (var id in KeysOf(stuckUntil)) if (Time.time >= stuckUntil[id]) stuckUntil.Remove(id);
             TickWrappers(meeting);
             if (meeting) {
                 ClearScreen();
@@ -714,10 +726,9 @@ namespace UnknownsHalloween {
             var lp = PlayerControl.LocalPlayer;
             if (lp == null) return;
             var mine = TrickOrTreat.active.TryGetValue(lp.PlayerId, out var l) ? l : null;
-            bool Mine(Treat fx) => mine != null && mine.Any(a => a.Fx == fx);
-            TickCompass(Mine(Treat.CandyCornCompass) ? lp : null);
-            TickFizz(Mine(Treat.FizzPop) ? lp : null);
-            TickFrost(Mine(Treat.BrainFreeze));
+            TickCompass(HasFx(mine, Treat.CandyCornCompass) ? lp : null);
+            TickFizz(HasFx(mine, Treat.FizzPop) ? lp : null);
+            TickFrost(HasFx(mine, Treat.BrainFreeze));
             TickTattleArrows(lp);
             TickVentMint(lp);
             TickGhostly();
@@ -834,7 +845,7 @@ namespace UnknownsHalloween {
         // ---- Tattletale Taffy, live part: the impostors get an arrow to the eater for 10 s ----
         private static readonly Dictionary<byte, Arrow> tattleArrows = new();
         private static void TickTattleArrows(PlayerControl lp) {
-            var want = new HashSet<byte>();
+            var want = wantBuf; want.Clear();
             if (TrickOrTreat.IsImp(lp) && TrickOrTreat.IsAlive(lp)) {
                 foreach (var kv in TrickOrTreat.active) {
                     if (kv.Key == lp.PlayerId) continue;
@@ -851,7 +862,7 @@ namespace UnknownsHalloween {
                     arrow.arrow.SetActive(true);
                 }
             }
-            foreach (var id in tattleArrows.Keys.ToList()) {
+            foreach (var id in KeysOf(tattleArrows)) {
                 if (want.Contains(id)) continue;
                 try { if (tattleArrows[id]?.arrow != null) UnityEngine.Object.Destroy(tattleArrows[id].arrow); } catch { }
                 tattleArrows.Remove(id);
@@ -862,13 +873,14 @@ namespace UnknownsHalloween {
         private static readonly HashSet<byte> ghostly = new();
         private static void TickGhostly() {
             foreach (var kv in TrickOrTreat.active) {
-                if (!kv.Value.Any(a => a.Fx == Treat.GhostlyGum)) continue;
+                if (!HasFx(kv.Value, Treat.GhostlyGum)) continue;
                 var p = Helpers.playerById(kv.Key);
                 if (!TrickOrTreat.IsAlive(p)) continue;
                 ghostly.Add(kv.Key);
                 SetAlpha(p, 0.4f);
             }
-            foreach (var id in ghostly.ToList()) {
+            if (ghostly.Count == 0) return;
+            foreach (var id in Copy(ghostly)) {
                 if (TrickOrTreat.Has(id, Treat.GhostlyGum)) continue;
                 // still in a vent: try again next frame (audit 21.10.: removed anyway, he stayed see-through)
                 var p = Helpers.playerById(id);
@@ -886,7 +898,7 @@ namespace UnknownsHalloween {
         // ---- Sticky Toffee (every client): a caramel glow under the stuck killer while it lasts ----
         private static readonly Dictionary<byte, SpriteRenderer> stickyGlows = new();
         private static void TickSticky(PlayerControl lp) {
-            var want = new HashSet<byte>();
+            var want = wantBuf; want.Clear();
             float k = TreatFx.UiPerWorld();
             foreach (var kv in stuckUntil) {
                 var p = Helpers.playerById(kv.Key);
@@ -900,7 +912,7 @@ namespace UnknownsHalloween {
                 sr.color = new Color(0.78f, 0.45f, 0.12f, 0.6f);
                 sr.enabled = true;
             }
-            foreach (var id in stickyGlows.Keys.ToList()) {
+            foreach (var id in KeysOf(stickyGlows)) {
                 if (want.Contains(id)) continue;
                 if (stickyGlows[id] != null) UnityEngine.Object.Destroy(stickyGlows[id].gameObject);
                 stickyGlows.Remove(id);
@@ -917,7 +929,7 @@ namespace UnknownsHalloween {
             float t = Time.time;
             if (!meeting) {
                 foreach (var kv in TrickOrTreat.active) {
-                    if (!kv.Value.Any(a => a.Fx == Treat.WrapperTrail)) continue;
+                    if (!HasFx(kv.Value, Treat.WrapperTrail)) continue;
                     var p = Helpers.playerById(kv.Key);
                     if (!TrickOrTreat.IsAlive(p) || p.inVent) continue;
                     var at = p.GetTruePosition();
@@ -1023,6 +1035,7 @@ namespace UnknownsHalloween {
             if (root != null) UnityEngine.Object.Destroy(root);
             root = null;
             shownCount = -1;
+            HalloweenUI.ModalLock("TreatBagMenu", null, false);
         }
 
         internal static void Tick(bool meeting) {
@@ -1045,6 +1058,7 @@ namespace UnknownsHalloween {
                 const float cell = 300f, gap = 24f, pad = 34f;
                 float w = Mathf.Max(pad * 2 + n * cell + (n - 1) * gap, 560f), h = 470f;
                 root = HalloweenUI.Canvas("TreatBagMenu", 9400, true);
+                HalloweenUI.ModalLock("TreatBagMenu", root, true);
                 HalloweenUI.Backdrop(root, Close);
                 var card = HalloweenUI.CenterPanel(root, new Vector2(w, h));
                 float y = HalloweenUI.Title(card, de ? "Süßigkeiten-Tüte" : "Candy Bag", 16f, 34f, TrickOrTreat.Orange);

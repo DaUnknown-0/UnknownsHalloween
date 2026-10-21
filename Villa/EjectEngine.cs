@@ -261,12 +261,14 @@ internal static class EjectEngine {
         return Sample(tr, t, o.Static.TryGetValue(p, out var v) ? v : def);
     }
 
+    // one table for every call instead of a new dictionary per object per frame (audit 21.10.)
+    private static readonly Dictionary<string, float> LBuf = new Dictionary<string, float>();
+
     private static Xf Local(ObjDef o, float t) {
-        var L = new Dictionary<string, float> {
-            ["x"] = Get(o, "x", t, 0f), ["y"] = Get(o, "y", t, 0f), ["rot"] = Get(o, "rot", t, 0f),
-            ["sx"] = Get(o, "sx", t, 1f), ["sy"] = Get(o, "sy", t, 1f), ["s"] = Get(o, "s", t, 1f),
-            ["a"] = Get(o, "a", t, 1f), ["b"] = Get(o, "b", t, 1f), ["flip"] = Get(o, "flip", t, 1f),
-        };
+        var L = LBuf;
+        L["x"] = Get(o, "x", t, 0f); L["y"] = Get(o, "y", t, 0f); L["rot"] = Get(o, "rot", t, 0f);
+        L["sx"] = Get(o, "sx", t, 1f); L["sy"] = Get(o, "sy", t, 1f); L["s"] = Get(o, "s", t, 1f);
+        L["a"] = Get(o, "a", t, 1f); L["b"] = Get(o, "b", t, 1f); L["flip"] = Get(o, "flip", t, 1f);
         foreach (var w in o.Wobble) {
             float env = Env(t, w.T0, w.T1);
             if (env > 0f && L.ContainsKey(w.P)) L[w.P] += w.Amp * Mathf.Sin(2f * Mathf.PI * w.F * t + w.Ph) * env;
@@ -310,6 +312,7 @@ internal static class EjectEngine {
         private readonly Dictionary<string, Sprite> _sprites = new();
         private readonly List<Texture2D> _textures = new();
         private readonly System.Random _rng;
+        private readonly Dictionary<string, Xf> _map = new();   // reused every frame
 
         public Run(SceneDef def, Doc doc) { Def = def; Doc = doc; _rng = new System.Random(def.Id.GetHashCode()); }
 
@@ -532,7 +535,8 @@ internal static class EjectEngine {
             World.localScale = new Vector3(s, s, 1f);
             World.localPosition = new Vector3((-cx + sx) * s, (-cy + sy) * s, 1f);
 
-            var map = new Dictionary<string, Xf>();
+            var map = _map;
+            map.Clear();
             void Put(ObjDef o, Transform tr, SpriteRenderer sr, int i, Xf W) {
                 tr.localPosition = new Vector3(W.X, W.Y, -i * 0.0005f);
                 tr.localEulerAngles = new Vector3(0f, 0f, W.Rot);
