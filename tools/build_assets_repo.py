@@ -36,6 +36,7 @@ FOLDERS = {
     "villa": ("", ["button_villa.png", "icon_villa.png", "villa_minimap_*.png", "task_eject_*.png", "*.json", "*.wav"]),
     "graveyard": ("graveyard.", ["map.json", "button_graveyard.png", "icon_graveyard.png", "graveyard_minimap.png"]),
     "graveyard_eject": ("", ["*.json"]),
+    "candy_eject": ("", ["*.json", "*.wav"]),
 }
 # Quellbilder der .atx (pack_textures.py-Eingang) werden nie eingebettet und nicht ausgeliefert
 SOURCES = ["*_floor_*.jpg", "*_props_*.png", "*_consoles_*.png"]
@@ -51,6 +52,8 @@ def pack_of(folder, name):
         return "villa_map"
     if folder == "graveyard":
         return "graveyard_map"
+    if folder == "candy_eject":
+        return "candy_eject"
     return "graveyard_eject"
 
 

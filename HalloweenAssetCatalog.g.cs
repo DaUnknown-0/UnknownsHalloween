@@ -8,10 +8,11 @@ namespace UnknownsHalloween;
 
 internal static class HalloweenAssetCatalog
 {
-    public const string Tag = "v1";
+    public const string Tag = "v2";
 
     public static readonly (string Name, long Size, string Sha256)[] Files =
     {
+        ("candy_eject.hwp", 1180748L, "d97adeddbd053621bd4d69a650034663ae0c381c1042cf6d58903c0be98745f5"),
         ("graveyard_eject.hwp", 2808646L, "67083543a98dfa022fcb9c1e4faa0e652d3088bd48a61f7e3009e57a7152dbe6"),
         ("graveyard_map.hwp", 20038642L, "9fb8907cc47342ccb5a5c7a2838acad791fbb4a89908b626577b7fd90eb14365"),
         ("hats_hk_freddy.hwp", 1947678L, "a653883dd306840766a4ac8c1ebb2f08132f96e8333bb0d2db090387bf3ff743"),

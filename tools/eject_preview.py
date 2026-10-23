@@ -17,7 +17,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 HERE = Path(__file__).resolve().parent
-SEARCH = [HERE.parent / "Resources" / "villa", HERE.parent / "Resources" / "graveyard_eject"]
+SEARCH = [HERE.parent / "Resources" / "villa", HERE.parent / "Resources" / "graveyard_eject", HERE.parent / "Resources" / "candy_eject"]
 PPU = 180.0
 VIEW_W, VIEW_H = 11.0, 6.2
 _cache = {}

@@ -17,7 +17,9 @@
  * the vanilla "was ejected", so it never says more than the game would. Skips and ties stay as they are (the Void of
  * Unknown's Collection owns those). Atlas maps, the Halloween maps (Atlas keys) and Submerged have their own exile
  * scenes and are left alone. The swap happens on the first tick that sees the new ExileController, before HandleText
- * starts typing (same hook style as HollowmereEject: no detour on ExileController.Begin).
+ * starts typing (same hook style as HollowmereEject: no detour on ExileController.Begin). When the candy bowl scene
+ * (Villa/CandyBowlEject.cs) takes over the ejection, the lead comes from the candy pool instead; CandyLead() redoes
+ * the line if the generic rewrite got there first.
  */
 
 using System;
@@ -36,6 +38,8 @@ namespace UnknownsHalloween {
 
         internal static void Reset() {
             seenExile = null;
+            leadEc = null;
+            leadBefore = null;
             exiles = 0;
         }
 
@@ -221,8 +225,9 @@ namespace UnknownsHalloween {
 
         // ================================================================ exile lines
 
-        private static ExileController seenExile;
+        private static ExileController seenExile, leadEc;
         private static int exiles;
+        private static string leadBefore;          // the game's own line behind the lead of the last rewrite
 
         internal static void ExileTick() {
             var ec = ExileController.Instance;
@@ -230,10 +235,19 @@ namespace UnknownsHalloween {
             if (ec == seenExile) return;
             seenExile = ec;
             if (!HwLook.LookEnabled) return;
-            try { Rewrite(ec); } catch (Exception e) { HwLook.Warn($"exile line failed: {e.Message}"); }
+            try { Rewrite(ec, CandyBowlEject.Playing == ec); } catch (Exception e) { HwLook.Warn($"exile line failed: {e.Message}"); }
         }
 
-        private static string MapKind(ExileController ec) {
+        /// <summary>The candy bowl scene (CandyBowlEject) is playing on ec: give the line its lead from the candy pool,
+        /// whether the generic rewrite already ran on this controller or not.</summary>
+        internal static void CandyLead(ExileController ec) {
+            if (ec == null) return;
+            if (leadEc == ec && leadBefore != null) { ec.completeString = leadBefore; exiles--; }
+            seenExile = ec;
+            Rewrite(ec, true);
+        }
+
+        internal static string MapKind(ExileController ec) {
             if (ec.TryCast<AirshipExileController>() != null) return "airship";
             if (ec.TryCast<PbExileController>() != null) return "polus";
             if (ec.TryCast<MiraExileController>() != null) return "mira";
@@ -242,7 +256,7 @@ namespace UnknownsHalloween {
             return null;                                   // Submerged and anything else with its own controller
         }
 
-        private static void Rewrite(ExileController ec) {
+        private static void Rewrite(ExileController ec, bool candy) {
             var init = ec.initData;
             if (init == null || init.networkedPlayer == null) return;          // skip or tie
             if (HwMechanics.AtlasMap() != null) return;                        // Atlas and Halloween maps: own scenes
@@ -256,12 +270,33 @@ namespace UnknownsHalloween {
             try { game = AmongUsClient.Instance.GameId; } catch { }
             int seed = unchecked(game * 31 + init.networkedPlayer.PlayerId * 977 + exiles * 7919);
             exiles++;
-            string lead = string.Format(PickLead(kind, seed), name);
+            string lead = string.Format(candy ? PickCandyLead(seed) : PickLead(kind, seed), name);
             string before = ec.completeString ?? "";
+            leadEc = ec;
+            leadBefore = before;
             string after = init.confirmImpostor && before.Length > 0 ? lead + " " + before : lead;
             ec.completeString = after;
             LastExileText = after;
-            HwLook.Log($"exile line ({kind}, confirm {init.confirmImpostor}): \"{after}\"");
+            HwLook.Log($"exile line ({kind}{(candy ? ", candy bowl" : "")}, confirm {init.confirmImpostor}): \"{after}\"");
+        }
+
+        // leads for the candy bowl scene (CandyBowlEject): the player ends up in the bowl and gets eaten
+        private static readonly string[] CandyDe = {
+            "{0} landet in der Süßigkeitenschüssel.",
+            "{0} wird mit Haut und Haar vernascht.",
+            "Für {0} ist Schluss mit Süßem.",
+            "{0} schmeckt nach Karamell.",
+        };
+        private static readonly string[] CandyEn = {
+            "{0} lands in the candy bowl.",
+            "{0} gets gobbled up whole.",
+            "No more sweets for {0}.",
+            "{0} tastes like caramel.",
+        };
+
+        private static string PickCandyLead(int seed) {
+            var pool = HwLook.De() ? CandyDe : CandyEn;
+            return pool[new System.Random(seed).Next(pool.Length)];
         }
 
         private static readonly string[] GenericDe = {
