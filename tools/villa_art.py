@@ -28,7 +28,7 @@ import museum_art as A                      # noqa: E402
 import handdraw as HD                       # noqa: E402
 from museum_art import K, OUTLINE, Prop, alpha, hexc, lift, shade   # noqa: E402
 
-from PIL import Image, ImageDraw            # noqa: E402
+from PIL import Image, ImageDraw, ImageFilter   # noqa: E402
 
 # ------------------------------------------------------------------ Palette
 
@@ -2328,10 +2328,42 @@ _KIND_FN = {"standuhr": _standuhr, "seance_tisch": _seance_tisch, "buecherregal"
             "pflanztisch": _pflanztisch, "brunnen": _brunnen, "barrikade": _barrikade, "treppensperre": _treppensperre}
 
 
+# Objekte aus einem fertigen Bild statt prozedural (Datei in tools/villa_assets/, Hoehe des ganzen Sprites in Metern).
+# Der Baer kommt seit 24.10. aus einem vom User gelieferten Bild (gerade Vorderansicht, Blick nach Westen in den Raum).
+IMAGE_PROPS = {"baer": ("villa_baer.png", 3.0)}
+_IMG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "villa_assets")
+
+
+def _image_prop(kind, shape, ppm):
+    """Sprite aus IMAGE_PROPS: Unterkante des Bilds (Sockel) auf der Standlinie, waagerecht mittig ueber der Fussflaeche,
+    weicher Schatten darunter. None, wenn die Datei fehlt (dann zeichnet die Art wie bisher)."""
+    file, height = IMAGE_PROPS[kind]
+    path = os.path.join(_IMG_DIR, file)
+    if not os.path.exists(path):
+        return None
+    x0, y0, x1, y1 = A.shape_bounds(shape)
+    src = Image.open(path).convert("RGBA")
+    h = int(round(height * ppm))
+    w = int(round(src.width * h / src.height))
+    im = src.resize((w, h), Image.LANCZOS)
+    pad = int(0.12 * ppm)
+    canvas = Image.new("RGBA", (w + 2 * pad, h + pad), (0, 0, 0, 0))
+    sh = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    ImageDraw.Draw(sh).ellipse([pad + w * 0.06, h - 0.16 * ppm, pad + w * 0.97, h + 0.07 * ppm], fill=(0, 0, 0, 105))
+    canvas.alpha_composite(sh.filter(ImageFilter.GaussianBlur(0.06 * ppm)))
+    canvas.alpha_composite(im, (pad, 0))
+    cx = (x0 + x1) / 2
+    return canvas, cx - canvas.width / 2 / ppm, y0 - pad / ppm, y0
+
+
 def draw(kind, shape, idx, ppm, variant=None):
     """Ein Objekt als Sprite: (RGBA-Bild, welt_x_links, welt_y_unten, standlinie_y). Vertrag wie park_art.draw.
     variant: Tauschbild derselben Art und Groesse (Mechaniken: Pendel, Blick, Licht aus), nur Arten mit
     variant-Parameter; gen_villa legt sie unter "Prop/<Art>/<x>/<y>/<Variante>" in den Konsolen-Atlas."""
+    if kind in IMAGE_PROPS and variant is None:
+        got = _image_prop(kind, shape, ppm)
+        if got is not None:
+            return got
     x0, y0, x1, y1 = A.shape_bounds(shape)
     h = PROP_H[kind]
     p = Prop(x0, y0, x1, y1, h, ppm, pad=PROP_PAD.get(kind, 0.3))
