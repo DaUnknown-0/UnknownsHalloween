@@ -8,11 +8,12 @@ namespace UnknownsHalloween;
 
 internal static class HalloweenAssetCatalog
 {
-    public const string Tag = "v2";
+    public const string Tag = "v3";
 
     public static readonly (string Name, long Size, string Sha256)[] Files =
     {
         ("candy_eject.hwp", 1180748L, "d97adeddbd053621bd4d69a650034663ae0c381c1042cf6d58903c0be98745f5"),
+        ("cine_villa.hwp", 92829371L, "078684d7b5f815a98db83e25fa69ac1a224d97f626355f08718613f8b7977931"),
         ("graveyard_eject.hwp", 2808646L, "67083543a98dfa022fcb9c1e4faa0e652d3088bd48a61f7e3009e57a7152dbe6"),
         ("graveyard_map.hwp", 20038642L, "9fb8907cc47342ccb5a5c7a2838acad791fbb4a89908b626577b7fd90eb14365"),
         ("hats_hk_freddy.hwp", 1947678L, "a653883dd306840766a4ac8c1ebb2f08132f96e8333bb0d2db090387bf3ff743"),
@@ -46,7 +47,6 @@ internal static class HalloweenAssetCatalog
         ("hats_hw_vampire.hwp", 1287087L, "a0b43ae92cf854e035fc8e6d51f48eeccc33c48826d552b07e886bca55d50148"),
         ("hats_hw_xenomorph.hwp", 2332926L, "4dda2a0e893282a9a9089a026cd1b817c6901e0a1356aea8dd99438a90ca5417"),
         ("villa_eject.hwp", 2301157L, "a40bd92279a4dd27e16a2b0db68683a1d135f227a6d0c0caacbceae2c1d60fa6"),
-        ("villa_intro.hwp", 6159741L, "10621e943cafbbb9c1aa08434fd03eabf8e21d19eba0c8521362e280284082dc"),
         ("villa_map.hwp", 7706068L, "38302c95cdfeff543fc5efe5dc88dc8053e5373e7018be30077a0599bf2ddcc1"),
     };
 }

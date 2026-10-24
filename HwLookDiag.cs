@@ -89,6 +89,7 @@ namespace UnknownsHalloween {
                 yield return Meeting(lp, true, "a");
                 yield return Meeting(lp, false, "b");
             }
+            if (Mode == "guessspell") yield return GuessSpell(lp);
             if (Has("ghosts")) yield return Ghosts(lp);
             if (Has("endscreen")) yield return End(lp);
             yield return Wait(1f);
@@ -105,6 +106,25 @@ namespace UnknownsHalloween {
             var r = c.GetComponent<Renderer>();
             if (r != null) b = $" bounds {r.bounds.min.x:F2}..{r.bounds.max.x:F2} x {r.bounds.min.y:F2}..{r.bounds.max.y:F2}";
             return $"({p.x:F2}, {p.y:F2}, {p.z:F2}){b}";
+        }
+
+        // UC_HALLOWEEN_DIAG = guessspell: a meeting, a hit (the local player guesses a dummy right), a misfire (a dummy
+        // guesses wrong and dies itself) - HwGuessSpell must play once per shot.
+        private static IEnumerator GuessSpell(PlayerControl lp) {
+            var d = Dummies(lp);
+            if (d.Length < 3) { Log("not enough dummies"); yield break; }
+            try { lp.CmdReportDeadBody(null); } catch (Exception e) { Log("report: " + e.Message); }
+            yield return WaitFor(() => MeetingHud.Instance != null, 5f);
+            yield return WaitFor(() => MeetingHud.Instance.state != MeetingHud.VoteStates.Animating, 12f);
+            yield return Wait(1.5f);
+            int before = HwGuessSpell.Plays;
+            try { RPCProcedure.guesserShoot(lp.PlayerId, d[0].PlayerId, d[0].PlayerId, (byte)RoleId.Crewmate); } catch (Exception e) { Log("hit: " + e.Message); }
+            yield return Wait(2.5f);
+            Log($"guess spell after the hit: {HwGuessSpell.Plays - before} play(s)");
+            Shot("g01_hit");
+            try { RPCProcedure.guesserShoot(d[1].PlayerId, d[1].PlayerId, d[2].PlayerId, (byte)RoleId.Sheriff); } catch (Exception e) { Log("misfire: " + e.Message); }
+            yield return Wait(2.5f);
+            Log($"guess spell after the misfire: {HwGuessSpell.Plays - before} play(s) in total (expected 2)");
         }
 
         private static IEnumerator Meeting(PlayerControl lp, bool confirm, string tag) {

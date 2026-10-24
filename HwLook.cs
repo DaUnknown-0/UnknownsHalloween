@@ -34,7 +34,7 @@ namespace UnknownsHalloween {
 
         // self test: UC_HALLOWEEN_DIAG = meeting | endscreen | ghosts | hwlook (all three)
         internal static readonly string DiagMode = Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "";
-        internal static bool DiagOn => DiagMode == "meeting" || DiagMode.StartsWith("endscreen") || DiagMode == "ghosts" || DiagMode == "hwlook";
+        internal static bool DiagOn => DiagMode == "meeting" || DiagMode.StartsWith("endscreen") || DiagMode == "ghosts" || DiagMode == "hwlook" || DiagMode == "guessspell";
 
         private static bool On(CustomOption o) {
             try { return o == null || o.getBool(); } catch { return true; }
@@ -51,6 +51,7 @@ namespace UnknownsHalloween {
                 var g = CustomOption.CustomOptionType.General;
                 LookOption = CustomOption.Create(2100, g, "Halloween Look (Meeting, End Screen)", true, null, true, null, "Halloween Look");
                 GhostOption = CustomOption.Create(2101, g, "Costume Ghosts", true, null, false);
+                HwGuessSpell.Option = CustomOption.Create(2102, g, "Guesser Spell Sound", true, null, false);
                 UnknownsCollection.UCFx.RegisterTick(Tick);
                 Log("registered (meeting room, end screen, costume ghosts).");
             } catch (Exception e) {

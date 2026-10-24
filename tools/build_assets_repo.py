@@ -38,6 +38,12 @@ FOLDERS = {
     "graveyard_eject": ("", ["*.json"]),
     "candy_eject": ("", ["*.json", "*.wav"]),
 }
+# Gerenderte Vorspanne (Assets/Cinematics/_common/make_pack.py, Format HWP1): Paketname -> (Namenspraefix, Datei).
+# Eigener Paketname ohne "villa_", damit die Karte nicht auf den grossen Film wartet (HollowmereMap: WhenReady("villa_")).
+CINE_PACKS = {
+    "cine_villa": ("villa_intro/", ROOT.parent / "Assets" / "Cinematics" / "manor" / "manor_intro.cine"),
+}
+
 # Quellbilder der .atx (pack_textures.py-Eingang) werden nie eingebettet und nicht ausgeliefert
 SOURCES = ["*_floor_*.jpg", "*_props_*.png", "*_consoles_*.png"]
 
@@ -74,9 +80,24 @@ def write_pack(path, items):
     return data
 
 
+def read_pack(path):
+    data = path.read_bytes()
+    assert data[:4] == b"HWP1", path
+    count, = struct.unpack_from("<I", data, 4)
+    pos, items = 8, []
+    for _ in range(count):
+        nl, = struct.unpack_from("<H", data, pos); pos += 2
+        name = data[pos:pos + nl].decode("utf-8"); pos += nl
+        off, ln = struct.unpack_from("<QI", data, pos); pos += 12
+        items.append((name, data[off:off + ln]))
+    return items
+
+
 def main():
     tag = sys.argv[1] if len(sys.argv) > 1 else "v1"
     packs = {}
+    for pack, (prefix, path) in CINE_PACKS.items():
+        packs[pack] = [(prefix + n, d) for n, d in read_pack(path)]
     for folder, (prefix, keep) in FOLDERS.items():
         for p in sorted((RES / folder).iterdir(), key=lambda p: p.name):
             if not p.is_file(): continue

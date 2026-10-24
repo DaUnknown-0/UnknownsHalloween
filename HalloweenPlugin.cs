@@ -40,7 +40,7 @@ public class HalloweenPlugin : BasePlugin
 {
     public const string PluginGuid = "com.daunknown.unknownshalloween";
     public const string PluginName = "Unknown's Halloween";
-    public const string PluginVersion = "0.1.3";
+    public const string PluginVersion = "0.1.3.1";
     public static readonly System.Version Version = System.Version.Parse(PluginVersion);
     private const string AtlasGuid = "com.daunknown0.atlas";
 
@@ -51,6 +51,8 @@ public class HalloweenPlugin : BasePlugin
     {
         Logger = Log;
         CfgEnabled = Config.Bind("General", "Enabled", true, "Master switch of Unknown's Halloween.");
+        HwGuessSpell.LocalSwitch = Config.Bind("Sounds", "GuesserSpellSound", true,
+            "Play \"Avada Kedavra ... Kurwa!\" at every Guesser shot (contains a swear word). The host can switch it off for everyone (option 2102).");
 
         // Mod Manager (hosted by Forgotten Fixes / UsefulTORStuff): AppDomain registry, no compile-time
         // reference. Before the Enabled gate, so a disabled mod still shows up there.
