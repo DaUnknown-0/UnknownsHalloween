@@ -387,13 +387,12 @@ def _parkbank(p, c, x0, y0, x1, y1, idx, rnd):
     c.text(x0 + 0.68, y0 + 0.45 * K + 0.12, "OCT 31", 0.03, OUTLINE)
 
 
-def _brunnen_blut(p, c, x0, y0, x1, y1, idx, rnd):
+def _brunnen_blut(p, c, x0, y0, x1, y1, idx, rnd, variant=None):
     """Vor dem Brunnen gezeichnet: rotes Wasser im ovalen Becken (Geometrie wie villa_art._brunnen: Beckenmitte
-    1,4 m noerdlich der Standlinie dieses Sprites, Wasser rx 0,94 / ry 0,59 auf Beckenhoehe) und die Figur
-    noch einmal darueber, damit sie vor dem Wasser steht; Tropfen am Beckenrand."""
+    1,4 m noerdlich der Standlinie dieses Sprites, Wasser rx 0,94 / ry 0,59 auf Beckenhoehe) und der Weeping Angel auf
+    dem Saeulenkopf. variant None = Haende vor den Augen, "turn" = Kopf gedreht mit Fratze, "step" = vorgerueckt und
+    greifend (Tauschbilder der Mod, gleiche Leinwand und gleicher Anker)."""
     cx = (x0 + x1) / 2
-    # Beckenmitte (Brunnenkreis 31/31 Plan, cy - 0,05) liegt 1,4 m noerdlich dieser Standlinie (Plan-y 32,45);
-    # Wasserspiegel auf der Wandungsoberkante (+ 0,5 K)
     wy = y0 + 1.4 + 0.5 * K
     c.ellipse(cx, wy, 0.94, 0.59, fill=WATER_RED)
     c.ellipse(cx, wy + 0.02, 0.86, 0.53, fill=alpha(hexc("#8a1a26"), 200))
@@ -401,7 +400,8 @@ def _brunnen_blut(p, c, x0, y0, x1, y1, idx, rnd):
     c.ellipse(cx + 0.35, wy - 0.05, 0.16, 0.05, fill=alpha(hexc("#b03848"), 120))
     for k in range(3):
         c.ellipse(cx, wy + 0.06, 0.4 + k * 0.14, 0.14 + k * 0.05, outline=alpha(hexc("#d06070"), 70 - k * 15), width=0.012)
-    VA.fountain_statue(c, cx, wy + 0.12, idx)
+    VA.fountain_column(c, cx, wy + 0.12, idx)
+    VA.fountain_statue(c, cx, wy + 0.12 + 0.6, idx, pose=variant)
     blood_drips(c, cx + 0.5, wy - 0.45, 3, 0.15, seed=idx)
     blood_drips(c, cx - 0.7, wy - 0.3, 2, 0.1, seed=idx + 1)
 
@@ -786,159 +786,176 @@ def _dosenregal(p, c, x0, y0, x1, y1, idx, rnd):
 
 
 def _jeep(p, c, x0, y0, x1, y1, idx, rnd):
-    """Offener Gelaendewagen im Stil eines Willys-Jeeps (Nachtrag 2, 24.10.), Crew Camp, 3,4 x 1,7 m, Seitenansicht von
-    Sueden, Front nach Osten: niedrige wannenfoermige Karosserie mit Ausschnitt statt Tuer, runde Kotfluegel ueber
-    grossen Stollenraedern, kurze flache Haube, senkrechter Kuehlergrill mit Schlitzen und runden Scheinwerfern,
-    Windschutzscheibe mit Rahmen, offener Innenraum mit Sitzen und Lenkrad, Ueberrollbuegel, Ersatzrad und Kanister am
-    Heck, Filmklappen-Aufkleber, Kennzeichen HM 1888, Schlamm. Olivgruen, eine Schattenstufe, kraeftige Umrisse."""
+    """Offener Willys-artiger Gelaendewagen in der schraegen Aufsicht der Karte (Nachtrag 3; Vorbild van): 3,4 x 1,7 m,
+    Front nach Osten. Von schraeg oben sieht man die flache Motorhaube mit Riegeln, den offenen Innenraum (Boden, zwei
+    Sitze, Lenkrad), die Oberkanten der Kotfluegel und der Wanne, die Suedseite mit Ausschnitt statt Tuer, Trittstufe,
+    Filmklappen-Aufkleber und Kennzeichen, die beiden suedlichen Stollenraeder unter runden bzw. flachen Kotfluegeln,
+    die Nordraeder hinter der Wanne, hochgeklappte Windschutzscheibe, Ueberrollbuegel, Ersatzrad und Kanister am Heck,
+    Scheinwerfer und Stossstangen. Olivgruen, eine Schattenstufe, kraeftige Umrisse."""
     olive = VA.lift("#4e5a3a", 1.45)
     olive_l = shade(olive, 1.28)
     olive_d = shade(olive, 0.7)
     tyre = hexc("#24262c")
     rim = hexc("#8a8e96")
     chrome = hexc("#c8d0d4")
-    glass = alpha(hexc("#c4d8e8"), 150)
     seat = hexc("#5a3a2a")
     mud = hexc("#4a3a2a")
     ow = OUT_W
     W_ = x1 - x0
-    # Bodenschatten
-    c.ellipse((x0 + x1) / 2, y0 + 0.12, W_ * 0.5, 0.22, fill=alpha((0, 0, 0, 255), 85))
-    # Raeder: Mitte auf Hoehe des Radius, Lauf auf der Standlinie
-    R = 0.42
-    wheels = (x0 + 0.78, x1 - 0.72)
-    wy = y0 + R
-    hood0 = x1 - 1.3                     # Spritzwand (Ende der Haube)
-    tub0, tub1 = x0 + 0.28, x1 - 0.22    # Wanne von hinten bis zur Kuehlerfront
-    floor = y0 + 0.5                     # Unterkante der Wanne
-    rail = y0 + 0.98                     # Oberkante der Seitenwand
-    cut0, cut1 = wheels[0] + 0.55, hood0 - 0.1   # Ausschnitt (keine Tuer)
-    cut_y = y0 + 0.74
-    # hintere Raeder zuerst (hinter der Wanne sieht man nur den Reifen, die Kotfluegel liegen davor)
+    # Standflaeche, Raeder: Suedraeder stehen auf der Standlinie, Nordraeder schauen hinter der Wanne hervor
+    c.soft_shadow([(x0 + 0.1, y0 - 0.05), (x1 + 0.05, y0 - 0.05), (x1 + 0.05, y1 - 0.1), (x0 + 0.1, y1 - 0.1)], 90, 0.08)
+    R = 0.4
+    wxs = (x0 + 0.78, x1 - 0.72)
+    tub_y0, tub_y1 = y0 + 0.3, y1 - 0.2            # Grundflaeche der Wanne
+    z0, zt = 0.42, 0.82                            # Wannenboden, Oberkante Seitenwand (m)
+    hood0 = x1 - 1.3
+    tubx0, tubx1 = x0 + 0.3, x1 - 0.25
 
-    def wheel(wx):
-        c.ellipse(wx, wy, R, R, fill=tyre, outline=OUTLINE, width=ow)
-        for k in range(14):                                                                    # Stollen
-            a = k * math.tau / 14
-            c.line([(wx + (R - 0.07) * math.cos(a), wy + (R - 0.07) * math.sin(a)), (wx + (R - 0.01) * math.cos(a), wy + (R - 0.01) * math.sin(a))],
+    def wheel(wx, wy, r, back=False):
+        c.ellipse(wx, wy, r, r * 0.82, fill=tyre, outline=OUTLINE, width=ow)
+        if back:
+            return
+        for k in range(12):
+            a = k * math.tau / 12
+            c.line([(wx + (r - 0.07) * math.cos(a), wy + (r - 0.07) * 0.82 * math.sin(a)), (wx + (r - 0.01) * math.cos(a), wy + (r - 0.01) * 0.82 * math.sin(a))],
                    fill=hexc("#3a3c44"), width=0.045)
-        c.ellipse(wx, wy, R * 0.52, R * 0.52, fill=rim, outline=OUTLINE, width=0.025)
-        c.ellipse(wx, wy, R * 0.52, R * 0.52, fill=None, outline=shade(rim, 0.75), width=0.03)
+        c.ellipse(wx, wy, r * 0.5, r * 0.41, fill=rim, outline=OUTLINE, width=0.025)
         for k in range(5):
             a = k * math.tau / 5 + 0.4
-            c.ellipse(wx + R * 0.33 * math.cos(a), wy + R * 0.33 * math.sin(a), 0.022, 0.022, fill=hexc("#4a4c54"))
-        c.ellipse(wx, wy, 0.06, 0.06, fill=hexc("#4a4c54"), outline=OUTLINE, width=0.015)
-        c.ellipse(wx - 0.1, wy + 0.1, 0.05, 0.03, fill=(255, 255, 255, 70))
-        for k in range(4):                                                                     # Schlamm am Reifen
-            a = math.pi * 1.1 + k * 0.28
-            c.ellipse(wx + R * 0.95 * math.cos(a), wy + R * 0.95 * math.sin(a), 0.06, 0.035, fill=alpha(mud, 200))
+            c.ellipse(wx + r * 0.3 * math.cos(a), wy + r * 0.25 * math.sin(a), 0.02, 0.02, fill=hexc("#4a4c54"))
+        c.ellipse(wx, wy, 0.055, 0.045, fill=hexc("#4a4c54"), outline=OUTLINE, width=0.015)
+        c.ellipse(wx - 0.1, wy + 0.08, 0.05, 0.03, fill=(255, 255, 255, 70))
+        for k in range(3):
+            a = math.pi * 1.15 + k * 0.3
+            c.ellipse(wx + r * 0.95 * math.cos(a), wy + r * 0.8 * math.sin(a), 0.06, 0.035, fill=alpha(mud, 200))
 
-    # Innenraum (hinter der Seitenwand): Rueckwand der Wanne, Sitze, Lenkrad, Ueberrollbuegel
-    c.rect(tub0 + 0.05, floor, hood0, rail + 0.22, fill=olive_d, outline=OUTLINE, width=ow)          # ferne Bordwand
-    c.line([(tub0 + 0.1, rail + 0.18), (hood0 - 0.05, rail + 0.18)], fill=olive, width=0.02)
-    bar_x = cut0 + 0.35
-    c.line([(bar_x - 0.05, rail), (bar_x, rail + 0.62), (bar_x + 0.3, rail + 0.62), (bar_x + 0.36, rail)], fill=OUTLINE, width=0.07)
-    c.line([(bar_x - 0.05, rail), (bar_x, rail + 0.62), (bar_x + 0.3, rail + 0.62), (bar_x + 0.36, rail)], fill=hexc("#2a2a30"), width=0.04)
-    for sx_ in (cut0 - 0.05, cut0 + 0.5):                                                      # Sitze (Lehne und Polster)
-        c.rect(sx_, cut_y - 0.08, sx_ + 0.3, rail + 0.3, fill=seat, outline=OUTLINE, width=0.025)
-        c.rect(sx_ + 0.03, cut_y, sx_ + 0.27, rail + 0.26, outline=shade(seat, 0.75), width=0.012)
-        c.rect(sx_, cut_y - 0.12, sx_ + 0.42, cut_y + 0.02, fill=shade(seat, 0.85), outline=OUTLINE, width=0.025)
-    c.line([(hood0 - 0.35, rail + 0.05), (hood0 - 0.22, rail + 0.3)], fill=OUTLINE, width=0.035)     # Lenksaeule
-    c.ellipse(hood0 - 0.22, rail + 0.3, 0.14, 0.1, fill=None, outline=OUTLINE, width=0.05)
-    c.ellipse(hood0 - 0.22, rail + 0.3, 0.14, 0.1, fill=None, outline=hexc("#2a2a30"), width=0.025)
-    wheel(wheels[0])
-    wheel(wheels[1])
-    # Wanne (Seitenwand) mit Ausschnitt statt Tuer, hinterer Kotfluegel als Hump in der Seitenwand
-    hump_r = R + 0.14
-    hx = wheels[0]
-    side = [(tub0, floor), (tub1, floor), (tub1, rail + 0.02), (hood0 + 0.02, rail + 0.02), (hood0, rail), (cut1, rail), (cut1 - 0.06, cut_y),
-            (cut0 + 0.06, cut_y), (cut0, rail), (tub0, rail)]
+    for wx in wxs:                                                                             # Nordraeder (hinten)
+        wheel(wx, tub_y1 + 0.05 + z0 * K * 0.3, R * 0.9, back=True)
+    # Wanne: Suedwand mit Ausschnitt (Front), Innenraum als Deckflaeche
+    fb = tub_y0 + z0 * K
+    ft = tub_y0 + zt * K
+    cut0, cut1 = wxs[0] + 0.5, hood0 - 0.08
+    cut_y = fb + (zt - z0) * K * 0.25
+    side = [(tubx0, fb), (tubx1, fb), (tubx1, ft), (hood0, ft), (cut1, ft), (cut1 - 0.05, cut_y), (cut0 + 0.05, cut_y), (cut0, ft), (tubx0, ft)]
     c.poly(side, fill=olive, outline=OUTLINE, width=ow)
-    c.poly([(tub0 + 0.04, floor + 0.02), (tub1 - 0.04, floor + 0.02), (tub1 - 0.04, floor + 0.1), (tub0 + 0.04, floor + 0.1)], fill=olive_d)   # Schattenband unten
-    c.line([(tub0 + 0.05, rail - 0.04), (cut0 - 0.04, rail - 0.04)], fill=olive_l, width=0.02)
-    c.line([(cut1 + 0.04, rail - 0.04), (hood0 - 0.02, rail - 0.04)], fill=olive_l, width=0.02)
-    c.line([(cut0 + 0.08, cut_y + 0.03), (cut1 - 0.08, cut_y + 0.03)], fill=olive_l, width=0.02)
-    # hinterer Kotfluegel: runder Bogen ueber dem Rad (Ring zwischen Radausschnitt und Aussenkante), der Reifen bleibt darunter sichtbar
-    outer = [(hx + hump_r * math.cos(a), wy + hump_r * math.sin(a)) for a in [math.pi - k * math.pi / 20 for k in range(21)]]
-    inner = [(hx + (R + 0.03) * math.cos(a), wy + (R + 0.03) * math.sin(a)) for a in [k * math.pi / 20 for k in range(21)]]
+    c.rect(tubx0 + 0.03, fb + 0.02, tubx1 - 0.03, fb + 0.08, fill=olive_d)                         # Schatten unten
+    c.line([(tubx0 + 0.04, ft - 0.03), (cut0 - 0.03, ft - 0.03)], fill=olive_l, width=0.018)
+    c.line([(cut1 + 0.03, ft - 0.03), (tubx1 - 0.04, ft - 0.03)], fill=olive_l, width=0.018)
+    c.line([(cut0 + 0.08, cut_y + 0.025), (cut1 - 0.08, cut_y + 0.025)], fill=olive_l, width=0.018)
+    c.rect(cut0 + 0.12, fb - 0.06, cut1 - 0.12, fb + 0.01, fill=hexc("#2a2a30"), outline=OUTLINE, width=0.025)   # Trittstufe
+    # Innenraum (Deckflaeche der Wanne): Boden, innere Bordwaende als Streifen, Sitze, Lenkrad
+    top_y0, top_y1 = tub_y0 + zt * K, tub_y1 + zt * K
+    c.poly([(tubx0, top_y0), (hood0, top_y0), (hood0, top_y1), (tubx0, top_y1)], fill=olive_d, outline=OUTLINE, width=ow)
+    floor_y0, floor_y1 = tub_y0 + (z0 + 0.05) * K + 0.06, tub_y1 + (z0 + 0.05) * K - 0.02
+    c.poly([(tubx0 + 0.1, top_y0 + 0.02), (hood0 - 0.04, top_y0 + 0.02), (hood0 - 0.04, top_y1 - 0.08), (tubx0 + 0.1, top_y1 - 0.08)], fill=shade(olive_d, 0.8))
+    c.rect(tubx0, top_y1 - 0.08, hood0, top_y1, fill=olive_l, outline=OUTLINE, width=0.02)        # Nordbordwand (Oberkante)
+    c.rect(tubx0, top_y0, tubx0 + 0.1, top_y1, fill=olive_l, outline=OUTLINE, width=0.02)          # Heckwand (Oberkante)
+    c.rect(tubx0, top_y0, cut0, top_y0 + 0.07, fill=olive_l, outline=OUTLINE, width=0.02)          # Suedbordwand (Oberkante, bis zum Ausschnitt)
+    c.rect(cut1, top_y0, hood0, top_y0 + 0.07, fill=olive_l, outline=OUTLINE, width=0.02)
+    c.rect(cut0, cut_y - 0.01, cut1, cut_y + 0.05, fill=olive_l, outline=OUTLINE, width=0.015)      # Ausschnittkante
+    for k in range(4):                                                                             # Bodenriffel
+        c.line([(tubx0 + 0.25 + k * 0.28, top_y0 + 0.06), (tubx0 + 0.25 + k * 0.28, top_y1 - 0.12)], fill=alpha(olive, 120), width=0.012)
+    for sx_ in (cut0 - 0.05, cut0 + 0.45):                                                         # Sitze: Polster (Deckflaeche) und Lehne
+        c.rect(sx_, top_y0 + 0.08, sx_ + 0.3, top_y0 + 0.3, fill=seat, outline=OUTLINE, width=0.025)
+        c.rect(sx_ + 0.03, top_y0 + 0.11, sx_ + 0.27, top_y0 + 0.27, outline=shade(seat, 0.75), width=0.012)
+        c.rect(sx_ - 0.02, top_y0 + 0.28, sx_ + 0.32, top_y0 + 0.5, fill=shade(seat, 0.85), outline=OUTLINE, width=0.025)
+        c.line([(sx_ + 0.03, top_y0 + 0.47), (sx_ + 0.27, top_y0 + 0.47)], fill=shade(seat, 1.2), width=0.015)
+    c.line([(hood0 - 0.18, top_y0 + 0.25), (hood0 - 0.08, top_y0 + 0.38)], fill=OUTLINE, width=0.035)           # Lenksaeule
+    c.ellipse(hood0 - 0.2, top_y0 + 0.24, 0.11, 0.08, fill=None, outline=OUTLINE, width=0.05)
+    c.ellipse(hood0 - 0.2, top_y0 + 0.24, 0.11, 0.08, fill=None, outline=hexc("#2a2a30"), width=0.025)
+    c.rect(hood0 - 0.1, top_y0 + 0.33, hood0 - 0.02, top_y1 - 0.12, fill=hexc("#2a2a30"), outline=OUTLINE, width=0.015)   # Armaturenbrett
+    for k in range(3):
+        c.ellipse(hood0 - 0.06, top_y0 + 0.42 + k * 0.1, 0.02, 0.02, fill=hexc("#e8e0d0"), outline=OUTLINE, width=0.008)
+    # Ueberrollbuegel ueber dem Innenraum
+    bx = cut0 + 0.32
+    bar = [(bx, top_y0 + 0.04), (bx + 0.03, top_y0 + 0.62), (bx + 0.03, top_y1 + 0.5), (bx, top_y1 - 0.06)]
+    c.line(bar, fill=OUTLINE, width=0.09)
+    c.line(bar, fill=hexc("#2a2a30"), width=0.055)
+    # Haube (Osten): flach, Deckflaeche heller, Mittelsicke, Riegel, Scheinwerfer an der Front, Stossstange
+    hz = 0.86
+    fz_ = 0.56                                                                                     # Kotfluegelhoehe (deutlich unter der Haube)
+    for fy0, fy1 in ((tub_y0 - 0.02, tub_y0 + 0.3), (tub_y1 - 0.3, tub_y1 + 0.02)):                 # flache Kotfluegel beidseits der Haube
+        p.box(hood0 - 0.05, fy0, tubx1 + 0.02, fy1, z0, fz_ - z0, olive_l, olive, w=ow)
+    c.rect(hood0, tub_y0 + 0.3 + fz_ * K, tubx1, tub_y0 + 0.3 + hz * K, fill=olive_d, outline=OUTLINE, width=ow)   # Haubenflanke (Sued) ueber dem Kotfluegel
+    p.box(hood0, tub_y0 + 0.3, tubx1, tub_y1 - 0.3, z0, hz - z0, olive_l, olive, w=ow)              # schmale Haube dazwischen
+    hfb = tub_y0 + 0.3 + hz * K
+    hft = tub_y1 - 0.3 + hz * K
+    c.line([(hood0 + 0.1, (hfb + hft) / 2), (tubx1 - 0.15, (hfb + hft) / 2)], fill=olive_d, width=0.02)
+    for yy in (hfb + 0.1, hft - 0.1):                                                              # Haubenriegel
+        c.rect(hood0 + 0.42, yy - 0.015, hood0 + 0.62, yy + 0.015, fill=hexc("#2a2a30"), outline=OUTLINE, width=0.012)
+    for k in range(5):                                                                             # Kuehlergrill (Oberkante mit Schlitzen)
+        gy = hfb + 0.06 + k * (hft - hfb - 0.12) / 4
+        c.line([(tubx1 - 0.1, gy), (tubx1 - 0.02, gy)], fill=olive_d, width=0.014)
+    for yy in (tub_y0 + 0.14 + fz_ * K, tub_y1 - 0.14 + fz_ * K):                                 # Scheinwerfer vorn auf den Kotfluegeln
+        c.ellipse(tubx1 - 0.02, yy, 0.08, 0.065, fill=hexc("#ffe6a8"), outline=OUTLINE, width=0.02)
+        c.ellipse(tubx1 - 0.04, yy + 0.02, 0.025, 0.018, fill=(255, 255, 255, 230))
+        c.glow(tubx1 + 0.12, yy, 0.28, hexc("#ffe6a8"), 0.25)
+    c.rect(tubx1 + 0.04, tub_y0 + 0.05 + 0.3 * K, tubx1 + 0.16, tub_y1 - 0.05 + 0.3 * K, fill=rim, outline=OUTLINE, width=0.025)   # Stossstange vorn
+    c.rect(tubx1 + 0.06, fb - 0.14, tubx1 + 0.3, fb - 0.02, fill=hexc("#e8e0d0"), outline=OUTLINE, width=0.015)                   # Kennzeichen vorn
+    c.text(tubx1 + 0.18, fb - 0.08, "HM", 0.06, hexc("#2a2422"))
+    # Kotfluegel Suedseite: hinten runder Bogen ueber dem Rad, vorn flach bis zur Stossstange; Suedraeder darunter
+    for i, wx in enumerate(wxs):
+        wheel(wx, y0 + R * 0.82, R)
+    hx = wxs[0]
+    hump_r = R + 0.14
+    outer = [(hx + hump_r * math.cos(a), y0 + R * 0.82 + hump_r * 0.82 * math.sin(a)) for a in [math.pi - k * math.pi / 20 for k in range(21)]]
+    inner = [(hx + (R + 0.03) * math.cos(a), y0 + R * 0.82 + (R + 0.03) * 0.82 * math.sin(a)) for a in [k * math.pi / 20 for k in range(21)]]
     c.poly(outer + inner, fill=olive, outline=OUTLINE, width=ow)
-    c.line([(hx + (hump_r - 0.05) * math.cos(a), wy + (hump_r - 0.05) * math.sin(a)) for a in [math.pi * 0.85 - k * math.pi * 0.7 / 10 for k in range(11)]], fill=olive_l, width=0.02)
-    # Trittstufe unter dem Ausschnitt, Aufkleber (Filmklappe) und Kennzeichen an der Seitenwand
-    c.rect(cut0 + 0.15, floor - 0.08, cut1 - 0.15, floor, fill=hexc("#2a2a30"), outline=OUTLINE, width=0.025)
-    sx, sy = hx - 0.02, rail - 0.3
-    c.rect(sx - 0.15, sy, sx + 0.15, sy + 0.14, fill=hexc("#20222a"), outline=OUTLINE, width=0.012)
-    for k in range(4):
-        q = sx - 0.13 + k * 0.07
-        c.poly([(q, sy + 0.14), (q + 0.035, sy + 0.14), (q + 0.05, sy + 0.2), (q + 0.015, sy + 0.2)], fill=hexc("#f0f0f0"), outline=OUTLINE, width=0.008)
-    c.rect(sx - 0.15, sy + 0.14, sx + 0.15, sy + 0.2, outline=OUTLINE, width=0.01)
-    for k in range(2):
-        c.line([(sx - 0.11, sy + 0.04 + k * 0.045), (sx + 0.09, sy + 0.04 + k * 0.045)], fill=hexc("#d8d8d8"), width=0.008)
-    # Haube: Seite (flach, kurz), Deckflaeche heller, Mittelsicke, Haltegurt
-    hood_top = rail + 0.02
-    c.poly([(hood0, hood_top), (tub1, hood_top), (tub1 - 0.04, hood_top + 0.16), (hood0 + 0.02, hood_top + 0.18)], fill=olive_l, outline=OUTLINE, width=ow)
-    c.line([(hood0 + 0.15, hood_top + 0.1), (tub1 - 0.2, hood_top + 0.09)], fill=olive_d, width=0.02)
-    for k in range(2):                                                                         # Haubenriegel
-        lx = hood0 + 0.35 + k * 0.45
-        c.line([(lx, hood_top - 0.1), (lx, hood_top + 0.12)], fill=OUTLINE, width=0.035)
-        c.line([(lx, hood_top - 0.1), (lx, hood_top + 0.12)], fill=hexc("#2a2a30"), width=0.018)
-    # vorderer Kotfluegel (flach, Willys-typisch) ueber dem Vorderrad bis zur Stossstange
-    fx = wheels[1]
-    arch = [(fx + (R + 0.03) * math.cos(a), wy + (R + 0.03) * math.sin(a)) for a in [k * math.pi / 20 for k in range(21)]]
-    fender = [(fx - R - 0.2, wy), (fx - R - 0.2, wy + 0.3), (fx - R + 0.1, wy + 0.44), (fx + R + 0.05, wy + 0.44), (fx + R + 0.05, wy)] + arch
+    c.line([(hx + (hump_r - 0.05) * math.cos(a), y0 + R * 0.82 + (hump_r - 0.05) * 0.82 * math.sin(a)) for a in [math.pi * 0.85 - k * math.pi * 0.7 / 10 for k in range(11)]], fill=olive_l, width=0.018)
+    fx = wxs[1]
+    wyf = y0 + R * 0.82
+    arch = [(fx + (R + 0.03) * math.cos(a), wyf + (R + 0.03) * 0.82 * math.sin(a)) for a in [k * math.pi / 20 for k in range(21)]]
+    fender = [(fx - R - 0.2, wyf), (fx - R - 0.2, wyf + 0.26), (fx - R + 0.1, wyf + 0.4), (tubx1 + 0.02, wyf + 0.4), (tubx1 + 0.02, wyf)] + arch
     c.poly(fender, fill=olive, outline=OUTLINE, width=ow)
-    c.line([(fx - R - 0.14, wy + 0.3), (fx + R, wy + 0.38)], fill=olive_l, width=0.02)
-    c.ellipse(fx - R - 0.05, wy + 0.46, 0.08, 0.05, fill=hexc("#ffe6a8"), outline=OUTLINE, width=0.02)   # Blinker/Standlicht auf dem Kotfluegel
-    # Kuehlerfront: senkrechter Grill mit Schlitzen, Scheinwerfer, Stossstange
-    gx0, gx1 = tub1 - 0.02, tub1 + 0.1
-    c.rect(gx0, floor + 0.02, gx1, rail + 0.02, fill=olive_d, outline=OUTLINE, width=ow)
-    for k in range(6):
-        gy = floor + 0.1 + k * 0.065
-        c.line([(gx0 + 0.02, gy), (gx1 - 0.02, gy)], fill=OUTLINE, width=0.014)
-    c.ellipse(gx1 + 0.01, rail - 0.16, 0.09, 0.09, fill=hexc("#ffe6a8"), outline=OUTLINE, width=0.025)   # Scheinwerfer
-    c.ellipse(gx1 - 0.02, rail - 0.13, 0.025, 0.02, fill=(255, 255, 255, 230))
-    c.glow(gx1 + 0.1, rail - 0.16, 0.3, hexc("#ffe6a8"), 0.3)
-    c.rect(gx0 - 0.05, floor - 0.1, gx1 + 0.16, floor - 0.02, fill=rim, outline=OUTLINE, width=0.025)   # Stossstange vorn
-    c.line([(gx0, floor - 0.06), (gx1 + 0.12, floor - 0.06)], fill=(255, 255, 255, 110), width=0.012)
-    c.rect(gx0 - 0.1, floor - 0.28, gx0 + 0.3, floor - 0.12, fill=hexc("#e8e0d0"), outline=OUTLINE, width=0.015)   # Kennzeichen haengt an der Stossstange
-    c.text(gx0 + 0.1, floor - 0.2, "HM 1888", 0.07, hexc("#2a2422"))
-    # Windschutzscheibe (umklappbar, aufgestellt): Rahmen mit Scharnieren, Glas, Wischer
-    ws_b, ws_t = hood_top, rail + 0.72
-    wsx = hood0
-    frame = [(wsx - 0.06, ws_b), (wsx + 0.06, ws_b), (wsx + 0.14, ws_t), (wsx + 0.02, ws_t)]
-    c.poly(frame, fill=glass, outline=OUTLINE, width=0.03)
-    c.line([(wsx + 0.0, ws_b + 0.06), (wsx + 0.08, ws_t - 0.06)], fill=alpha((255, 255, 255, 255), 120), width=0.02)
-    c.rect(wsx - 0.07, ws_t - 0.02, wsx + 0.16, ws_t + 0.05, fill=olive, outline=OUTLINE, width=0.02)          # Rahmen oben
-    c.ellipse(wsx, ws_b + 0.02, 0.035, 0.035, fill=hexc("#2a2a30"), outline=OUTLINE, width=0.012)                 # Scharnier
-    c.line([(wsx + 0.03, ws_b + 0.08), (wsx + 0.09, ws_b + 0.3)], fill=hexc("#2a2a30"), width=0.015)              # Wischer
-    # Heck: Ersatzrad (steht an der Rueckwand), Kanister, Ruecklicht, Stossstange, Griff
+    c.line([(fx - R - 0.14, wyf + 0.26), (tubx1 - 0.05, wyf + 0.34)], fill=olive_l, width=0.018)
+    # Aufkleber (Filmklappe) auf dem hinteren Kotfluegel, Gaffer am Cowl
+    sx, sy = hx - 0.02, ft - 0.26
+    c.rect(sx - 0.14, sy, sx + 0.14, sy + 0.12, fill=hexc("#20222a"), outline=OUTLINE, width=0.012)
+    for k in range(4):
+        q = sx - 0.12 + k * 0.065
+        c.poly([(q, sy + 0.12), (q + 0.03, sy + 0.12), (q + 0.045, sy + 0.17), (q + 0.015, sy + 0.17)], fill=hexc("#f0f0f0"), outline=OUTLINE, width=0.008)
+    c.rect(sx - 0.14, sy + 0.12, sx + 0.14, sy + 0.17, outline=OUTLINE, width=0.01)
+    for k in range(2):
+        c.line([(sx - 0.1, sy + 0.035 + k * 0.04), (sx + 0.08, sy + 0.035 + k * 0.04)], fill=hexc("#d8d8d8"), width=0.008)
+    gaffer(c, cut1 + 0.04, ft - 0.08, hood0 - 0.02, ft - 0.08, 0.03)
+    # Windschutzscheibe: hochgeklappt am Cowl, Glas als Kasten (Deckflaeche + Front), Rahmen, Wischer
+    wsx = hood0 - 0.02
+    p.box(wsx - 0.03, tub_y0 + 0.08, wsx + 0.05, tub_y1 - 0.08, hz, 0.62, alpha(hexc("#dff3ff"), 110), alpha(hexc("#c4d8e8"), 140), ol=OUTLINE, w=0.035, glass=True)
+    wb, wt = tub_y0 + 0.1 + hz * K, tub_y0 + 0.1 + (hz + 0.62) * K
+    c.rect(wsx - 0.05, wt - 0.02, wsx + 0.07, wt + 0.04, fill=olive, outline=OUTLINE, width=0.02)   # Rahmen oben (Front)
+    c.rect(wsx - 0.05, tub_y1 - 0.1 + (hz + 0.62) * K - 0.02, wsx + 0.07, tub_y1 - 0.1 + (hz + 0.62) * K + 0.04, fill=olive, outline=OUTLINE, width=0.02)
+    c.line([(wsx + 0.01, wb + 0.05), (wsx + 0.05, wt - 0.05)], fill=alpha((255, 255, 255, 255), 130), width=0.02)
+    c.line([(wsx + 0.0, wb + 0.03), (wsx + 0.03, wb + 0.2)], fill=hexc("#2a2a30"), width=0.015)     # Wischer
+    # Heck (Westen): Ersatzrad steht an der Heckwand, Kanister auf dem Heckrand, Ruecklicht, Stossstange
     sr = 0.3
-    c.ellipse(tub0 - 0.06, floor + 0.36, sr * 0.42, sr, fill=tyre, outline=OUTLINE, width=0.035)
-    c.ellipse(tub0 - 0.06, floor + 0.36, sr * 0.2, sr * 0.5, fill=rim, outline=OUTLINE, width=0.02)
+    sxw, syw = tubx0 - 0.05, fb + 0.36
+    c.ellipse(sxw, syw, sr * 0.4, sr, fill=tyre, outline=OUTLINE, width=0.035)
+    c.ellipse(sxw, syw, sr * 0.18, sr * 0.5, fill=rim, outline=OUTLINE, width=0.02)
     for k in range(5):
         a = k * math.tau / 5
-        c.ellipse(tub0 - 0.06 + sr * 0.12 * math.cos(a), floor + 0.36 + sr * 0.3 * math.sin(a), 0.016, 0.016, fill=hexc("#4a4c54"))
-    c.rect(tub0 - 0.04, floor + 0.3, tub0 + 0.02, floor + 0.42, fill=rim, outline=OUTLINE, width=0.015)   # Halter
-    kx0 = tub0 - 0.02
-    c.rect(kx0 - 0.04, rail - 0.3, kx0 + 0.18, rail + 0.06, fill=hexc("#5a7a3a"), outline=OUTLINE, width=0.025)   # Kanister am Heckrand
-    c.rect(kx0, rail - 0.22, kx0 + 0.14, rail - 0.1, outline=OUTLINE, width=0.012)
-    c.rect(kx0 + 0.02, rail + 0.06, kx0 + 0.12, rail + 0.1, fill=hexc("#2a2a30"), outline=OUTLINE, width=0.012)
-    c.ellipse(tub0 + 0.08, floor + 0.14, 0.035, 0.035, fill=hexc("#c0392b"), outline=OUTLINE, width=0.015)      # Ruecklicht
-    c.rect(tub0 - 0.12, floor - 0.1, tub0 + 0.12, floor - 0.02, fill=rim, outline=OUTLINE, width=0.025)        # Stossstange hinten
-    c.line([(tub0 + 0.1, rail - 0.12), (tub0 + 0.28, rail - 0.12)], fill=OUTLINE, width=0.04)                  # Haltegriff
-    c.line([(tub0 + 0.1, rail - 0.12), (tub0 + 0.28, rail - 0.12)], fill=hexc("#2a2a30"), width=0.02)
-    # Schlamm an der unteren Seitenwand und am Boden
-    for k in range(7):
-        c.ellipse(tub0 + 0.2 + k * 0.4 + rnd.uniform(-0.05, 0.05), floor + 0.05 + rnd.uniform(0, 0.06), rnd.uniform(0.04, 0.08), 0.03, fill=alpha(mud, 170))
+        c.ellipse(sxw + sr * 0.1 * math.cos(a), syw + sr * 0.3 * math.sin(a), 0.015, 0.015, fill=hexc("#4a4c54"))
+    c.rect(sxw - 0.02, syw - 0.05, tubx0 + 0.02, syw + 0.05, fill=rim, outline=OUTLINE, width=0.015)
+    kz = zt
+    p.box(tubx0 - 0.02, tub_y1 - 0.5, tubx0 + 0.2, tub_y1 - 0.3, kz, 0.35, hexc("#6a8a4a"), hexc("#5a7a3a"), w=0.02)      # Kanister
+    kfb = tub_y1 - 0.5 + kz * K
+    c.rect(tubx0 + 0.03, kfb + 0.05, tubx0 + 0.15, kfb + 0.13, outline=OUTLINE, width=0.012)
+    c.rect(tubx0 + 0.05, tub_y1 - 0.3 + (kz + 0.35) * K, tubx0 + 0.13, tub_y1 - 0.3 + (kz + 0.35) * K + 0.04, fill=hexc("#2a2a30"), outline=OUTLINE, width=0.012)
+    c.ellipse(tubx0 + 0.1, fb + 0.12, 0.035, 0.03, fill=hexc("#c0392b"), outline=OUTLINE, width=0.015)   # Ruecklicht
+    c.rect(tubx0 - 0.14, tub_y0 + 0.05 + 0.3 * K, tubx0 - 0.02, tub_y1 - 0.05 + 0.3 * K, fill=rim, outline=OUTLINE, width=0.025)   # Stossstange hinten
+    c.rect(tubx0 - 0.3, fb - 0.14, tubx0 - 0.06, fb - 0.02, fill=hexc("#e8e0d0"), outline=OUTLINE, width=0.015)                   # Kennzeichen hinten
+    c.text(tubx0 - 0.18, fb - 0.08, "HM 1888", 0.045, hexc("#2a2422"))
+    # Schlamm an der Wanne und am Boden
+    for k in range(6):
+        c.ellipse(tubx0 + 0.3 + k * 0.45 + rnd.uniform(-0.05, 0.05), fb + 0.05 + rnd.uniform(0, 0.05), rnd.uniform(0.04, 0.08), 0.03, fill=alpha(mud, 170))
     for k in range(5):
         c.ellipse(x0 + rnd.uniform(0.3, W_ - 0.3), y0 + rnd.uniform(-0.05, 0.1), 0.08, 0.03, fill=alpha(mud, 150))
-    gaffer(c, cut1 + 0.05, rail - 0.1, hood0 - 0.03, rail - 0.1, 0.03)
 
 
 GARDEN_H = {
     "kamerakran": 2.8, "statue_schleier": 2.6, "gartentisch": 1.0, "kuebelpflanze": 1.5, "vogelschwarm": 0.6, "van": 2.3,
     "lichtstativ": 2.5, "campingtisch": 0.9, "kabeltrommel": 0.7, "dixi": 2.4, "zelt_aufgeschlitzt": 2.6, "schlafsack": 0.3,
     "riesenpflanze": 2.2, "giesskannen": 0.7, "schlauchtrommel": 1.0, "kletterpflanzen": 2.1, "sonnenuhr": 1.2,
-    "parkbank": 1.0, "brunnen_blut": 6.0, "engelsstatue": 2.8, "offenes_grab": 1.0, "grabstein_hausherr": 1.4,
+    "parkbank": 1.0, "brunnen_blut": 7.0, "engelsstatue": 2.8, "offenes_grab": 1.0, "grabstein_hausherr": 1.4,
     "kraehen": 1.3, "sarkophag": 1.1, "tunneleingang": 0.3, "nischen_urnen": 2.1, "wandfackel": 2.2, "zerbrochene_urne": 0.3,
     "tunnelausgang": 0.3,
     # Maske und Crew Camp (User 24.10.)

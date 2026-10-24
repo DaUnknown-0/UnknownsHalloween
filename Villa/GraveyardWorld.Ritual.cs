@@ -36,9 +36,11 @@ internal sealed partial class GraveyardWorld
 
     private static readonly Vector2 RitualCenter = new(9.5f, 0f);
     private const float StarRx = 1.52f, StarRy = 1.216f;          // Sternspitzen (graveyard_floor.py, 80 %)
-    private const float KillRx = 1.84f, KillRy = 1.472f;          // aeusserer Kreidering = Todeszone
+    // Todeszone: innerer Bereich (60 % des Kreiderings), die Kerzen an den Spitzen liegen deutlich ausserhalb (User 24.10.:
+    // "nicht ganz so gross", wer gerade beschwoert, soll nicht direkt sterben)
+    private const float KillRx = 1.1f, KillRy = 0.88f;
     private const float RitualSecs = 6.66f;
-    private const float KillFrom = 0.6f;                           // erst toeten, wenn der Daemon sichtbar ist
+    private const float KillFrom = 2.0f;                           // erst nach 2 s toeten: Zeit, um aus dem Kreis zu gehen
     private const float CandleReach = 0.9f;
     private const float RitualPpm = 160f;
     private const string EggRes = "UnknownsHalloween.Resources.hw2026.graveyard_egg.";
@@ -73,8 +75,13 @@ internal sealed partial class GraveyardWorld
         _current = this;
         DemonVictims.Clear();
         LoadArt();
+        // Der worldRoot von Atlas haengt am Schiff (Versatz und Skalierung des Skeld-Prefabs). Wie Atlas' eigene Kartenebene
+        // (Atlas_Museum) auf Weltposition 0 und Massstab 1 setzen, sonst stehen die Kerzen neben dem Pentagramm (Spieltest 24.10.).
         _ritualRoot = new GameObject("Ravenhollow_Ritual").transform;
         _ritualRoot.SetParent(_root, false);
+        var ls = _root.lossyScale;
+        _ritualRoot.localScale = new Vector3(1f / ls.x, 1f / ls.y, 1f / ls.z);
+        _ritualRoot.position = Vector3.zero;
         for (int k = 0; k < 5; k++)
         {
             float a = Mathf.PI / 2f + k * 2f * Mathf.PI * 2f / 5f;

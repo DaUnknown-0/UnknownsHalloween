@@ -672,53 +672,137 @@ def _urne(p, c, x0, y0, x1, y1, idx, rnd):
 
 # ------------------------------------------------------------------ Leichenhalle
 
-@kind("obduktionstisch", 1.0, pad=0.4)
+@kind("obduktionstisch", 1.3, pad=0.45)
 def _obduktionstisch(p, c, x0, y0, x1, y1, idx, rnd):
+    """Edelstahl-Obduktionstisch (Nachtrag 4) in der schraegen Aufsicht: Saeulenfuss mit Bodenplatte, Tischplatte mit
+    erhoehtem Rand, umlaufender Rinne und Abfluss am Ostende, Wasser- und Rostflecken. Gerade idx: Gestalt unter weissem
+    Laken mit lesbarer Koerperform (Kopf im Westen, Schultern, Knie, Fuesse heben das Tuch), ein Fuss schaut mit
+    Zehenzettel heraus, Instrumentenschale auf der Ecke, Lampenschatten. Ungerade idx: leer mit Kopfstuetze, Schlauch mit
+    Brause, Organwaage am Kopfende, Instrumententablett (Skalpell, Schere, Saege). Kein Blut."""
     w = x1 - x0
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-    for lx in (x0 + 0.25, x1 - 0.3):                                                   # Fuss
-        c.rect(lx, y0 + 0.15, lx + 0.06, y0 + 0.15 + 0.75 * K, fill=STEEL_D, outline=OUTLINE, width=0.02)
-    p.box(x0, y0, x1, y1, 0.75, 0.08, STEEL_L, STEEL)
-    ty = y0 + 0.83 * K
-    c.rect(x0 + 0.05, ty + 0.04, x1 - 0.05, y1 + 0.83 * K - 0.04, fill=shade(STEEL, 1.15), outline=alpha(OUTLINE, 200), width=0.012)
-    c.ellipse(x1 - 0.12, cy + 0.83 * K, 0.035, 0.03, fill=hexc("#2a2e34"))           # Ablauf
-    if idx % 2 == 0:                                                                  # Koerper unter dem Laken
-        sheet = [(x0 + 0.15, ty + 0.08), (x1 - 0.2, ty + 0.06), (x1 - 0.12, ty + 0.2), (x1 - 0.15, ty + 0.45), (x1 - 0.3, ty + 0.5),
-                 (x0 + 0.6, ty + 0.48), (x0 + 0.35, ty + 0.5), (x0 + 0.15, ty + 0.42), (x0 + 0.08, ty + 0.25)]
-        c.poly([(x, y + 0.04) for x, y in sheet], fill=CLOTH_D, outline=OUTLINE, width=0.025)
-        c.poly(sheet, fill=CLOTH, outline=OUTLINE, width=0.025)
-        c.ellipse(x1 - 0.32, ty + 0.3, 0.13, 0.12, fill=shade(CLOTH, 1.05), outline=alpha(OUTLINE, 200), width=0.012)   # Kopf
-        c.ellipse(x0 + 0.62, ty + 0.3, 0.12, 0.1, fill=shade(CLOTH, 1.03))                                          # Knie
-        for k in range(5):
-            fx = x0 + 0.5 + k * 0.17
-            c.line([(fx, ty + 0.1), (fx + 0.05, ty + 0.45)], fill=alpha(CLOTH_D, 210), width=0.01)
-        for j, dy in enumerate((0.16, 0.32)):                                         # Fuesse mit Zehenzettel
-            c.ellipse(x0 + 0.07, ty + dy, 0.05, 0.045, fill=hexc("#b8c0b0"), outline=OUTLINE, width=0.012)
-        c.line([(x0 + 0.04, ty + 0.16), (x0 - 0.02, ty + 0.08)], fill=hexc("#c8b080"), width=0.006)
-        c.rect(x0 - 0.08, ty + 0.0, x0 + 0.02, ty + 0.07, fill=hexc("#e8dcb0"), outline=OUTLINE, width=0.008)
-        c.ellipse(x1 - 0.25, ty + 0.12, 0.05, 0.03, fill=alpha(hexc("#7a1a24"), 200))                                # Fleck
-    else:                                                                             # leer: Knochensaege, Schalen
-        c.line([(x0 + 0.3, ty + 0.2), (x0 + 0.75, ty + 0.25)], fill=STEEL_L, width=0.03)
-        c.rect(x0 + 0.75, ty + 0.2, x0 + 0.9, ty + 0.3, fill=hexc("#3a3a40"), outline=OUTLINE, width=0.01)
+    H = 0.82
+    # Saeulenfuss mit Bodenplatte
+    c.ellipse(cx, cy - 0.05, 0.42, 0.18, fill=STEEL_D, outline=OUTLINE, width=0.025)
+    c.ellipse(cx, cy - 0.05, 0.3, 0.12, fill=STEEL, outline=alpha(OUTLINE, 160), width=0.012)
+    p.box(cx - 0.22, cy - 0.12, cx + 0.22, cy + 0.08, 0.04, H - 0.1, STEEL_L, STEEL_D, w=0.025)
+    c.line([(cx - 0.15, cy - 0.12 + 0.1 * K), (cx - 0.15, cy - 0.12 + (H - 0.1) * K)], fill=alpha((255, 255, 255, 255), 90), width=0.02)
+    # Tischplatte: Kasten mit Rand, Rinne innen, Abfluss
+    p.box(x0, y0, x1, y1, H - 0.06, 0.06, STEEL_L, STEEL)
+    ty0, ty1 = y0 + H * K, y1 + H * K
+    rim = 0.06
+    c.rect(x0 + rim, ty0 + rim * 0.7, x1 - rim, ty1 - rim * 0.7, fill=shade(STEEL, 1.08), outline=alpha(OUTLINE, 220), width=0.015)    # Innenflaeche
+    c.rect(x0 + rim + 0.02, ty0 + rim * 0.7 + 0.015, x1 - rim - 0.02, ty0 + rim * 0.7 + 0.06, fill=STEEL_D)                           # Rinne vorn
+    c.rect(x0 + rim + 0.02, ty1 - rim * 0.7 - 0.06, x1 - rim - 0.02, ty1 - rim * 0.7 - 0.015, fill=STEEL_D)                           # Rinne hinten
+    c.rect(x0 + rim + 0.02, ty0 + rim * 0.7 + 0.015, x0 + rim + 0.07, ty1 - rim * 0.7 - 0.015, fill=STEEL_D)
+    c.rect(x1 - rim - 0.07, ty0 + rim * 0.7 + 0.015, x1 - rim - 0.02, ty1 - rim * 0.7 - 0.015, fill=STEEL_D)
+    c.line([(x0 + rim + 0.1, ty1 - rim * 0.7 - 0.1), (x1 - rim - 0.3, ty1 - rim * 0.7 - 0.1)], fill=alpha((255, 255, 255, 255), 70), width=0.02)
+    dx_ = x1 - 0.22
+    c.ellipse(dx_, (ty0 + ty1) / 2, 0.06, 0.04, fill=hexc("#2a2e34"), outline=OUTLINE, width=0.015)                                   # Abfluss
+    for k in range(3):
+        c.line([(dx_ - 0.035 + k * 0.035, (ty0 + ty1) / 2 - 0.025), (dx_ - 0.035 + k * 0.035, (ty0 + ty1) / 2 + 0.025)], fill=STEEL_D, width=0.008)
+    for k in range(3):                                                                                                                 # Wasser- und Rostflecken
+        fx_, fy_ = x0 + rnd.uniform(0.2, w - 0.2), ty0 + rnd.uniform(0.12, (ty1 - ty0) - 0.12)
+        c.ellipse(fx_, fy_, rnd.uniform(0.04, 0.09), rnd.uniform(0.02, 0.04), fill=alpha(hexc("#8a6a4a") if k else hexc("#9ab0c0"), 110))
+    c.line([(x0 + 0.03, ty0 - 0.02), (x1 - 0.03, ty0 - 0.02)], fill=alpha((255, 255, 255, 255), 110), width=0.012)                  # Lichtkante am Rand
+    if idx % 2 == 0:
+        # Gestalt unter dem Laken: Kopf im Westen (links), Schultern, Knie, Fuesse heben das Tuch; Lampenschatten
+        hx = x0 + 0.42
+        c.ellipse(cx + 0.1, (ty0 + ty1) / 2, 0.75, 0.3, fill=alpha((0, 0, 0, 255), 45))
+        body = [(x0 + 0.2, ty0 + 0.14), (hx + 0.2, ty0 + 0.1), (hx + 0.5, ty0 + 0.12), (x1 - 0.32, ty0 + 0.16), (x1 - 0.2, ty0 + 0.22),
+                (x1 - 0.2, ty1 - 0.22), (x1 - 0.32, ty1 - 0.16), (hx + 0.5, ty1 - 0.12), (hx + 0.2, ty1 - 0.1), (x0 + 0.2, ty1 - 0.14), (x0 + 0.14, (ty0 + ty1) / 2)]
+        c.poly([(x, y - 0.03) for x, y in body], fill=CLOTH_D, outline=OUTLINE, width=0.025)
+        c.poly(body, fill=CLOTH, outline=OUTLINE, width=0.025)
+        c.ellipse(hx, (ty0 + ty1) / 2 + 0.03, 0.17, 0.14, fill=shade(CLOTH, 1.06), outline=alpha(OUTLINE, 200), width=0.014)        # Kopf
+        c.ellipse(hx, (ty0 + ty1) / 2 + 0.05, 0.1, 0.08, fill=shade(CLOTH, 1.1))
+        c.poly([(hx + 0.2, ty0 + 0.1), (hx + 0.45, ty0 + 0.14), (hx + 0.45, ty1 - 0.14), (hx + 0.2, ty1 - 0.1)], fill=shade(CLOTH, 1.04))   # Schultern/Brust
+        c.ellipse(hx + 0.78, (ty0 + ty1) / 2 - 0.06, 0.1, 0.07, fill=shade(CLOTH, 1.06), outline=alpha(OUTLINE, 160), width=0.01)   # Knie
+        c.ellipse(hx + 0.78, (ty0 + ty1) / 2 + 0.1, 0.1, 0.07, fill=shade(CLOTH, 1.06), outline=alpha(OUTLINE, 160), width=0.01)
+        c.ellipse(x1 - 0.3, (ty0 + ty1) / 2 - 0.08, 0.09, 0.06, fill=shade(CLOTH, 1.08), outline=alpha(OUTLINE, 160), width=0.01)   # Fuss unter dem Tuch
+        for k, (ax, bx) in enumerate(((hx + 0.25, hx + 0.5), (hx + 0.55, hx + 0.72), (hx + 0.95, x1 - 0.42))):                      # Falten
+            c.line([(ax, ty0 + 0.2 + k * 0.03), (bx, ty1 - 0.2 - k * 0.02)], fill=alpha(CLOTH_D, 200), width=0.012)
+        c.line([(x0 + 0.25, ty0 + 0.1), (x0 + 0.3, ty0 + 0.02)], fill=alpha(CLOTH_D, 200), width=0.012)                              # Saum haengt vorn ueber
+        c.poly([(x0 + 0.3, ty0 + 0.12), (hx + 0.6, ty0 + 0.1), (hx + 0.62, ty0 - 0.08), (x0 + 0.34, ty0 - 0.06)], fill=CLOTH, outline=OUTLINE, width=0.02)
+        # ein Fuss schaut heraus, Zehenzettel mit Schnur
+        fx_, fy_ = x1 - 0.26, (ty0 + ty1) / 2 + 0.1
+        c.ellipse(fx_, fy_, 0.075, 0.05, fill=hexc("#c8c8bc"), outline=OUTLINE, width=0.014)
+        for k in range(4):
+            c.ellipse(fx_ + 0.05 + k * 0.012 - 0.02, fy_ - 0.03 + k * 0.018, 0.012, 0.01, fill=hexc("#c8c8bc"), outline=alpha(OUTLINE, 200), width=0.006)
+        c.line([(fx_ + 0.06, fy_ + 0.03), (fx_ + 0.14, fy_ + 0.1)], fill=hexc("#c8b080"), width=0.006)
+        c.poly([(fx_ + 0.12, fy_ + 0.08), (fx_ + 0.24, fy_ + 0.1), (fx_ + 0.23, fy_ + 0.18), (fx_ + 0.11, fy_ + 0.16)], fill=hexc("#e8dcb0"), outline=OUTLINE, width=0.01)
+        c.line([(fx_ + 0.14, fy_ + 0.12), (fx_ + 0.21, fy_ + 0.13)], fill=alpha(OUTLINE, 150), width=0.005)
+        # Instrumentenschale auf der Ecke
+        sx_, sy_ = x0 + 0.22, ty1 - 0.14
+        c.rect(sx_ - 0.14, sy_ - 0.07, sx_ + 0.14, sy_ + 0.07, fill=STEEL_L, outline=OUTLINE, width=0.014)
+        c.rect(sx_ - 0.12, sy_ - 0.05, sx_ + 0.12, sy_ + 0.05, fill=shade(STEEL, 1.15))
+        c.line([(sx_ - 0.1, sy_ - 0.02), (sx_ + 0.08, sy_ + 0.02)], fill=STEEL_L, width=0.012)                                        # Skalpell
+        c.line([(sx_ - 0.08, sy_ + 0.03), (sx_ + 0.06, sy_ - 0.03)], fill=hexc("#2a2e34"), width=0.01)
+        c.ellipse(sx_ + 0.08, sy_ + 0.03, 0.02, 0.015, fill=None, outline=STEEL_L, width=0.008)                                      # Schere
+    else:
+        # leer: Kopfstuetze, Schlauch mit Brause, Organwaage, Instrumententablett
+        hx = x0 + 0.3
+        p.box(hx - 0.1, cy - 0.12, hx + 0.1, cy + 0.12, H, 0.1, STEEL_L, STEEL, w=0.015)                                              # Kopfstuetze
+        hose = HD.wobble([(x1 - 0.5, ty1 - 0.14), (x1 - 0.9, ty1 - 0.2), (x1 - 1.0, ty0 + 0.3), (x1 - 0.7, ty0 + 0.22), (x1 - 0.55, ty0 + 0.34)], amp=0.015, seed=idx, step=0.06)
+        c.line(hose, fill=OUTLINE, width=0.05)
+        c.line(hose, fill=hexc("#5a6a78"), width=0.03)
+        c.ellipse(x1 - 0.55, ty0 + 0.36, 0.05, 0.035, fill=STEEL_L, outline=OUTLINE, width=0.012)                                     # Brause
         for k in range(3):
-            c.ellipse(x1 - 0.6 + k * 0.17, ty + 0.3, 0.07, 0.04, fill=STEEL_L, outline=OUTLINE, width=0.01)
-        c.ellipse(x1 - 0.43, ty + 0.3, 0.04, 0.02, fill=hexc("#7a1a24"))
-    for k in range(4):                                                                # Instrumente auf dem Rand
-        c.line([(x0 + 0.1 + k * 0.06, y0 + 0.83 * K + 0.02), (x0 + 0.12 + k * 0.06, y0 + 0.83 * K + 0.1)], fill=STEEL_L, width=0.01)
+            c.line([(x1 - 0.57 + k * 0.02, ty0 + 0.4), (x1 - 0.58 + k * 0.02, ty0 + 0.46)], fill=alpha(hexc("#9ab0c0"), 160), width=0.008)
+        c.line([(x1 - 0.5, ty1 - 0.14), (x1 - 0.1, ty1 - 0.1)], fill=OUTLINE, width=0.05)                                              # Zulauf zum Rand
+        c.line([(x1 - 0.5, ty1 - 0.14), (x1 - 0.1, ty1 - 0.1)], fill=hexc("#5a6a78"), width=0.03)
+        wx_ = hx + 0.05                                                                                                                 # Organwaage am Kopfende
+        c.line([(wx_, ty1 - 0.08), (wx_, ty1 + 0.42)], fill=OUTLINE, width=0.04)
+        c.line([(wx_, ty1 - 0.08), (wx_, ty1 + 0.42)], fill=STEEL_L, width=0.02)
+        c.line([(wx_ - 0.12, ty1 + 0.42), (wx_ + 0.12, ty1 + 0.42)], fill=STEEL_L, width=0.025)
+        c.ellipse(wx_, ty1 + 0.48, 0.07, 0.07, fill=hexc("#f2ecd8"), outline=OUTLINE, width=0.015)                                    # Zifferblatt
+        c.line([(wx_, ty1 + 0.48), (wx_ + 0.03, ty1 + 0.52)], fill=hexc("#a02a34"), width=0.01)
+        for s in (-1, 1):
+            c.line([(wx_ + s * 0.1, ty1 + 0.4), (wx_ + s * 0.14, ty1 + 0.16)], fill=hexc("#8a8e96"), width=0.008)
+        c.ellipse(wx_, ty1 + 0.14, 0.17, 0.06, fill=STEEL_L, outline=OUTLINE, width=0.015)                                           # Waagschale
+        c.ellipse(wx_, ty1 + 0.15, 0.12, 0.035, fill=shade(STEEL, 1.1))
+        tx_, ty_ = cx + 0.1, (ty0 + ty1) / 2                                                                                           # Instrumententablett
+        c.rect(tx_ - 0.3, ty_ - 0.12, tx_ + 0.3, ty_ + 0.12, fill=STEEL_L, outline=OUTLINE, width=0.015)
+        c.rect(tx_ - 0.28, ty_ - 0.1, tx_ + 0.28, ty_ + 0.1, fill=shade(STEEL, 1.15))
+        c.line([(tx_ - 0.24, ty_ + 0.05), (tx_ - 0.02, ty_ + 0.06)], fill=STEEL_L, width=0.014)                                      # Skalpell
+        c.rect(tx_ - 0.1, ty_ + 0.04, tx_ - 0.02, ty_ + 0.08, fill=hexc("#2a2e34"))
+        c.line([(tx_ - 0.22, ty_ - 0.04), (tx_ - 0.02, ty_ - 0.06)], fill=STEEL_L, width=0.012)                                      # Schere
+        c.ellipse(tx_ - 0.24, ty_ - 0.02, 0.025, 0.02, fill=None, outline=STEEL_L, width=0.008)
+        c.ellipse(tx_ - 0.24, ty_ - 0.065, 0.025, 0.02, fill=None, outline=STEEL_L, width=0.008)
+        c.rect(tx_ + 0.04, ty_ - 0.07, tx_ + 0.26, ty_ - 0.02, fill=STEEL_L, outline=OUTLINE, width=0.01)                             # Saege
+        for k in range(8):
+            c.line([(tx_ + 0.05 + k * 0.027, ty_ - 0.07), (tx_ + 0.065 + k * 0.027, ty_ - 0.09)], fill=STEEL_L, width=0.008)
+        c.rect(tx_ + 0.2, ty_ + 0.0, tx_ + 0.27, ty_ + 0.08, fill=hexc("#5a4a3a"), outline=OUTLINE, width=0.01)                      # Saegegriff
+        c.ellipse(tx_ + 0.15, ty_ + 0.05, 0.045, 0.03, fill=alpha(hexc("#8a6a4a"), 130))                                              # Rostfleck
 
 
 @kind("instrumentenschrank", 2.0, pad=0.3)
 def _instrumentenschrank(p, c, x0, y0, x1, y1, idx, rnd):
+    """Instrumentenschrank der Leichenhalle (Nachtrag 4 aufgefrischt): cremeweisser Blechschrank mit zwei Schubladen und
+    Messinggriffen, Glasvitrine mit drei Boeden (Praeparateglaeser mit Deckel und Etikett, Instrumente), Glasreflexe,
+    Mittelsteg; oben Kiste, Schaedel und ein hohes Glas."""
     w = x1 - x0
     H = 1.9
-    p.box(x0, y0, x1, y1, 0, H, hexc("#d8dcd8"), hexc("#c0c6c2"))
+    body = hexc("#d8dcd8")
+    p.box(x0, y0, x1, y1, 0, H, hexc("#e4e8e4"), body)
     fy = y0
     gx0, gx1 = x0 + 0.08, x1 - 0.08
+    c.rect(x0 + 0.02, fy + 0.02, x1 - 0.02, fy + 0.06, fill=hexc("#8a9298"))                                     # Sockelleiste
+    for k in range(2):                                                                                            # Schubladen
+        c.rect(gx0, fy + 0.08 + k * 0.2, gx1, fy + 0.24 + k * 0.2, fill=hexc("#cdd2ce"), outline=OUTLINE, width=0.015)
+        c.line([(gx0 + 0.02, fy + 0.1 + k * 0.2), (gx1 - 0.02, fy + 0.1 + k * 0.2)], fill=hexc("#f0f4f0"), width=0.008)
+        c.rect((gx0 + gx1) / 2 - 0.06, fy + 0.14 + k * 0.2, (gx0 + gx1) / 2 + 0.06, fy + 0.18 + k * 0.2, fill=BRASS, outline=OUTLINE, width=0.01)
     c.rect(gx0, fy + 0.5, gx1, fy + H * K - 0.08, fill=hexc("#2a3238"), outline=OUTLINE, width=0.02)
-    for s in range(3):                                                                # Regalboeden mit Glaesern
+    for s in range(3):                                                                                            # Regalboeden
         sy = fy + 0.5 + s * (H * K - 0.58) / 3
         c.line([(gx0, sy + 0.01), (gx1, sy + 0.01)], fill=hexc("#8a9298"), width=0.012)
-        for k in range(int(w / 0.16)):
+        if s == 2:                                                                                                # oberstes Fach: Instrumente
+            for k in range(5):
+                ix = gx0 + 0.12 + k * 0.2
+                c.line([(ix, sy + 0.04), (ix + 0.02, sy + 0.2)], fill=STEEL_L, width=0.012)
+                c.rect(ix - 0.012, sy + 0.04, ix + 0.012, sy + 0.1, fill=hexc("#2a2e34"))
+            c.rect(gx1 - 0.3, sy + 0.04, gx1 - 0.06, sy + 0.1, fill=STEEL_L, outline=OUTLINE, width=0.01)
+            continue
+        for k in range(int(w / 0.16)):                                                                           # Praeparateglaeser
             jx = gx0 + 0.08 + k * 0.16
             hh = rnd.uniform(0.12, 0.2)
             liquid = rnd.choice([hexc("#9ab060"), hexc("#c8a060"), hexc("#a8c0b8"), hexc("#b07068")])
@@ -726,15 +810,17 @@ def _instrumentenschrank(p, c, x0, y0, x1, y1, idx, rnd):
             c.rect(jx - 0.045, sy + 0.025, jx + 0.045, sy + 0.02 + hh * 0.7, fill=alpha(liquid, 230))
             if rnd.random() < 0.4:
                 c.ellipse(jx, sy + 0.02 + hh * 0.35, 0.025, 0.03, fill=alpha(hexc("#e0d0c0"), 230), outline=alpha(OUTLINE, 160), width=0.005)
-            c.rect(jx - 0.05, sy + 0.02 + hh, jx + 0.05, sy + 0.04 + hh, fill=hexc("#5a5a60"))
-    c.line([(gx0 + 0.04, fy + 0.55), (gx0 + 0.12, fy + H * K - 0.15)], fill=alpha((255, 255, 255, 255), 70), width=0.025)   # Glasreflex
+            c.rect(jx - 0.05, sy + 0.02 + hh, jx + 0.05, sy + 0.045 + hh, fill=hexc("#5a5a60"), outline=OUTLINE, width=0.006)
+            c.rect(jx - 0.03, sy + 0.05, jx + 0.03, sy + 0.08, fill=hexc("#e8dcb0"))                                 # Etikett
+    c.line([(gx0 + 0.04, fy + 0.55), (gx0 + 0.12, fy + H * K - 0.15)], fill=alpha((255, 255, 255, 255), 80), width=0.03)   # Glasreflexe
+    c.line([(gx0 + 0.18, fy + 0.55), (gx0 + 0.22, fy + 0.75)], fill=alpha((255, 255, 255, 255), 50), width=0.02)
     c.line([((gx0 + gx1) / 2, fy + 0.5), ((gx0 + gx1) / 2, fy + H * K - 0.08)], fill=hexc("#9aa0a4"), width=0.015)
+    c.ellipse((gx0 + gx1) / 2 + 0.03, fy + 0.5 + (H * K - 0.58) / 2, 0.012, 0.012, fill=BRASS, outline=OUTLINE, width=0.006)
     ty = y0 + H * K
-    c.rect(x0 + 0.12, ty + 0.15, x0 + 0.42, ty + 0.35, fill=hexc("#6a5a48"), outline=OUTLINE, width=0.015)        # Kiste
+    c.rect(x0 + 0.12, ty + 0.15, x0 + 0.42, ty + 0.35, fill=hexc("#6a5a48"), outline=OUTLINE, width=0.015)      # Kiste
     c.line([(x0 + 0.12, ty + 0.27), (x0 + 0.42, ty + 0.27)], fill=OUTLINE, width=0.008)
     skull(c, x1 - 0.3, ty + 0.18, 0.9)
     c.rect(x1 - 0.55, ty + 0.12, x1 - 0.45, ty + 0.36, fill=alpha(hexc("#c8d8e0"), 200), outline=OUTLINE, width=0.008)
     c.rect(x1 - 0.545, ty + 0.13, x1 - 0.455, ty + 0.27, fill=alpha(hexc("#9ab060"), 230))
-    for k in range(2):                                                                # Schubladen unten
-        c.rect(gx0, fy + 0.06 + k * 0.2, gx1, fy + 0.22 + k * 0.2, fill=hexc("#cdd2ce"), outline=OUTLINE, width=0.012)
-        c.rect((gx0 + gx1) / 2 - 0.05, fy + 0.12 + k * 0.2, (gx0 + gx1) / 2 + 0.05, fy + 0.15 + k * 0.2, fill=STEEL_D)
+
+

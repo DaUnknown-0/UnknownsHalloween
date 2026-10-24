@@ -1648,75 +1648,115 @@ def _kirchenbank(p, c, x0, y0, x1, y1, idx, rnd):
 
 
 def _baer(p, c, x0, y0, x1, y1, idx, rnd):
-    """Praeparierter Grizzly, neu 24.10. (User: "realistischer"): aufgerichtet auf Eichensockel mit Messingschild,
-    kraeftige Hinterlaeufe mit Pranken, Schulterbuckel, erhobene Vorderpranken mit Krallen, langer Fang mit
-    offenem Maul, kleine runde Ohren, Glasaugen; Fellsaum zittrig, hellere Brust."""
+    """Praeparierter Braunbaer, von Grund auf neu nach dem Fotovorbild des Users (Nachtrag 3): ruhig aufrecht auf
+    den Hinterbeinen, Vorderpranken locker vor der Brust haengend, Krallen hell und sichtbar, Kopf leicht erhoben und
+    nach links in den Raum gedreht (der Baer steht an der Ostwand), Maul geschlossen, dunkle Nase, kleine Glasaugen
+    mit Lichtpunkt, kleine runde Ohren, breiter Nacken mit Schulterbuckel. Warmes Braun, dunklere Arme und Beine,
+    hellere Schnauze, wenige klare Fellgruppen, echte Baerenproportionen. Dunkler Sockel mit Messingschild "URSUS".
+    Schraege Aufsicht, Standlinie und Fussflaeche unveraendert."""
     cx = (x0 + x1) / 2
-    fur = lift("#4a2e1c", 1.45)
-    fur_l = shade(fur, 1.28)
-    fur_d = shade(fur, 0.7)
-    p.box(x0, y0, x1, y1, 0, 0.18, WALNUT_L, WALNUT)
-    c.rect(x0 + 0.05, y0 + 0.02, x1 - 0.05, y0 + 0.16 * K, outline=BRASS_D, width=0.01)
-    c.rect(cx - 0.16, y0 + 0.02 + 0.03, cx + 0.16, y0 + 0.02 + 0.08, fill=BRASS, outline=OUTLINE, width=0.01)      # Messingschild
-    c.text(cx, y0 + 0.075, "URSUS", 0.035, hexc("#2a2422"))
-    by = y0 + 0.3 + 0.18 * K
+    fur = hexc("#8a5a30")
+    fur_l = hexc("#b07c48")
+    fur_d = hexc("#5e3a1c")
+    limb = hexc("#6a4322")
+    muzzle = hexc("#caa272")
+    claw = hexc("#ece4d0")
+    dark = lift("#2a2420", 1.5)
+    ow = A.OUT_W
+    # Sockel mit Messingschild
+    p.box(x0, y0, x1, y1, 0, 0.22, shade(dark, 1.3), dark)
+    c.line([(x0 + 0.03, y0 + 0.19), (x1 - 0.03, y0 + 0.19)], fill=alpha((255, 255, 255, 255), 40), width=0.012)
+    c.rect(cx - 0.19, y0 + 0.04, cx + 0.19, y0 + 0.1, fill=BRASS, outline=OUTLINE, width=0.01)
+    c.text(cx, y0 + 0.07, "URSUS", 0.04, hexc("#2a2422"))
+    fy = y0 + 0.22 * K + 0.36            # Fusslinie auf dem Sockel
 
-    def fuzzy(pts, fill, seed, amp=0.018, ol=True):
-        q = HD.wobble(pts, amp=amp, seed=seed, step=0.05, closed=True)
-        c.poly(q, fill=fill, outline=OUTLINE if ol else None, width=A.OUT_W if ol else 0)
-        return q
+    def P(x, y):
+        return (cx + x, fy + y)
 
-    # Hinterlaeufe mit Pranken (Krallen nach vorn)
+    def wob(pts, seed, amp=0.015):
+        return HD.wobble([P(x, y) for x, y in pts], amp=amp, seed=idx * 7 + seed, step=0.05, closed=True)
+
+    def shag(pts, fill, seed, amp=0.03, tooth=0.09):
+        """Fellgruppe mit grober Zackenkante, ohne Kontur."""
+        rs = random.Random(idx * 7 + seed)
+        src = [P(x, y) for x, y in pts]
+        out = []
+        n = len(src)
+        for i in range(n):
+            a, b = src[i], src[(i + 1) % n]
+            L = math.hypot(b[0] - a[0], b[1] - a[1])
+            steps = max(1, int(L / tooth))
+            for k in range(steps):
+                t = k / steps
+                x, y = a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
+                nx, ny = -(b[1] - a[1]) / L, (b[0] - a[0]) / L
+                d = (amp if k % 2 else 0) * rs.uniform(0.6, 1.1)
+                out.append((x + nx * d, y + ny * d))
+        c.poly(out, fill=fill)
+
+    def limb_stroke(pts, w):
+        """Gliedmasse als dicker Strich mit runden Gelenken: erst Kontur, dann Fuellung."""
+        q = [P(x, y) for x, y in pts]
+        for col, ww in ((OUTLINE, w + 2 * ow), (limb, w)):
+            c.line(q, fill=col, width=ww)
+            for x, y in q:
+                c.ellipse(x, y, ww / 2, ww / 2, fill=col)
+
+    def claws(x, y, n, spread, size, s=1):
+        for k in range(n):
+            kx = cx + x - spread * (n - 1) / 2 + k * spread
+            c.poly([(kx - size * 0.45, fy + y), (kx + size * 0.45, fy + y), (kx + s * size * 0.1, fy + y - size * 1.6)],
+                   fill=claw, outline=OUTLINE, width=0.011)
+
+    # Hinterlaeufe: kurz und kraeftig, dunkler, breite Pranken mit hellen Krallen nach vorn
     for s in (-1, 1):
-        lx = cx + s * 0.24
-        fuzzy([(lx - 0.17, by), (lx + 0.17, by), (lx + 0.2, by + 0.35), (lx + 0.14, by + 0.7), (lx - 0.14, by + 0.7), (lx - 0.2, by + 0.35)], fur, idx + s)
-        c.ellipse(lx + s * 0.04, by + 0.02, 0.2, 0.08, fill=fur_d, outline=OUTLINE, width=0.025)                 # Pranke
-        for k in range(4):
-            kx = lx - 0.13 + k * 0.085
-            c.poly([(kx - 0.02, by - 0.04), (kx + 0.02, by - 0.04), (kx, by - 0.1)], fill=CREAM, outline=OUTLINE, width=0.01)
-    # Rumpf mit Schulterbuckel, Brust heller
-    body = fuzzy([(cx - 0.52, by + 0.55), (cx - 0.5, by + 1.0), (cx - 0.4, by + 1.45), (cx - 0.18, by + 1.62), (cx + 0.1, by + 1.66),
-                  (cx + 0.4, by + 1.5), (cx + 0.52, by + 1.05), (cx + 0.5, by + 0.55), (cx + 0.3, by + 0.42), (cx - 0.3, by + 0.42)], fur, idx + 3)
-    c.poly(HD.wobble([(cx - 0.22, by + 0.55), (cx + 0.2, by + 0.55), (cx + 0.26, by + 0.95), (cx + 0.1, by + 1.25), (cx - 0.14, by + 1.25), (cx - 0.28, by + 0.95)],
-                     amp=0.015, seed=idx + 4, step=0.05, closed=True), fill=fur_l)
-    c.poly(HD.wobble([(cx - 0.5, by + 0.6), (cx - 0.3, by + 0.5), (cx - 0.26, by + 1.3), (cx - 0.46, by + 1.2)], amp=0.015, seed=idx + 5, step=0.05, closed=True), fill=alpha(fur_d, 150))
-    for k in range(6):                                                                                            # Fellstriche
-        fx = cx - 0.3 + k * 0.12
-        c.line([(fx, by + 0.6 + (k % 2) * 0.1), (fx + 0.02, by + 0.72 + (k % 2) * 0.1)], fill=alpha(fur_d, 160), width=0.012)
-    # Vorderlaeufe erhoben, Pranken mit Krallen
+        lx = s * 0.27
+        c.poly(wob([(lx - 0.2, 0.08), (lx - 0.24, 0.5), (lx - 0.1, 0.72), (lx + 0.16, 0.72), (lx + 0.24, 0.5), (lx + 0.2, 0.08)], 1 + s), fill=limb, outline=OUTLINE, width=ow)
+        c.line([P(lx + s * 0.08, 0.18), P(lx + s * 0.1, 0.52)], fill=alpha(fur_d, 170), width=0.035)
+        c.ellipse(cx + lx + s * 0.02, fy + 0.05, 0.23, 0.085, fill=fur_d, outline=OUTLINE, width=ow)
+        claws(lx + s * 0.02, -0.02, 4, 0.1, 0.055)
+    # Rumpf: eine Silhouette, Huefte und Bauch breit, nach oben leicht schmaler, rechts der Schulterbuckel und
+    # der breite Nacken (der Kopf ist nach links gedreht, deshalb zeigt sich der Buckel rechts vom Kopf)
+    body = [(-0.5, 0.42), (-0.6, 0.8), (-0.58, 1.1), (-0.48, 1.42), (-0.4, 1.62), (-0.26, 1.76), (-0.08, 1.82),
+            (0.12, 1.92), (0.32, 1.9), (0.44, 1.76), (0.5, 1.5), (0.56, 1.15), (0.58, 0.8), (0.5, 0.42), (0.25, 0.34), (0, 0.36), (-0.25, 0.34)]
+    c.poly(wob(body, 3, amp=0.02), fill=fur, outline=OUTLINE, width=ow)
+    shag([(0.0, 1.55), (0.14, 1.86), (0.3, 1.86), (0.42, 1.7), (0.42, 1.45), (0.2, 1.35)], fur_d, 4)                       # Buckel und Nacken
+    shag([(0.3, 0.5), (0.52, 0.8), (0.52, 1.3), (0.4, 1.45), (0.3, 1.1)], alpha(fur_d, 150), 5)                           # rechte Flanke
+    shag([(-0.22, 0.5), (0.0, 0.46), (0.2, 0.52), (0.14, 1.0), (0.04, 1.4), (-0.12, 1.4), (-0.24, 1.0)], fur_l, 6)        # helle Brust und Bauch
+    shag([(-0.56, 1.0), (-0.44, 0.9), (-0.4, 1.35), (-0.5, 1.4)], alpha(fur_d, 110), 7)                                     # linke Flanke
+    # Vorderpranken: haengen locker vor der Brust, Ellbogen aussen, Pranken fast beieinander vor dem Bauch
     for s in (-1, 1):
-        arm = [(cx + s * 0.4, by + 1.1), (cx + s * 0.7, by + 1.35), (cx + s * 0.78, by + 1.7), (cx + s * 0.62, by + 1.86),
-               (cx + s * 0.5, by + 1.72), (cx + s * 0.52, by + 1.45), (cx + s * 0.3, by + 1.3)]
-        fuzzy(arm, fur, idx + 6 + s)
-        c.line([(cx + s * 0.46, by + 1.22), (cx + s * 0.64, by + 1.5)], fill=fur_l, width=0.03)
-        c.ellipse(cx + s * 0.66, by + 1.76, 0.12, 0.1, fill=fur_d, outline=OUTLINE, width=0.025)                   # Pranke
-        for k in range(4):
-            a = math.pi * (0.25 + k * 0.17)
-            kx, ky = cx + s * 0.66 + 0.1 * math.cos(a) * s, by + 1.78 + 0.1 * math.sin(a)
-            c.poly([(kx - 0.015, ky), (kx + 0.015, ky), (kx + s * 0.02, ky + 0.09)], fill=CREAM, outline=OUTLINE, width=0.01)
-    # Kopf: breiter Schaedel, kleine runde Ohren, langer Fang, offenes Maul mit Zaehnen, Nase, Glasaugen
-    hx, hy = cx, by + 1.78
-    for s in (-1, 1):
-        c.ellipse(hx + s * 0.26, hy + 0.22, 0.09, 0.09, fill=fur, outline=OUTLINE, width=0.03)
-        c.ellipse(hx + s * 0.26, hy + 0.22, 0.045, 0.045, fill=fur_l)
-    fuzzy([(hx - 0.32, hy + 0.05), (hx - 0.3, hy + 0.3), (hx - 0.1, hy + 0.36), (hx + 0.1, hy + 0.36), (hx + 0.3, hy + 0.3), (hx + 0.32, hy + 0.05),
-           (hx + 0.2, hy - 0.12), (hx - 0.2, hy - 0.12)], fur, idx + 9, amp=0.012)
-    c.poly([(hx - 0.2, hy + 0.02), (hx + 0.2, hy + 0.02), (hx + 0.16, hy - 0.3), (hx - 0.16, hy - 0.3)], fill=fur_l, outline=OUTLINE, width=0.025)   # Fang
-    c.poly([(hx - 0.15, hy - 0.14), (hx + 0.15, hy - 0.14), (hx + 0.13, hy - 0.28), (hx - 0.13, hy - 0.28)], fill=hexc("#5a1e26"), outline=OUTLINE, width=0.025)  # Maul
-    c.ellipse(hx, hy - 0.23, 0.07, 0.03, fill=hexc("#8a2a36"))                                                      # Zunge
-    for k in range(5):
-        tx = hx - 0.12 + k * 0.06
-        c.poly([(tx - 0.018, hy - 0.14), (tx + 0.018, hy - 0.14), (tx, hy - 0.2 - (0.03 if k in (0, 4) else 0))], fill=CREAM, outline=OUTLINE, width=0.008)
-        c.poly([(tx - 0.015, hy - 0.28), (tx + 0.015, hy - 0.28), (tx, hy - 0.23 + (0.02 if k in (0, 4) else 0))], fill=CREAM, outline=OUTLINE, width=0.008)
-    c.ellipse(hx, hy - 0.06, 0.06, 0.04, fill=hexc("#1a1418"), outline=OUTLINE, width=0.015)                      # Nase
-    c.ellipse(hx - 0.02, hy - 0.05, 0.015, 0.01, fill=(255, 255, 255, 120))
-    for s in (-1, 1):
-        c.ellipse(hx + s * 0.13, hy + 0.14, 0.035, 0.035, fill=hexc("#5a3a14"), outline=OUTLINE, width=0.014)
-        c.ellipse(hx + s * 0.13, hy + 0.14, 0.018, 0.018, fill=hexc("#1a1418"))
-        c.ellipse(hx + s * 0.13 - 0.01, hy + 0.155, 0.008, 0.008, fill=(255, 255, 255, 230))
-        c.line([(hx + s * 0.07, hy + 0.22), (hx + s * 0.2, hy + 0.2)], fill=fur_d, width=0.02)                    # Braue
-    cobweb(c, cx + 0.78, by + 1.86, 0.14, -1, -1, seed=idx)
-    dust(c, cx - 0.4, by + 1.3, cx + 0.4, by + 1.55, 5, seed=idx)
+        limb_stroke([(s * 0.38, 1.5), (s * 0.47, 1.1), (s * 0.17, 0.9)], 0.24)
+        c.line([P(s * 0.3, 1.46), P(s * 0.38, 1.15)], fill=alpha(fur_d, 140), width=0.03)
+        c.ellipse(cx + s * 0.16, fy + 0.86, 0.135, 0.1, fill=fur_d, outline=OUTLINE, width=ow)                             # Pranke
+        c.ellipse(cx + s * 0.16, fy + 0.88, 0.08, 0.05, fill=alpha(limb, 200))
+        claws(s * 0.16, 0.8, 4, 0.062, 0.05, s)
+    # Kopf: klein, leicht erhoben, nach links gedreht; Ohren zuerst (liegen hinter dem Kopf)
+    hx, hy = -0.1, 1.98
+    for ex_, ey_, r in ((hx - 0.16, hy + 0.19, 0.065), (hx + 0.2, hy + 0.15, 0.08)):
+        c.ellipse(cx + ex_, fy + ey_, r, r * 0.92, fill=fur, outline=OUTLINE, width=ow)
+        c.ellipse(cx + ex_, fy + ey_, r * 0.5, r * 0.45, fill=fur_d)
+    c.poly(wob([(hx - 0.2, hy - 0.2), (hx - 0.3, hy - 0.04), (hx - 0.24, hy + 0.14), (hx - 0.08, hy + 0.24), (hx + 0.14, hy + 0.23),
+                (hx + 0.27, hy + 0.1), (hx + 0.28, hy - 0.1), (hx + 0.16, hy - 0.26), (hx - 0.04, hy - 0.28)], 8, amp=0.01),
+           fill=fur, outline=OUTLINE, width=ow)
+    shag([(hx + 0.04, hy - 0.22), (hx + 0.24, hy - 0.12), (hx + 0.22, hy + 0.04), (hx + 0.06, hy - 0.02)], alpha(fur_l, 120), 9, amp=0.02, tooth=0.05)   # Wange
+    # Schnauze nach links, Nase dunkel, Maul geschlossen
+    c.poly(wob([(hx - 0.1, hy + 0.04), (hx - 0.3, hy + 0.0), (hx - 0.4, hy - 0.05), (hx - 0.4, hy - 0.15), (hx - 0.3, hy - 0.22), (hx - 0.1, hy - 0.21)], 10, amp=0.008),
+           fill=muzzle, outline=OUTLINE, width=ow)
+    c.line([P(hx - 0.14, hy - 0.06), P(hx - 0.3, hy - 0.05)], fill=alpha(shade(muzzle, 0.85), 200), width=0.02)                                  # Nasenruecken
+    c.line([P(hx - 0.33, hy - 0.17), P(hx - 0.16, hy - 0.16)], fill=alpha(OUTLINE, 210), width=0.013)                                           # Maul
+    c.line([P(hx - 0.33, hy - 0.17), P(hx - 0.36, hy - 0.13)], fill=alpha(OUTLINE, 210), width=0.011)
+    c.ellipse(cx + hx - 0.39, fy + hy - 0.08, 0.05, 0.04, fill=hexc("#1a1418"), outline=OUTLINE, width=0.014)                                   # Nase
+    c.ellipse(cx + hx - 0.405, fy + hy - 0.065, 0.014, 0.01, fill=(255, 255, 255, 140))
+    # kleine Glasaugen mit Lichtpunkt, Brauen
+    for ex_, ey_ in ((hx - 0.2, hy + 0.07), (hx + 0.04, hy + 0.09)):
+        c.ellipse(cx + ex_, fy + ey_, 0.027, 0.027, fill=hexc("#4a2e10"), outline=OUTLINE, width=0.012)
+        c.ellipse(cx + ex_, fy + ey_, 0.013, 0.013, fill=hexc("#1a1418"))
+        c.ellipse(cx + ex_ - 0.008, fy + ey_ + 0.01, 0.006, 0.006, fill=(255, 255, 255, 240))
+    c.line([P(hx - 0.26, hy + 0.13), P(hx - 0.14, hy + 0.14)], fill=alpha(fur_d, 190), width=0.016)
+    c.line([P(hx - 0.02, hy + 0.15), P(hx + 0.1, hy + 0.13)], fill=alpha(fur_d, 190), width=0.016)
+    cobweb(c, cx + 0.5, fy + 1.3, 0.16, -1, 1, seed=idx)
+    dust(c, cx - 0.3, fy + 1.6, cx + 0.3, fy + 1.75, 4, seed=idx)
 
 
 def _schreibtisch(p, c, x0, y0, x1, y1, idx, rnd):
@@ -1900,66 +1940,138 @@ def _pflanztisch(p, c, x0, y0, x1, y1, idx, rnd):
     cobweb(c, x0, y1 + 0.85 * K, 0.18, 1, -1, seed=idx)
 
 
-def fountain_statue(c, cx, base, idx=0):
-    """Verschleierte Frauenfigur mit Wasserschale auf kannelierter Saeule (Brunnenmitte). base = Bild-y des
-    Saeulenfusses. Wird vom Brunnen und (ueber dem roten Wasser) von brunnen_blut gezeichnet, damit sie vor dem
-    Wasser steht."""
+def fountain_statue(c, cx, base, idx=0, pose=None):
+    """Weeping Angel (Nachtrag 3, Vorbild Doctor Who) auf dem Saeulenkopf des Brunnens; base = Bild-y der Fuesse.
+    Steinengel mit grossen angelegten Fluegeln, langem Gewand mit Faltenwurf, Kopf leicht gesenkt, verwittert.
+    pose None: beide Haende vor den Augen. "turn": Haende unten, eine halb erhoben, Kopf zum Betrachter mit grimmiger
+    Fratze (aufgerissenes Maul mit Steinzaehnen, leere Augen, gefurchte Stirn). "step": ein Stueck vorgerueckt (steht
+    vorn auf dem Saeulenkopf, groesser), weit vorgebeugt, ein Arm greift zum Betrachter, Fluegel halb offen, Fratze.
+    Wird nur von brunnen_blut gezeichnet (Grundbild und Tauschbilder), nicht mehr vom Brunnen selbst."""
     col, col_l, col_d = STONE, STONE_L, STONE_D
-    # Saeule mit Basis und Kapitell
-    c.ellipse(cx, base, 0.3, 0.14, fill=col_l, outline=OUTLINE, width=0.025)
-    c.rect(cx - 0.17, base, cx + 0.17, base + 0.5, fill=col, outline=OUTLINE, width=A.OUT_W)
-    for k in range(4):
-        c.line([(cx - 0.11 + k * 0.07, base + 0.04), (cx - 0.11 + k * 0.07, base + 0.46)], fill=alpha(col_d, 170), width=0.012)
-    c.line([(cx - 0.14, base + 0.04), (cx - 0.14, base + 0.46)], fill=alpha((255, 255, 255, 255), 110), width=0.016)
-    c.rect(cx - 0.22, base + 0.5, cx + 0.22, base + 0.6, fill=col_l, outline=OUTLINE, width=0.025)
-    moss(c, cx + 0.1, base + 0.08, 0.1, seed=idx)
-    fz = base + 0.6
-    # Gewand mit Faltenwurf, Fuesse unter dem Saum
-    gown = HD.wobble([(cx - 0.3, fz), (cx + 0.3, fz), (cx + 0.24, fz + 0.5), (cx + 0.18, fz + 0.95), (cx - 0.18, fz + 0.95), (cx - 0.24, fz + 0.5)],
+    s = 1.0
+    if pose == "step":
+        s = 1.12
+        base -= 0.22                      # vorn auf dem Saeulenkopf (zum Betrachter = nach Sueden)
+    grim = pose in ("turn", "step")
+    wing_open = 0.0 if pose != "step" else 0.6
+
+    def X(dx):
+        return cx + dx * s
+
+    def Z(dz):
+        return base + dz * s
+
+    def pt(dx, dz):
+        return (X(dx), Z(dz))
+
+    # Fluegel (hinten): angelegt, geschwungene Aussenkante, Spitzen bis fast zum Saum; bei "step" halb geoeffnet
+    for sx in (-1, 1):
+        w = 0.5 + 0.35 * wing_open
+        wing = [pt(sx * 0.14, 1.25), pt(sx * (0.26 + 0.1 * wing_open), 1.62), pt(sx * (0.42 + 0.15 * wing_open), 1.72), pt(sx * (w + 0.08), 1.6),
+                pt(sx * (w + 0.18), 1.35), pt(sx * (w + 0.16), 1.0), pt(sx * (w + 0.04), 0.62), pt(sx * (0.5 + 0.1 * wing_open), 0.3),
+                pt(sx * (0.4 + 0.1 * wing_open), 0.22), pt(sx * 0.3, 0.42), pt(sx * 0.26, 0.9)]
+        wing = HD.wobble(wing, amp=0.01, seed=idx + (3 if sx > 0 else 5), step=0.08, closed=True)
+        c.poly(wing, fill=col_l, outline=OUTLINE, width=A.OUT_W)
+        for row in range(3):
+            for k in range(5):
+                t = 0.08 + k * 0.2
+                fx = sx * (0.28 + (w - 0.2) * t + row * 0.04)
+                fz = 0.32 + 1.2 * t - row * 0.22
+                c.line([pt(fx, fz), pt(fx - sx * 0.02, fz - 0.16)], fill=alpha(col_d, 170), width=0.011)
+                c.ellipse(X(fx - sx * 0.02), Z(fz - 0.17), 0.03 * s, 0.02 * s, outline=alpha(col_d, 170), width=0.008)
+        c.line([pt(sx * 0.3, 1.58), pt(sx * (w + 0.06), 1.4)], fill=alpha((255, 255, 255, 255), 100), width=0.016)
+    # Gewand mit Faltenwurf, welliger Saum auf dem Saeulenkopf
+    gown = HD.wobble([pt(-0.36, 0.0), pt(0.36, 0.0), pt(0.28, 0.55), pt(0.22, 0.95), pt(-0.22, 0.95), pt(-0.28, 0.55)],
                      amp=0.012, seed=idx, step=0.06, closed=True)
     c.poly(gown, fill=col, outline=OUTLINE, width=A.OUT_W)
+    for k in range(6):
+        c.line(HD.wobble([pt(-0.17 + k * 0.07, 0.9), pt(-0.27 + k * 0.11, 0.05)], amp=0.01, seed=idx + k, step=0.05), fill=alpha(col_d, 160), width=0.014)
+    c.line([pt(-0.24, 0.1), pt(-0.17, 0.85)], fill=alpha((255, 255, 255, 255), 100), width=0.022)
+    for k in range(5):
+        c.ellipse(X(-0.28 + k * 0.14), Z(0.0), 0.07 * s, 0.03 * s, fill=col, outline=OUTLINE, width=0.014)
+    c.rect(X(-0.2), Z(0.92), X(0.2), Z(0.98), fill=col_d, outline=OUTLINE, width=0.012)            # Guertel
+    # Oberkoerper (bei "step" weit vorgebeugt: breiter und niedriger)
+    lean = 0.12 if pose == "step" else 0.0
+    c.poly([pt(-0.24, 0.96), pt(0.24, 0.96), pt(0.22 + lean, 1.26 - lean), pt(-0.22 + lean, 1.26 - lean)], fill=col, outline=OUTLINE, width=A.OUT_W)
+    c.line([pt(-0.18, 1.0), pt(-0.16 + lean, 1.22 - lean)], fill=alpha((255, 255, 255, 255), 90), width=0.016)
+    hz = 1.4 - lean * 1.5
+    hx = lean * 1.2
+    # Arme je Pose
+    if pose is None:
+        for sx in (-1, 1):                                                                    # Haende vor den Augen
+            c.line([pt(sx * 0.22, 1.2), pt(sx * 0.34, 1.34), pt(sx * 0.08, hz + 0.02)], fill=OUTLINE, width=0.095)
+            c.line([pt(sx * 0.22, 1.2), pt(sx * 0.34, 1.34), pt(sx * 0.08, hz + 0.02)], fill=col_l, width=0.06)
+    elif pose == "turn":
+        c.line([pt(-0.2, 1.2), pt(-0.3, 1.0), pt(-0.26, 0.74)], fill=OUTLINE, width=0.075)         # linker Arm haengt
+        c.line([pt(-0.2, 1.2), pt(-0.3, 1.0), pt(-0.26, 0.74)], fill=col_l, width=0.045)
+        c.ellipse(X(-0.26), Z(0.72), 0.06 * s, 0.05 * s, fill=col_l, outline=OUTLINE, width=0.015)
+        c.line([pt(0.2, 1.2), pt(0.36, 1.1), pt(0.32, 1.36)], fill=OUTLINE, width=0.075)            # rechter halb erhoben
+        c.line([pt(0.2, 1.2), pt(0.36, 1.1), pt(0.32, 1.36)], fill=col_l, width=0.045)
+        hand = pt(0.32, 1.4)
+        c.ellipse(hand[0], hand[1], 0.065 * s, 0.055 * s, fill=col_l, outline=OUTLINE, width=0.015)
+        for k in range(4):
+            a = math.pi * (0.25 + k * 0.17)
+            c.line([hand, (hand[0] + 0.1 * s * math.cos(a), hand[1] + 0.1 * s * math.sin(a))], fill=OUTLINE, width=0.03)
+            c.line([hand, (hand[0] + 0.1 * s * math.cos(a), hand[1] + 0.1 * s * math.sin(a))], fill=col_l, width=0.014)
+    else:
+        c.line([pt(-0.2, 1.2), pt(-0.34, 1.02), pt(-0.3, 0.8)], fill=OUTLINE, width=0.075)         # linker Arm zurueck
+        c.line([pt(-0.2, 1.2), pt(-0.34, 1.02), pt(-0.3, 0.8)], fill=col_l, width=0.045)
+        c.ellipse(X(-0.3), Z(0.78), 0.06 * s, 0.05 * s, fill=col_l, outline=OUTLINE, width=0.015)
+        c.line([pt(0.22, 1.2), pt(0.42, 1.08), pt(0.38, 0.72)], fill=OUTLINE, width=0.085)          # rechter Arm greift nach vorn (zum Betrachter = nach unten)
+        c.line([pt(0.22, 1.2), pt(0.42, 1.08), pt(0.38, 0.72)], fill=col_l, width=0.052)
+        hand = pt(0.38, 0.64)
+        c.ellipse(hand[0], hand[1], 0.1 * s, 0.085 * s, fill=col_l, outline=OUTLINE, width=0.02)    # grosse greifende Hand
+        for k in range(4):
+            a = math.pi * (1.15 + k * 0.23)
+            tip = (hand[0] + 0.15 * s * math.cos(a), hand[1] + 0.15 * s * math.sin(a))
+            c.line([hand, tip], fill=OUTLINE, width=0.04)
+            c.line([hand, tip], fill=col_l, width=0.02)
+            c.poly([(tip[0] - 0.015, tip[1]), (tip[0] + 0.015, tip[1]), (tip[0] + 0.004 * math.cos(a), tip[1] + 0.05 * math.sin(a))], fill=col_d, outline=OUTLINE, width=0.01)
+    # Kopf: gesenkt mit Haar (Grundbild) oder Fratze zum Betrachter
+    c.ellipse(X(hx), Z(hz), 0.13 * s, 0.14 * s, fill=col_l, outline=OUTLINE, width=A.OUT_W)
+    c.ellipse(X(hx - 0.01), Z(hz + 0.09), 0.145 * s, 0.075 * s, fill=col, outline=OUTLINE, width=0.015)       # Haar
     for k in range(4):
-        c.line(HD.wobble([(cx - 0.15 + k * 0.1, fz + 0.9), (cx - 0.2 + k * 0.13, fz + 0.05)], amp=0.01, seed=idx + k, step=0.05), fill=alpha(col_d, 150), width=0.014)
-    c.line([(cx - 0.2, fz + 0.1), (cx - 0.14, fz + 0.85)], fill=alpha((255, 255, 255, 255), 90), width=0.02)
-    # Guertel, Oberkoerper, Arme halten die Schale vor der Brust
-    c.rect(cx - 0.17, fz + 0.9, cx + 0.17, fz + 0.96, fill=col_d, outline=OUTLINE, width=0.015)
-    c.poly([(cx - 0.2, fz + 0.95), (cx + 0.2, fz + 0.95), (cx + 0.17, fz + 1.3), (cx - 0.17, fz + 1.3)], fill=col, outline=OUTLINE, width=A.OUT_W)
-    for s in (-1, 1):
-        c.line([(cx + s * 0.18, fz + 1.25), (cx + s * 0.3, fz + 1.08), (cx + s * 0.12, fz + 1.02)], fill=OUTLINE, width=0.075)
-        c.line([(cx + s * 0.18, fz + 1.25), (cx + s * 0.3, fz + 1.08), (cx + s * 0.12, fz + 1.02)], fill=col_l, width=0.045)
-    c.ellipse(cx, fz + 1.02, 0.2, 0.07, fill=col_l, outline=OUTLINE, width=0.025)                               # Schale
-    c.ellipse(cx, fz + 1.04, 0.14, 0.04, fill=hexc("#243038"))
-    c.ellipse(cx - 0.04, fz + 1.05, 0.05, 0.015, fill=alpha(MOON, 120))
-    for s in (-1, 1):                                                                                        # Wasser laeuft ueber
-        c.line([(cx + s * 0.19, fz + 1.0), (cx + s * 0.24, fz + 0.5), (cx + s * 0.26, fz + 0.1)], fill=alpha(hexc("#9fc4e0"), 150), width=0.02)
-    # Kopf mit Schleier, der auf die Schultern faellt, Gesicht nur angedeutet
-    hy = fz + 1.45
-    c.poly([(cx - 0.26, fz + 1.28), (cx + 0.26, fz + 1.28), (cx + 0.2, hy + 0.1), (cx + 0.08, hy + 0.2), (cx - 0.08, hy + 0.2), (cx - 0.2, hy + 0.1)],
-           fill=col_l, outline=OUTLINE, width=A.OUT_W)                                                      # Schleier
-    c.ellipse(cx, hy, 0.12, 0.14, fill=col, outline=OUTLINE, width=0.025)                                       # Gesicht unter dem Schleier
-    c.ellipse(cx - 0.045, hy + 0.02, 0.02, 0.014, fill=alpha(col_d, 200))
-    c.ellipse(cx + 0.045, hy + 0.02, 0.02, 0.014, fill=alpha(col_d, 200))
-    c.line([(cx - 0.03, hy - 0.06), (cx + 0.03, hy - 0.06)], fill=alpha(col_d, 160), width=0.01)
-    c.line([(cx - 0.1, hy + 0.14), (cx + 0.1, hy + 0.14)], fill=alpha((255, 255, 255, 255), 90), width=0.015)
-    crack(c, [(cx + 0.1, fz + 0.2), (cx + 0.06, fz + 0.5), (cx + 0.12, fz + 0.75)], seed=idx)
-    cobweb(c, cx + 0.3, fz + 1.08, 0.12, 1, -1, seed=idx)
+        c.line([pt(hx - 0.1 + k * 0.065, hz + 0.15), pt(hx - 0.13 + k * 0.08, hz + 0.02)], fill=alpha(col_d, 150), width=0.01)
+    if not grim:
+        c.poly([pt(-0.1, hz - 0.1), pt(0.1, hz - 0.1), pt(0.11, hz + 0.05), pt(-0.11, hz + 0.05)], fill=shade(col_l, 1.08), outline=OUTLINE, width=0.015)   # Haende vor den Augen
+        for k in range(5):
+            c.line([pt(-0.08 + k * 0.04, hz - 0.08), pt(-0.08 + k * 0.04, hz + 0.03)], fill=alpha(col_d, 170), width=0.006)
+        c.line([pt(-0.03, hz - 0.11), pt(0.03, hz - 0.11)], fill=alpha(col_d, 150), width=0.01)   # Mund darunter
+    else:
+        for sx in (-1, 1):                                                                    # leere Augen, gefurchte Stirn
+            c.ellipse(X(hx + sx * 0.05), Z(hz + 0.02), 0.032 * s, 0.03 * s, fill=hexc("#1a1c22"), outline=OUTLINE, width=0.012)
+            c.line([pt(hx + sx * 0.01, hz + 0.07), pt(hx + sx * 0.09, hz + 0.05)], fill=OUTLINE, width=0.022)
+        c.line([pt(hx - 0.03, hz + 0.1), pt(hx + 0.03, hz + 0.1)], fill=alpha(col_d, 200), width=0.01)
+        c.line([pt(hx - 0.02, hz + 0.13), pt(hx + 0.02, hz + 0.13)], fill=alpha(col_d, 200), width=0.01)
+        c.poly([pt(hx - 0.075, hz - 0.04), pt(hx + 0.075, hz - 0.04), pt(hx + 0.06, hz - 0.12), pt(hx - 0.06, hz - 0.12)], fill=hexc("#1a1c22"), outline=OUTLINE, width=0.015)   # Maul
+        for k in range(5):
+            tx = hx - 0.06 + k * 0.03
+            c.poly([pt(tx - 0.012, hz - 0.04), pt(tx + 0.012, hz - 0.04), pt(tx, hz - 0.075)], fill=col_l, outline=OUTLINE, width=0.006)
+            c.poly([pt(tx - 0.01, hz - 0.12), pt(tx + 0.01, hz - 0.12), pt(tx, hz - 0.09)], fill=col_l, outline=OUTLINE, width=0.006)
+        c.line([pt(hx, hz + 0.0), pt(hx - 0.012, hz - 0.03), pt(hx + 0.012, hz - 0.03)], fill=alpha(col_d, 200), width=0.01)
+    # Verwitterung: Flechten, Moos am Saum, Risse
+    rs = random.Random(idx + 3)
+    for k in range(7):
+        c.ellipse(X(rs.uniform(-0.45, 0.45)), Z(rs.uniform(0.2, 1.5)), 0.02, 0.013, fill=alpha(hexc("#b8c070"), 150))
+    moss(c, X(-0.2), Z(0.04), 0.08, seed=idx)
+    crack(c, [pt(0.1, 0.2), pt(0.05, 0.5), pt(0.12, 0.75)], seed=idx)
+    cobweb(c, X(0.42), Z(1.2), 0.1, 1, -1, seed=idx)
 
 
 def _brunnen(p, c, x0, y0, x1, y1, idx, rnd):
-    """Brunnen, neu 24.10.: ovales Becken (Kollision Ellipse 2,4 x 1,5 m um (cx, cy - 0,05)) mit Steinkranz aus
-    Bloecken und Deckplatten, dunkles Wasser mit Mondreflex und Laub, Mittelsaeule mit verschleierter Figur und
-    Wasserschale (fountain_statue), Moos, Risse, Pfuetze."""
+    """Brunnen (24.10.): ovales Becken (Kollision Ellipse 2,4 x 1,5 m um (cx, cy - 0,05)) mit Steinkranz aus Bloecken
+    und Deckplatten, dunkles Wasser mit Mondreflex und Laub, kannelierte Mittelsaeule mit Kapitell, Moos, Risse,
+    Pfuetze. Die Figur (Weeping Angel) zeichnet seit Nachtrag 3 nur brunnen_blut (Grundbild und Tauschbilder)."""
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2 - 0.05
     rx, ry = 1.2, 0.75
     wall_h = 0.5
     zt = wall_h * K
-    # Beckenwand: Ellipse unten, Wandband, Ellipse oben (Deckplatten)
     c.ellipse(cx, cy, rx, ry, fill=STONE, outline=OUTLINE, width=A.OUT_W)
     c.rect(cx - rx, cy, cx + rx, cy + zt, fill=STONE)
     c.line([(cx - rx, cy), (cx - rx, cy + zt)], fill=OUTLINE, width=A.OUT_W)
     c.line([(cx + rx, cy), (cx + rx, cy + zt)], fill=OUTLINE, width=A.OUT_W)
-    c.poly([(cx - rx + 0.03, cy + 0.02), (cx + rx - 0.03, cy + 0.02), (cx + rx - 0.03, cy + 0.08), (cx - rx + 0.03, cy + 0.08)], fill=STONE_D)   # Fussschatten
-    for k in range(13):                                                                               # Blockfugen an der Wandung
+    c.poly([(cx - rx + 0.03, cy + 0.02), (cx + rx - 0.03, cy + 0.02), (cx + rx - 0.03, cy + 0.08), (cx - rx + 0.03, cy + 0.08)], fill=STONE_D)
+    for k in range(13):
         a = math.pi + k * math.pi / 12
         bx = cx + rx * math.cos(a)
         byy = cy + ry * math.sin(a)
@@ -1967,28 +2079,43 @@ def _brunnen(p, c, x0, y0, x1, y1, idx, rnd):
     c.line([(cx - rx + 0.2, cy + zt * 0.5 - ry * 0.5), (cx + rx - 0.2, cy + zt * 0.5 - ry * 0.5)], fill=alpha(STONE_D, 120), width=0.012)
     top = cy + zt
     c.ellipse(cx, top, rx, ry, fill=STONE_L, outline=OUTLINE, width=A.OUT_W)
-    for k in range(16):                                                                               # Deckplattenfugen
+    for k in range(16):
         a = k * math.tau / 16
         c.line([(cx + (rx - 0.26) * math.cos(a), top + (ry - 0.16) * math.sin(a)), (cx + (rx - 0.02) * math.cos(a), top + (ry - 0.02) * math.sin(a))],
                fill=alpha(STONE_D, 170), width=0.012)
     c.ellipse(cx, top, rx - 0.04, ry - 0.03, outline=alpha((255, 255, 255, 255), 70), width=0.015)
-    # Wasser
     wx, wy = rx - 0.26, ry - 0.16
     c.ellipse(cx, top, wx, wy, fill=hexc("#243038"), outline=STONE_D, width=0.02)
     c.ellipse(cx, top + 0.02, wx - 0.08, wy - 0.06, fill=hexc("#2a3a44"))
     c.ellipse(cx - wx * 0.35, top + 0.1, wx * 0.3, wy * 0.12, fill=alpha(MOON, 70))
     c.ellipse(cx - wx * 0.33, top + 0.11, wx * 0.14, wy * 0.05, fill=alpha(MOON, 110))
-    for k in range(3):                                                                                # Kreise um die Saeule
+    for k in range(3):
         c.ellipse(cx, top + 0.06, 0.4 + k * 0.14, 0.14 + k * 0.05, outline=alpha(MOON, 60 - k * 15), width=0.012)
-    for k in range(6):                                                                                # Laub auf dem Wasser
+    for k in range(6):
         lx, ly = cx + rnd.uniform(-wx * 0.7, wx * 0.7), top + rnd.uniform(-wy * 0.5, wy * 0.6)
         c.poly([(lx - 0.045, ly), (lx, ly + 0.025), (lx + 0.045, ly), (lx, ly - 0.025)], fill=rnd.choice((hexc("#8a5a34"), hexc("#a8803c"))), outline=OUTLINE, width=0.006)
     crack(c, [(cx + rx * 0.5, cy + 0.03), (cx + rx * 0.45, cy + 0.25 * K), (cx + rx * 0.55, cy + 0.48 * K)], seed=idx)
     moss(c, cx - rx * 0.6, cy + 0.1, 0.12, seed=idx)
     moss(c, cx + rx * 0.3, top - 0.02, 0.1, seed=idx + 1)
     moss(c, cx - rx * 0.85, top + 0.05, 0.08, seed=idx + 2)
-    fountain_statue(c, cx, top + 0.12, idx)
-    c.ellipse(cx + rx * 0.95, cy - ry * 0.4, 0.14, 0.06, fill=alpha(hexc("#243038"), 150))              # Pfuetze
+    fountain_column(c, cx, top + 0.12, idx)
+    c.ellipse(cx + rx * 0.95, cy - ry * 0.4, 0.14, 0.06, fill=alpha(hexc("#243038"), 150))
+
+
+def fountain_column(c, cx, base, idx=0):
+    """Kannelierte Saeule in der Beckenmitte mit Basis und Kapitell; base = Bild-y des Saeulenfusses, Oberkante
+    (Standflaeche der Figur) liegt bei base + 0,6."""
+    col, col_l, col_d = STONE, STONE_L, STONE_D
+    c.ellipse(cx, base, 0.3, 0.14, fill=col_l, outline=OUTLINE, width=0.025)
+    c.rect(cx - 0.17, base, cx + 0.17, base + 0.5, fill=col, outline=OUTLINE, width=A.OUT_W)
+    for k in range(4):
+        c.line([(cx - 0.11 + k * 0.07, base + 0.04), (cx - 0.11 + k * 0.07, base + 0.46)], fill=alpha(col_d, 170), width=0.012)
+    c.line([(cx - 0.14, base + 0.04), (cx - 0.14, base + 0.46)], fill=alpha((255, 255, 255, 255), 110), width=0.016)
+    c.rect(cx - 0.22, base + 0.5, cx + 0.22, base + 0.6, fill=col_l, outline=OUTLINE, width=0.025)
+    c.ellipse(cx, base + 0.6, 0.22, 0.09, fill=col_l, outline=OUTLINE, width=0.02)                   # Saeulenkopf (Standflaeche)
+    moss(c, cx + 0.1, base + 0.08, 0.1, seed=idx)
+    for sx in (-1, 1):                                                                              # Wasser laeuft an der Saeule herab
+        c.line([(cx + sx * 0.19, base + 0.5), (cx + sx * 0.24, base + 0.3), (cx + sx * 0.26, base + 0.05)], fill=alpha(hexc("#9fc4e0"), 140), width=0.02)
 
 
 def _barrikade(p, c, x0, y0, x1, y1, idx, rnd):

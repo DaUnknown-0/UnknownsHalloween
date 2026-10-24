@@ -51,7 +51,7 @@ using Object = UnityEngine.Object;
 
 namespace UnknownsHalloween;
 
-internal sealed class HollowmereWorld : IAtlasMapWorld
+internal sealed partial class HollowmereWorld : IAtlasMapWorld
 {
     private const string LogPrefix = "[Halloween/Villa]";
     internal const byte SubSecret = 2;                 // [player][secret][dir]  jeder -> alle (Animation, Ton)
@@ -231,6 +231,8 @@ internal sealed class HollowmereWorld : IAtlasMapWorld
         Collect("portrait", _portraits, "l", "r");
         Collect("scheinwerfer", _spots, "off");
         Collect("kandelaber", _candles, "off");
+        Collect("brunnen_blut", _angels, "turn", "step");             // Weeping Angel (HollowmereWorld.Angel.cs)
+        AngelReset();
         _burnUntil = new float[_candles.Count];
         foreach (var pv in _candles) Show(pv, "off");                  // die Kerzen starten erloschen
         _darkAreas.Clear();
@@ -278,6 +280,7 @@ internal sealed class HollowmereWorld : IAtlasMapWorld
 
     public void Tick(float dt)
     {
+        try { AngelTick(); } catch (Exception e) { AngelError(e); }
         AnimTick();
         ClockTick(dt);
         CandleTick(dt);

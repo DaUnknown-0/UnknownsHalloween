@@ -79,6 +79,7 @@ namespace UnknownsHalloween {
             public bool FramesTried;
             public KillScene[] Alt;     // further cutscenes of this costume; one of all is picked at random
             public bool HidesBody;      // the image IS the figure: body, skin and visor cosmetic are hidden (HalloweenCorpse.BodylessHats)
+            public bool NoLiveBob;      // no walk bob at all: idle frames while walking, sync held while alive (User 2026-10-24)
             public bool KillerLayers;   // the main cutscene shows the crewmate under the costume in the KILLER's colour (u*/o* layers)
             // Still walk (spider, 2026-10-17): the crewmate keeps its idle pose while moving (no run
             // animation, no bob, StillWalkPatch) and the costume plays its own walk loop on its own clock,
@@ -137,7 +138,10 @@ namespace UnknownsHalloween {
                 // is only the fallback for players the live legs cannot run on
                 StillWalk = true, WalkFps = 12f, LiveLegs = true },
             new Costume { Key = "bvb", KillKey = null, Name = "Halloween BVB Fan", HasLegs = false, HasAccent = true },
-            new Costume { Key = "angel", KillKey = null, Name = "Halloween Angel Ghost", HasLegs = false, HasAccent = true, HidesBody = true },
+            new Costume { Key = "angel", KillKey = null, Name = "Halloween Angel Ghost", HasLegs = false, HasAccent = true, HidesBody = true, NoLiveBob = true,
+                // 2026-10-24: floats like the reaper - idle pose under it (StillWalk) and its own gentle idle float while
+                // walking; the 12 walk frames have a ~40 px bob painted in, so NoLiveBob skips them
+                StillWalk = true, WalkFps = 12f },
             // 2026-10-20: Pumpkin Head (pumpkin.py; the glow jumps over to the victim and goes out, kill5_pumpkin.py)
             // and Reaper (reaper.py; floats on the idle pose like the spider, one scythe swing and the soul rises,
             // kill5_reaper.py). Appended at the end so their options take 1978 and 1979.
@@ -484,6 +488,36 @@ namespace UnknownsHalloween {
         // HatParent -> wearing player. Shop previews and the lobby dummy have none (always idle).
         private static readonly Dictionary<int, (PlayerControl pc, float recheck)> owners = new();
 
+        // ---- no walk bob for a living wearer (Angel Ghost) ----
+        // The bob is SpriteAnimNodeSync snapping the front layer to the head node of the run cycle. While the wearer
+        // is alive and off the ladder the sync is switched off, but only while he stands still, so the picture stays
+        // at its idle height. As a ghost (own float animation) or on a ladder it runs as usual.
+        private static readonly HashSet<int> heldBob = new();
+
+        private static PowerTools.SpriteAnimNodeSync SyncOf(HatParent hat) {
+            try { return hat.SpriteSyncNode != null ? hat.SpriteSyncNode : hat.GetComponent<PowerTools.SpriteAnimNodeSync>(); } catch { return null; }
+        }
+
+        private static void HoldBob(HatParent hat) {
+            try {
+                var sync = SyncOf(hat);
+                if (sync == null) return;
+                var pc = OwnerOf(hat);
+                bool alive = pc != null && pc.Data != null && !pc.Data.IsDead && !pc.onLadder;
+                if (alive) {
+                    if (sync.enabled && !StillWalkMoving(pc)) { sync.enabled = false; heldBob.Add(hat.GetInstanceID()); }
+                } else if (!sync.enabled) {
+                    sync.enabled = true;
+                    heldBob.Remove(hat.GetInstanceID());
+                }
+            } catch { }
+        }
+
+        private static void ReleaseBob(HatParent hat) {
+            if (heldBob.Count == 0 || !heldBob.Remove(hat.GetInstanceID())) return;
+            try { var sync = SyncOf(hat); if (sync != null) sync.enabled = true; } catch { }
+        }
+
         private static PlayerControl OwnerOf(HatParent hat) {
             int id = hat.GetInstanceID();
             if (owners.TryGetValue(id, out var e) && (e.pc != null || Time.time < e.recheck)) return e.pc;
@@ -528,9 +562,13 @@ namespace UnknownsHalloween {
         private static bool HatLateUpdateCore(HatParent __instance) {
             if (__instance == null) return false;
             var hat = __instance.Hat;
-            if (hat == null || !ByHatName.TryGetValue(hat.name, out var c)) return false;
+            Costume c = null;
+            bool ours = hat != null && ByHatName.TryGetValue(hat.name, out c);
+            if (!ours || !c.NoLiveBob) ReleaseBob(__instance);      // hat changed: the next hat bobs normally again
+            if (!ours) return false;
 
             setBounceNode?.Invoke(__instance);
+            if (c.NoLiveBob) HoldBob(__instance);
 
             var front = __instance.FrontLayer;
             var back = __instance.BackLayer;
@@ -560,7 +598,7 @@ namespace UnknownsHalloween {
 
             bool running = false;
             float cycle = -1f;
-            if (c.Walk != null && c.StillWalk) {
+            if (c.Walk != null && !c.NoLiveBob && c.StillWalk) {
                 // No run animation to read (StillWalkPatch keeps the idle pose): moving = real velocity.
                 var pc = OwnerOf(__instance);
                 if (pc != null && StillWalkMoving(pc)) {
@@ -570,7 +608,7 @@ namespace UnknownsHalloween {
                 } else if (pc != null) {
                     walkStart.Remove(pc.PlayerId);
                 }
-            } else if (c.Walk != null) {
+            } else if (c.Walk != null && !c.NoLiveBob) {
                 var pc = OwnerOf(__instance);
                 if (pc != null) {
                     try {
