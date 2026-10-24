@@ -1035,7 +1035,6 @@ namespace UnknownsHalloween {
             if (root != null) UnityEngine.Object.Destroy(root);
             root = null;
             shownCount = -1;
-            HalloweenUI.ModalLock("TreatBagMenu", null, false);
         }
 
         internal static void Tick(bool meeting) {
@@ -1058,7 +1057,6 @@ namespace UnknownsHalloween {
                 const float cell = 300f, gap = 24f, pad = 34f;
                 float w = Mathf.Max(pad * 2 + n * cell + (n - 1) * gap, 560f), h = 470f;
                 root = HalloweenUI.Canvas("TreatBagMenu", 9400, true);
-                HalloweenUI.ModalLock("TreatBagMenu", root, true);
                 HalloweenUI.Backdrop(root, Close);
                 var card = HalloweenUI.CenterPanel(root, new Vector2(w, h));
                 float y = HalloweenUI.Title(card, de ? "Süßigkeiten-Tüte" : "Candy Bag", 16f, 34f, TrickOrTreat.Orange);

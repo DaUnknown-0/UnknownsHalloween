@@ -16,17 +16,46 @@ using UnityEngine.UI;
 namespace UnknownsHalloween {
 
     internal static class HalloweenUI {
-        // ---- Modal lock (audit 21.10.) ----
+        // ---- Modal lock (audit 21.10., rebuilt 24.10.) ----
         // A uGUI backdrop only swallows uGUI clicks. The game's own buttons are collider-based PassiveButtons and
-        // kept reacting under a menu, and with mouse control a click on a card also walked the player towards
-        // the cursor. While a menu is open the player stands still and every PassiveButton outside it is off;
-        // only the ones switched off here are switched back on (same remedy as the UTS panels).
+        // kept reacting under a menu, the hotkeys (use, report, kill, map, TOR's ability keys) fired anyway, and with
+        // mouse control a click on a card walked the player towards the cursor. The first lock switched off the
+        // PassiveButtons that existed when a menu opened, but buttons made later stayed live, and only two menus used
+        // it (User 24.10.: "Trick-or-Treat oder Omens verhindern nicht, dass man im Hintergrund noch weitere Knoepfe
+        // drueckt").
+        //
+        // Now: every blocking canvas (Canvas(..., blocking: true)) counts as an open menu while it is alive and
+        // active, no Close call needed. While one is open, prefixes swallow PassiveButton clicks, vanilla's hotkeys
+        // (KeyboardJoystick.HandleHud) and TOR's button hotkeys (CustomButton.onClickEvent), and the local player
+        // stands still. ModalLock(owner, ...) still works for a menu that wants to block without its own canvas.
         private static readonly HashSet<string> lockOwners = new HashSet<string>();
-        private static readonly List<PassiveButton> blocked = new List<PassiveButton>();
+        private static readonly List<GameObject> modals = new List<GameObject>();
         private static bool frozeHim;
+        private static int checkedFrame = -1;
+        private static bool openCache;
 
-        // A menu that dies with its scene (leaving the lobby, the round ending) never calls Close: forget every
-        // lock then, or the next menu's lock would be swallowed and buttons stay off.
+        /// <summary>Is a Halloween menu open (blocking canvas alive and active, or a ModalLock owner)?</summary>
+        internal static string ModalDebug() { var sb = new System.Text.StringBuilder($"owners {lockOwners.Count}, canvases {modals.Count}"); foreach (var g in modals) { try { sb.Append(g == null ? " [null]" : $" [{g.name} self {g.activeSelf} hier {g.activeInHierarchy}]"); } catch (Exception e) { sb.Append(" [ex " + e.Message + "]"); } } return sb.ToString(); }
+
+        internal static bool ModalOpen {
+            get {
+                int f = Time.frameCount;
+                if (f == checkedFrame) return openCache;
+                checkedFrame = f;
+                bool open = lockOwners.Count > 0;
+                for (int i = modals.Count - 1; i >= 0; i--) {
+                    var go = modals[i];
+                    bool alive = false;
+                    try { alive = go != null && go.activeInHierarchy; } catch { }
+                    if (go == null) { modals.RemoveAt(i); continue; }
+                    if (alive) open = true;
+                }
+                openCache = open;
+                return open;
+            }
+        }
+
+        // A menu that dies with its scene never calls Close: forget the owners then.
         [HarmonyLib.HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnGameJoined))]
         static class ModalResetJoin { public static void Postfix() => ModalReset(); }
         [HarmonyLib.HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnGameEnd))]
@@ -35,31 +64,58 @@ namespace UnknownsHalloween {
         static class ModalResetMenu { public static void Postfix() => ModalReset(); }
 
         internal static void ModalReset() {
-            try {
-                foreach (var b in blocked) try { if (b != null) b.enabled = true; } catch { }
-            } catch { }
-            blocked.Clear();
             lockOwners.Clear();
+            checkedFrame = -1;
             frozeHim = false;
         }
 
         internal static void ModalLock(string owner, GameObject root, bool on) {
-            try {
-                if (on) {
-                    if (!lockOwners.Add(owner) || lockOwners.Count > 1) return;
+            if (on) lockOwners.Add(owner); else lockOwners.Remove(owner);
+            checkedFrame = -1;
+        }
+
+        // Swallow clicks on the game's buttons while a menu is open (Il2Cpp methods, safe from tiering).
+        [HarmonyLib.HarmonyPatch(typeof(PassiveButton), nameof(PassiveButton.ReceiveClickDown))]
+        static class BlockClickDown { public static bool Prefix() => !ModalOpen; }
+        [HarmonyLib.HarmonyPatch(typeof(PassiveButton), nameof(PassiveButton.ReceiveClickUp))]
+        static class BlockClickUp { public static bool Prefix() => !ModalOpen; }
+        [HarmonyLib.HarmonyPatch(typeof(PassiveButton), nameof(PassiveButton.ReceiveRepeatDown))]
+        static class BlockRepeat { public static bool Prefix() => !ModalOpen; }
+
+        // Vanilla hotkeys (use, report, kill, map, sabotage).
+        [HarmonyLib.HarmonyPatch]
+        static class BlockHotkeys {
+            static System.Reflection.MethodBase TargetMethod() => HarmonyLib.AccessTools.Method(typeof(KeyboardJoystick), "HandleHud");
+            static bool Prepare() => TargetMethod() != null;
+            public static bool Prefix() => !ModalOpen;
+        }
+
+        // TOR's ability buttons fire their action through CustomButton.onClickEvent (hotkey and click). A managed
+        // method: tiering may drop this prefix in a long session, the PassiveButton block still holds the clicks.
+        [HarmonyLib.HarmonyPatch]
+        static class BlockTorButtons {
+            static System.Reflection.MethodBase TargetMethod() =>
+                HarmonyLib.AccessTools.Method(typeof(TheOtherRoles.Objects.CustomButton), "onClickEvent");
+            static bool Prepare() => TargetMethod() != null;
+            public static bool Prefix() => !ModalOpen;
+        }
+
+        // Keep the player still while a menu is open (moveable can be set back by the game meanwhile).
+        [HarmonyLib.HarmonyPatch(typeof(HudManager), nameof(HudManager.Update))]
+        static class FreezeTick {
+            public static void Postfix() {
+                try {
                     var lp = PlayerControl.LocalPlayer;
-                    if (lp != null && lp.moveable) { lp.moveable = false; frozeHim = true; }
-                    foreach (var b in UnityEngine.Object.FindObjectsOfType<PassiveButton>())
-                        if (b != null && b.enabled && (root == null || !b.transform.IsChildOf(root.transform))) { b.enabled = false; blocked.Add(b); }
-                } else {
-                    if (!lockOwners.Remove(owner) || lockOwners.Count > 0) return;
-                    foreach (var b in blocked) try { if (b != null) b.enabled = true; } catch { }
-                    blocked.Clear();
-                    var lp = PlayerControl.LocalPlayer;
-                    if (frozeHim && lp != null && MeetingHud.Instance == null) lp.moveable = true;
-                    frozeHim = false;
-                }
-            } catch { }
+                    if (lp == null) return;
+                    if (ModalOpen) {
+                        if (lp.moveable) { lp.moveable = false; frozeHim = true; }
+                    } else if (frozeHim) {
+                        // only what this lock froze; a meeting or exile that started meanwhile handles moveable itself
+                        frozeHim = false;
+                        if (MeetingHud.Instance == null && ExileController.Instance == null) lp.moveable = true;
+                    }
+                } catch { }
+            }
         }
 
         internal static readonly Color Frame = new Color(0.72f, 0.78f, 0.84f);         // thick pale outline
@@ -102,7 +158,11 @@ namespace UnknownsHalloween {
             scaler.referenceResolution = new Vector2(1920, 1080);
             scaler.matchWidthOrHeight = 0.5f;
             var ray = go.AddComponent<GraphicRaycaster>();
-            if (blocking) ray.blockingObjects = GraphicRaycaster.BlockingObjects.All;
+            if (blocking) {
+                ray.blockingObjects = GraphicRaycaster.BlockingObjects.All;
+                modals.Add(go);                          // counts as an open menu while alive and active (ModalOpen)
+                checkedFrame = -1;
+            }
             return go;
         }
 

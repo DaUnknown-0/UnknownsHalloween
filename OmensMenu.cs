@@ -20,7 +20,7 @@ namespace UnknownsHalloween {
         private static readonly Color Accent = new Color(0.55f, 0.42f, 0.82f);
 
         internal static void Toggle() { if (root != null) Close(); else Open(); }
-        internal static void Close() { if (root != null) UnityEngine.Object.Destroy(root); root = null; HalloweenUI.ModalLock("OmensMenu", null, false); }
+        internal static void Close() { if (root != null) UnityEngine.Object.Destroy(root); root = null; }
         internal static void RefreshIfOpen() { if (root != null) { Close(); Open(); } }
 
         private static string T(string en, string de) => TrickOrTreat.De() ? de : en;
@@ -32,7 +32,6 @@ namespace UnknownsHalloween {
                 bool edit = OmenSettings.CanEdit();
                 var r = OmenSettings.Current;
                 root = HalloweenUI.Canvas("OmensMenu", 9500, true);
-                HalloweenUI.ModalLock("OmensMenu", root, true);
                 HalloweenUI.Backdrop(root, Close);
                 var card = HalloweenUI.CenterPanel(root, new Vector2(W, H));
                 float y = HalloweenUI.Title(card, T("Omens", "Omen"), 16f, 34f, Accent);
