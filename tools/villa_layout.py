@@ -140,6 +140,10 @@ FIXED_SMALL = {
     "Storage/FixWiringConsole/1": (27.6, 3.65),          # Prop Store, Suedwestecke
     "Storage/AirlockConsole/0": (31.3, 3.7),             # Prop Store, Suedwand
 }
+# Nur gross: Crew Camp (UpperEngine) - Umleitung neben die Triebwerksausrichtung an der Hauswand (User 24.10.)
+FIXED_LARGE = {
+    "UpperEngine/DivertPowerConsole/1": (7.1, 24.6),
+}
 FIXED_BOTH_EXTRA = {
     "Security/DivertPowerConsole/1": (12.6, 21.2),       # Regie
     "MedBay/MedBayConsole/0": (22.5, 20.7),              # Maske, rechts vom Kunstblutregal
@@ -194,17 +198,15 @@ OPAQUE = [
     (("rect", 0.25, 15.0, 0.7, 18.2), "buecherregal", B),
     (("rect", 10.55, 15.5, 11.0, 17.5), "drehregal", B),          # Long Library, Ostwand: Drehbuecherregal (Geheimgang)
     (("rect", 6.0, 18.3, 10.7, 18.75), "buecherregal", B),
-    (("rect", 0.25, 20.6, 1.0, 22.6), "altar", B),
+    (("rect", 7.0, 19.25, 9.4, 19.85), "altar", B),             # Chapel, Nordwand mit Wandkreuz (User 24.10.: wie eine echte Kirche, Baenke blicken zum Altar)
     (("rect", 11.3, 23.25, 14.7, 23.8), "monitorwand", B),
-    (("rect", 19.3, 23.25, 21.6, 23.8), "schminktisch", B),
+    (("rect", 19.9, 23.3, 21.6, 23.8), "dosenregal", B),         # Makeup, Suedwand: Regal mit Schminkdosen, Puder, Tiegeln (User 24.10.)
     (("rect", 26.3, 8.25, 28.4, 8.7), "gewehrschrank", B),
     (("rect", 30.5, 13.25, 32.8, 13.85), "kamin", B),
     (("rect", 31.0, 18.25, 33.6, 18.7), "buecherregal", B),
     # Garten
     (("rect", 0.6, 33.6, 3.6, 35.4), "aggregat", L),
     (("rect", 6.5, 30.0, 10.0, 33.0), "zelt", L),
-    (("rect", 35.5, 32.5, 39.7, 33.1), "hecke", L),
-    (("rect", 35.5, 33.1, 36.1, 35.7), "hecke", L),
 ]
 GLASS = [
     (("ellipse", 20.3, 16.8, 0.55, 0.4), "filmkamera", B),
@@ -220,9 +222,12 @@ GLASS = [
     (("rect", 5.2, 12.6, 7.0, 13.6), "kohlen", B),
     (("rect", 4.5, 16.0, 6.5, 17.0), "lesetisch", B),
     (("circle", 2.4, 15.5, 0.25), "kandelaber", B),
-    (("rect", 3.5, 20.6, 7.5, 21.1), "kirchenbank", B),
-    (("rect", 3.5, 22.3, 7.5, 22.8), "kirchenbank", B),
-    (("circle", 9.6, 20.4, 0.25), "kandelaber", B),
+    (("rect", 5.8, 20.9, 7.8, 21.35), "kirchenbank", B),         # Chapel: zwei Bankbloecke mit Mittelgang zum Altar
+    (("rect", 8.6, 20.9, 10.6, 21.35), "kirchenbank", B),
+    (("rect", 5.8, 21.9, 7.8, 22.35), "kirchenbank", B),
+    (("rect", 8.6, 21.9, 10.6, 22.35), "kirchenbank", B),
+    (("circle", 6.55, 19.7, 0.25), "kandelaber", B),             # links und rechts vom Altar
+    (("circle", 9.85, 19.7, 0.25), "kandelaber", B),
     (("rect", 32.6, 11.0, 33.7, 12.6), "baer", B),
     (("rect", 30.0, 15.4, 30.9, 16.2), "sessel", B),
     (("rect", 31.6, 16.4, 32.5, 17.2), "sessel", B),
@@ -255,13 +260,13 @@ GLASS = [
 # werden gezeichnet und sortiert wie Props, sperren aber weder Weg noch Sicht.
 OPAQUE += [
     (("rect", 10.1, 1.2, 10.75, 2.4), "kupferkessel", B),           # Laundry, Ostwand
-    (("rect", 24.5, 3.0, 24.95, 6.0), "bandregal", B),                # Radio Room, frei vor der Westwand (stand bis 21.10. direkt vor der Tuer)
+    (("rect", 26.3, 4.3, 26.75, 5.9), "bandregal", B),                # Radio Room, Ostwand (stand bis 21.10. vor der Tuer, bis 24.10. frei mitten im Raum)
     (("rect", 33.3, 1.6, 33.75, 3.6), "maskenregal", B),             # Prop Store, Ostwand
     (("rect", 8.25, 12.2, 8.7, 13.9), "garderobe", B),               # Long Library, Nordarm Westwand
     (("rect", 0.4, 19.3, 1.2, 19.9), "engelsstatue_tuch", B),        # Chapel, Nordwestecke
     (("rect", 15.25, 22.5, 15.7, 23.8), "garderobe", B),             # Entrance Hall, Suedarm Westwand
     (("rect", 21.4, 19.3, 22.7, 19.8), "muellcontainer", B),         # Entrance Hall, Suedwand vor der Maske
-    (("rect", 20.0, 20.25, 21.7, 20.6), "kunstblutregal", B),        # Makeup, Nordwand (mit Spiegel)
+    (("rect", 19.3, 20.25, 21.9, 20.7), "schminkspiegel", B),        # Makeup, Nordwand: Schminktisch mit Gluehbirnenspiegel (User 24.10.: Garderobe wie frueher)
     (("rect", 26.3, 19.0, 26.75, 19.9), "safe", B),                  # Study, Westwand
     (("rect", 35.0, 3.0, 37.5, 5.0), "kamerakran", L),               # Terrace
     (("rect", 38.6, 24.0, 39.6, 25.0), "statue_schleier", L),        # Terrace, Suedostecke
@@ -275,8 +280,8 @@ OPAQUE += [
 ]
 GLASS += [
     (("rect", 5.6, 1.0, 6.4, 1.8), "hackblock", B),                  # Kitchen
-    (("rect", 5.4, 3.2, 6.8, 4.4), "craftservice", B),               # Kitchen
-    (("rect", 7.3, 4.0, 8.6, 4.8), "mangel", B),                     # Laundry
+    (("rect", 0.3, 6.4, 1.7, 7.6), "craftservice", B),               # Kitchen, Suedwestecke (stand bis 24.10. vor der Waschkuechentuer)
+    (("rect", 7.3, 0.3, 8.35, 1.05), "mangel", B),                   # Laundry, Nordwestecke (stand bis 24.10. vor der Kuechentuer)
     (("rect", 7.3, 7.0, 8.0, 7.75), "seifenkisten", B),              # Laundry, Suedwestecke
     (("circle", 13.0, 6.5, 0.35), "kristallkugel_tisch", B),         # Seance Parlour
     (("rect", 20.2, 0.9, 21.1, 1.6), "phonograph", B),               # Seance Parlour, neben Vent 3 (stand bis 21.10. darauf)
@@ -285,15 +290,15 @@ GLASS += [
     (("rect", 28.5, 0.3, 31.0, 0.7), "kleiderstange", B),            # Prop Store, Nordwand
     (("circle", 30.6, 2.4, 0.3), "schneiderpuppe", B),               # Prop Store
     (("rect", 32.2, 2.6, 33.0, 3.7), "sarg_angelehnt", B),           # Prop Store
-    (("rect", 29.6, 3.2, 30.4, 3.75), "nebelmaschine", B),           # Prop Store, Suedwand
+    (("rect", 27.3, 0.3, 28.1, 0.72), "nebelmaschine", B),           # Prop Store, Nordwestecke (stand bis 24.10. vor der Tuer zur Sternwarte)
     (("circle", 31.5, 5.0, 0.35), "orrery", B),                      # Observatory
-    (("rect", 33.2, 6.6, 33.75, 7.6), "buecherstapel", B),           # Observatory, Ostwand
+    (("rect", 33.2, 4.6, 33.75, 5.4), "buecherstapel", B),           # Observatory, Ostwand (lag bis 24.10. neben Vent 7)
     (("rect", 6.9, 17.6, 7.3, 18.3), "leiter", B),                   # Long Library, am Suedregal
     (("circle", 2.0, 17.8, 0.3), "globus", B),                       # Long Library
     (("rect", 8.0, 15.2, 8.9, 16.0), "lesesessel", B),               # Long Library
     (("rect", 3.2, 18.2, 3.8, 18.75), "buecherstapel", B),           # Long Library, Suedwand
     (("circle", 10.4, 8.6, 0.2), "laterne", B),                      # Long Library, Nordarm
-    (("rect", 8.2, 22.2, 10.2, 22.7), "zersplitterte_bank", B),      # Chapel
+    (("rect", 5.8, 22.9, 7.8, 23.35), "zersplitterte_bank", B),      # Chapel, dritte Reihe links (rechts liegt Vent 2)
     (("rect", 13.2, 12.8, 14.0, 13.6), "regiestuhl", B),             # Entrance Hall
     (("ellipse", 14.0, 15.5, 0.8, 0.6), "kronleuchter_boden", B),    # Entrance Hall, abgestuerzt
     (("rect", 14.1, 20.4, 14.75, 21.1), "regiestuhl_director", B),   # Director's Booth
@@ -316,12 +321,12 @@ GLASS += [
     (("circle", 22.5, 25.5, 0.3), "lichtstativ", L),                 # Driveway
     (("circle", 16.5, 28.0, 0.3), "lichtstativ", L),                 # Driveway
     (("rect", 6.0, 26.2, 7.8, 27.0), "campingtisch", L),             # Crew Camp
+    (("rect", 0.9, 30.2, 4.3, 31.9), "jeep", L),                     # Crew Camp, Westseite (User 24.10.)
     (("circle", 5.0, 34.6, 0.45), "kabeltrommel", L),                # Crew Camp
     (("circle", 9.0, 27.0, 0.35), "scheinwerfer", L),                # Crew Camp
     (("rect", 40.4, 10.6, 41.2, 11.5), "giesskannen", L),            # Greenhouse, Suedwestecke
     (("circle", 48.8, 10.8, 0.4), "schlauchtrommel", L),             # Greenhouse, Suedostecke
     (("circle", 26.5, 33.0, 0.35), "sonnenuhr", L),                  # Fountain Court
-    (("rect", 27.0, 35.0, 29.0, 35.6), "parkbank", L),               # Fountain Court, Suedwand
     (("circle", 34.5, 28.5, 0.2), "laterne", L),                     # Fountain Court
     (("circle", 27.5, 28.5, 0.2), "laterne", L),                     # Fountain Court
     (("rect", 41.2, 26.6, 42.6, 28.6), "offenes_grab", L),           # Graveyard
@@ -354,7 +359,6 @@ DECOR = [
     (("rect", 33.5, 8.8, 33.75, 9.8), "hirschkopf", B),              # Trophy Room, Ostwand
     (("rect", 31.5, 8.25, 33.0, 8.5), "fledermaeuse", B),            # Trophy Room, unter der Decke
     (("rect", 31.5, 13.9, 31.8, 14.1), "kinderschuh", B),            # Fireplace Room, vor dem Kamin
-    (("rect", 27.0, 18.25, 29.5, 18.5), "pinnwand", B),              # Study, Nordwand
     (("rect", 33.5, 21.2, 33.75, 22.0), "lueftungsgitter", B),       # Study, Ostwand
     (("rect", 29.6, 23.65, 30.2, 23.9), "schreibmaschine", B),      # Study, auf dem Schreibtisch (Standlinie vor dem Tisch, Hoehe mitgezeichnet)
     (("rect", 38.0, 2.3, 39.8, 2.6), "vogelschwarm", L),             # Terrace, auf der Balustrade
@@ -368,6 +372,22 @@ DECOR = [
     (("rect", 49.1, 28.25, 49.4, 28.5), "wandfackel", L),
     (("rect", 48.0, 33.0, 48.6, 33.4), "zerbrochene_urne", L),       # Family Crypt, am Boden
 ]
+
+# Kollision abweichend vom Zeichen-Rechteck (User 24.10.: "Hitbox anpassen"): (Art, Form) -> Kollisionsform. Das Sprite
+# wird weiter aus der Form in OPAQUE/GLASS gezeichnet, gesperrt ist nur die Fussflaeche.
+HITBOX = {
+    ("teleskop", ("circle", 28.6, 6.0, 0.55)): ("circle", 28.6, 6.15, 0.3),          # nur das Stativ
+    ("aggregat", ("rect", 0.6, 33.6, 3.6, 35.4)): ("rect", 1.1, 34.3, 3.55, 35.4),    # Fussflaeche statt Dach
+    ("brunnen", ("circle", 31.0, 31.0, 1.2)): ("ellipse", 31.0, 31.05, 1.2, 0.75),   # Becken ist oval
+    ("laterne", ("circle", 10.4, 8.6, 0.2)): ("circle", 10.4, 8.65, 0.12),
+    ("laterne", ("circle", 37.0, 20.0, 0.2)): ("circle", 37.0, 20.05, 0.12),
+    ("laterne", ("circle", 34.5, 28.5, 0.2)): ("circle", 34.5, 28.55, 0.12),
+    ("laterne", ("circle", 27.5, 28.5, 0.2)): ("circle", 27.5, 28.55, 0.12),
+}
+
+
+def hit_shape(s, kind):
+    return HITBOX.get((kind, s), s)
 
 
 def in_variant(variants, v):

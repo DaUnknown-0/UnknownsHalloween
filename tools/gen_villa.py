@@ -616,8 +616,8 @@ def emit(v, walk_w, rooms_w, opens, tiles, props, consoles, labels, console_spri
     move = walk_w.difference(affinity.translate(solid, 0, -0.3)).buffer(0)
     shadow = unary_union([walk_w, affinity.translate(walk_w, 0, 0.45)]).buffer(0)
     items = props_of(v)
-    opaque = [W(shape(s)) for s, _k, o in items if o is True]
-    glass = [W(shape(s)) for s, _k, o in items if o is False]
+    opaque = [W(shape(L.hit_shape(s, k))) for s, k, o in items if o is True]
+    glass = [W(shape(L.hit_shape(s, k))) for s, k, o in items if o is False]
     edges = unary_union([LineString(r + [r[0]]) for r in rings_of(walk_w)])
     casts = [p.distance(edges) > 0.08 for p in opaque]
     room_u = unary_union([g for _n, _s, g in rooms_w.values()])
@@ -773,7 +773,7 @@ def main(argv):
         missing = [s for s in SKELD_CONSOLES if s not in systems]
         if missing:
             print(f"WARN [{v}] systems without a room: {missing}")
-        obstacles_w = [W(shape(s)) for s, _k, o in props_of(v) if o is not None]
+        obstacles_w = [W(shape(L.hit_shape(s, k))) for s, k, o in props_of(v) if o is not None]
         door_pts = [W(opening_box(o)).centroid for o in opens]
         consoles = place_consoles(v, walk_w, rooms_w, door_pts, obstacles_w)
         free = walk_w.difference(unary_union(obstacles_w).buffer(0.25)) if obstacles_w else walk_w

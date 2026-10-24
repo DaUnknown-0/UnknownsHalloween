@@ -424,18 +424,18 @@ def decor(C, A_, ppm, rnd):
                 d.arc([P(x - 0.05, y + 0.03), P(x + 0.05, y - 0.03)], math.degrees(a), math.degrees(a) + 200, fill=(200, 170, 120, 220), width=px(0.012))
         # Waechtersteine: Runenkreis (Kalk), Runen, Kerzenreste
         cx, cy = 9.5, 0.0
-        for r, wdt in ((2.3, 0.05), (2.05, 0.025)):
+        for r, wdt in ((1.84, 0.05), (1.64, 0.025)):        # seit 24.10. 80 % (User)
             d.ellipse([P(cx - r, cy + r * 0.8), P(cx + r, cy - r * 0.8)], outline=(214, 220, 206, 170), width=px(wdt))
         for k in range(12):
             a = k / 12 * math.tau
-            rx, ry = cx + 2.18 * math.cos(a), cy + 2.18 * 0.8 * math.sin(a)
+            rx, ry = cx + 1.744 * math.cos(a), cy + 1.744 * 0.8 * math.sin(a)
             rr = random.Random(k)
             pts = [(rx + rr.uniform(-0.07, 0.07), ry + rr.uniform(-0.07, 0.07)) for _ in range(3)]
             d.line([P(*q) for q in pts], fill=(214, 220, 206, 190), width=px(0.022))
         for k in range(5):
             a1 = math.pi / 2 + k * 2 * math.tau / 5
             a2 = math.pi / 2 + (k + 1) * 2 * math.tau / 5
-            d.line([P(cx + 1.9 * math.cos(a1), cy + 1.52 * math.sin(a1)), P(cx + 1.9 * math.cos(a2), cy + 1.52 * math.sin(a2))],
+            d.line([P(cx + 1.52 * math.cos(a1), cy + 1.216 * math.sin(a1)), P(cx + 1.52 * math.cos(a2), cy + 1.216 * math.sin(a2))],
                    fill=(214, 220, 206, 90), width=px(0.02))
         # Rabenhorst: Federn und Kot unter dem Baum
         for _ in range(26):

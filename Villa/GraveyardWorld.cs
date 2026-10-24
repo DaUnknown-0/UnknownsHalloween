@@ -15,6 +15,7 @@
 //   Laternen aus: bei der Licht-Sabotage zeigen Laternenpfaehle und Kandelaber ihr erloschenes Tauschbild
 //                 ("Prop/<Art>/<x>/<y>/off" im Konsolen-Atlas, tools/graveyard_art3.py).
 //   Atmosphaere:  ab und zu ein Rabenschrei oder ein Kauz in der Ferne.
+//   Pentagramm:   Easter Egg an den Waechtersteinen (GraveyardWorld.Ritual.cs, 2026-10-24), eigenes RPC.
 
 using System;
 using System.Collections.Generic;
@@ -26,7 +27,7 @@ using Object = UnityEngine.Object;
 
 namespace UnknownsHalloween;
 
-internal sealed class GraveyardWorld : IAtlasMapWorld
+internal sealed partial class GraveyardWorld : IAtlasMapWorld
 {
     private const string LogPrefix = "[Halloween/Graveyard]";
     private const float KnellEvery = 2.8f;
@@ -85,12 +86,14 @@ internal sealed class GraveyardWorld : IAtlasMapWorld
         CollectLamps("laternenpfahl");
         CollectLamps("kandelaber");
         _lampsOff = false;
+        try { RitualBuild(); } catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} ritual failed: {e.Message}"); }
         HalloweenPlugin.Logger.LogInfo($"{LogPrefix} world ready: fog banks {_banks.Count} (alpha {FogA:F2}), lamps {_lamps.Count}, miasma vision {MiasmaF:P0}, knell dims {KnellOn}");
     }
 
     public void Tick(float dt)
     {
         float now = Time.time;
+        try { RitualTick(dt); } catch (Exception e) { RitualError(e); }
         bool reactor = false, oxy = false, lights = false;
         try
         {
@@ -155,6 +158,7 @@ internal sealed class GraveyardWorld : IAtlasMapWorld
         foreach (var b in _banks) if (b.Sr != null) Object.Destroy(b.Sr.gameObject);
         _banks.Clear();
         _lamps.Clear();
+        RitualDestroy();
     }
 
     // ------------------------------------------------------------------ Nebel

@@ -657,32 +657,68 @@ def slab_frames(ppm, seed=0):
 # ------------------------------------------------------------------ Kameras
 
 def gargoyle(ppm, on, seed=0):
-    """Wasserspeier auf einer Saeule (die Kamera): Fluegel, Hoerner, Krallen; beim Zusehen gluehen die Augen rot."""
-    c = Canvas(-0.55, -0.35, 0.55, 1.6, ppm)
-    c.poly([(-0.2, -0.2), (0.2, -0.2), (0.2, -0.1), (-0.2, -0.1)], fill=STONE_D, outline=OUTLINE, width=0.025)
-    c.rect(-0.14, -0.1, 0.14, 0.85, fill=STONE, outline=OUTLINE, width=0.035)
+    """Wasserspeier auf einer Saeule (die Kamera), neu 24.10.: Stufensockel, kannelierter Schaft mit Ring, Kapitell;
+    darauf hockt der Wasserspeier mit gespannten Fledermausfluegeln (Knochenfinger, Flughaut), gekruemmtem Ruecken,
+    Krallenfuessen ueber der Kante, Hoernern, langen Ohren, breitem Maul mit Zaehnen; beim Zusehen gluehen die Augen rot."""
+    c = Canvas(-0.7, -0.4, 0.7, 1.9, ppm)
+    gcol = shade(STONE, 0.86)
+    g_l, g_d = shade(gcol, 1.18), shade(gcol, 0.72)
+    c.poly([(-0.26, -0.24), (0.26, -0.24), (0.26, -0.12), (-0.26, -0.12)], fill=STONE_D, outline=OUTLINE, width=0.025)
+    c.poly([(-0.2, -0.12), (0.2, -0.12), (0.2, -0.04), (-0.2, -0.04)], fill=STONE, outline=OUTLINE, width=0.02)
+    c.rect(-0.14, -0.04, 0.14, 0.86, fill=STONE, outline=OUTLINE, width=0.035)
+    for k in range(4):
+        c.line([(-0.09 + k * 0.06, -0.02), (-0.09 + k * 0.06, 0.84)], fill=alpha(STONE_D, 220), width=0.012)
+    c.line([(-0.115, -0.02), (-0.115, 0.84)], fill=alpha((255, 255, 255, 255), 120), width=0.016)
+    c.rect(-0.16, 0.4, 0.16, 0.46, fill=STONE_L, outline=OUTLINE, width=0.02)                        # Ring
+    c.rect(-0.2, 0.86, 0.2, 0.94, fill=STONE_L, outline=OUTLINE, width=0.03)                         # Kapitell
+    c.rect(-0.24, 0.94, 0.24, 1.0, fill=STONE, outline=OUTLINE, width=0.03)
     for k in range(3):
-        c.line([(-0.1 + k * 0.1, -0.08), (-0.1 + k * 0.1, 0.83)], fill=alpha(STONE_D, 220), width=0.012)
-    c.rect(-0.22, 0.85, 0.22, 0.95, fill=STONE_L, outline=OUTLINE, width=0.03)
-    gy = 0.95
-    col = shade(STONE, 0.9)
-    for sx in (-1, 1):                                                                # Fluegel
-        c.poly([(sx * 0.08, gy + 0.2), (sx * 0.35, gy + 0.5), (sx * 0.42, gy + 0.3), (sx * 0.34, gy + 0.32), (sx * 0.36, gy + 0.18),
-                (sx * 0.28, gy + 0.2), (sx * 0.22, gy + 0.06)], fill=shade(col, 0.85), outline=OUTLINE, width=0.025)
-    c.ellipse(0.0, gy + 0.16, 0.16, 0.16, fill=col, outline=OUTLINE, width=0.03)      # Koerper (hockend)
+        lx = -0.12 + k * 0.12
+        c.poly([(lx - 0.04, 0.86), (lx + 0.04, 0.86), (lx, 0.93)], fill=alpha(STONE_D, 200))
+    gy = 1.0
+    # Fluegel (hinten): Flughaut mit Knochenfingern
     for sx in (-1, 1):
-        c.ellipse(sx * 0.11, gy + 0.03, 0.06, 0.04, fill=shade(col, 1.05), outline=OUTLINE, width=0.015)   # Fuesse
+        mem = [(sx * 0.1, gy + 0.2), (sx * 0.3, gy + 0.62), (sx * 0.55, gy + 0.72), (sx * 0.6, gy + 0.46), (sx * 0.52, gy + 0.3),
+               (sx * 0.56, gy + 0.14), (sx * 0.44, gy + 0.2), (sx * 0.36, gy + 0.08), (sx * 0.26, gy + 0.16), (sx * 0.2, gy + 0.06)]
+        c.poly(mem, fill=g_d, outline=OUTLINE, width=0.028)
+        for tip in ((sx * 0.55, gy + 0.72), (sx * 0.6, gy + 0.46), (sx * 0.56, gy + 0.14)):
+            c.line([(sx * 0.12, gy + 0.24), tip], fill=OUTLINE, width=0.035)
+            c.line([(sx * 0.12, gy + 0.24), tip], fill=gcol, width=0.018)
+        c.ellipse(sx * 0.55, gy + 0.73, 0.02, 0.02, fill=g_l, outline=OUTLINE, width=0.01)          # Daumenkralle
+    # Koerper hockend, Ruecken gekruemmt, Fuesse mit Krallen ueber der Kante
+    body = [(-0.2, gy + 0.02), (0.2, gy + 0.02), (0.24, gy + 0.18), (0.18, gy + 0.36), (0.0, gy + 0.44), (-0.18, gy + 0.36), (-0.24, gy + 0.18)]
+    c.poly(body, fill=gcol, outline=OUTLINE, width=0.03)
+    c.poly([(-0.1, gy + 0.06), (0.12, gy + 0.06), (0.14, gy + 0.22), (0.0, gy + 0.3), (-0.12, gy + 0.22)], fill=g_l)   # Bauch heller
+    for k in range(3):
+        c.line([(-0.12 + k * 0.1, gy + 0.08), (-0.1 + k * 0.1, gy + 0.26)], fill=alpha(g_d, 180), width=0.01)
+    for sx in (-1, 1):
+        c.ellipse(sx * 0.13, gy + 0.02, 0.07, 0.045, fill=g_l, outline=OUTLINE, width=0.018)         # Fuss
         for k in range(3):
-            c.line([(sx * 0.11 + (k - 1) * 0.025, gy + 0.0), (sx * 0.11 + (k - 1) * 0.03, gy - 0.03)], fill=OUTLINE, width=0.008)
-    c.ellipse(0.0, gy + 0.36, 0.12, 0.1, fill=shade(col, 1.08), outline=OUTLINE, width=0.025)   # Kopf
+            tx = sx * 0.13 + (k - 1) * 0.035
+            c.poly([(tx - 0.015, gy + 0.0), (tx + 0.015, gy + 0.0), (tx + 0.005, gy - 0.06)], fill=g_l, outline=OUTLINE, width=0.01)
+        c.line([(sx * 0.22, gy + 0.3), (sx * 0.3, gy + 0.2), (sx * 0.24, gy + 0.08)], fill=OUTLINE, width=0.05)      # Arme auf den Knien
+        c.line([(sx * 0.22, gy + 0.3), (sx * 0.3, gy + 0.2), (sx * 0.24, gy + 0.08)], fill=gcol, width=0.028)
+    # Kopf mit Hoernern, Ohren, Brauenwulst, Maul
+    hy = gy + 0.5
+    c.ellipse(0.0, hy, 0.15, 0.12, fill=g_l, outline=OUTLINE, width=0.028)
     for sx in (-1, 1):
-        c.poly([(sx * 0.06, gy + 0.43), (sx * 0.14, gy + 0.56), (sx * 0.1, gy + 0.42)], fill=shade(col, 0.9), outline=OUTLINE, width=0.012)   # Hoerner
-        c.ellipse(sx * 0.045, gy + 0.37, 0.025, 0.02, fill=EYE if on else hexc("#20242c"))
+        c.poly([(sx * 0.06, hy + 0.09), (sx * 0.16, hy + 0.26), (sx * 0.12, hy + 0.07)], fill=gcol, outline=OUTLINE, width=0.014)   # Hoerner
+        c.line([(sx * 0.1, hy + 0.14), (sx * 0.13, hy + 0.2)], fill=alpha(g_d, 200), width=0.008)
+        c.poly([(sx * 0.13, hy + 0.02), (sx * 0.24, hy + 0.1), (sx * 0.15, hy - 0.04)], fill=gcol, outline=OUTLINE, width=0.014)   # Ohren
+        c.line([(sx * 0.02, hy + 0.05), (sx * 0.1, hy + 0.06)], fill=OUTLINE, width=0.018)              # Brauen
+        c.ellipse(sx * 0.055, hy + 0.01, 0.03, 0.024, fill=EYE if on else hexc("#20242c"), outline=OUTLINE, width=0.01)
         if on:
-            c.ellipse(sx * 0.045, gy + 0.37, 0.01, 0.008, fill=hexc("#ffd0a0"))
-    c.poly([(-0.06, gy + 0.3), (0.06, gy + 0.3), (0.0, gy + 0.27)], fill=OUTLINE)       # Maul
-    c.line([(-0.12, gy + 0.36), (-0.1, gy + 0.43)], fill=alpha(G.MOON, 150), width=0.012)
+            c.ellipse(sx * 0.055, hy + 0.01, 0.012, 0.01, fill=hexc("#ffd0a0"))
+    if on:
+        c.glow(0.0, hy, 0.35, EYE, 0.35)
+    c.poly([(-0.1, hy - 0.05), (0.1, hy - 0.05), (0.08, hy - 0.1), (-0.08, hy - 0.1)], fill=hexc("#1a1418"), outline=OUTLINE, width=0.014)   # Maul
+    for k in range(4):
+        tx = -0.07 + k * 0.047
+        c.poly([(tx - 0.012, hy - 0.05), (tx + 0.012, hy - 0.05), (tx, hy - 0.085)], fill=hexc("#e8e4d8"))
+    c.ellipse(0.0, hy - 0.02, 0.02, 0.012, fill=g_d)                                                      # Nase
+    c.line([(-0.12, hy + 0.02), (-0.1, hy + 0.09)], fill=alpha(G.MOON, 150), width=0.012)
     G.lichen(c, -0.12, 0.0, 0.12, 0.8, 8, seed=seed)
+    G.moss(c, -0.1, -0.08, 0.08, seed=seed)
     img = c.finish()
     return VC.clean((img, int(round((0 - c.x0) * ppm)), int(round((0 - c.y0) * ppm))))
 

@@ -830,6 +830,23 @@ namespace UnknownsHalloween {
             }
         }
 
+        /// <summary>Plays a cutscene without a costume behind it (Ravenhollow's demon, 2026-10-24) for the local
+        /// victim: frames hk_&lt;key&gt;_back/vrest/vbody/vshade/front_NN, no killer layers. False when the frames are
+        /// not there (the caller then shows nothing).</summary>
+        public static bool PlayStandaloneScene(string key, int frames, int[] flashes, float hold, int victimColor) {
+            try {
+                Setup();
+                if (!HalloweenAssets.Exists(Res + $"hk_{key}_back_01.png")) return false;
+                var c = new Costume { Key = key, KillKey = key, Name = key };
+                var scene = new KillScene { Key = key, Frames = frames, Flashes = flashes, Hold = hold, Killer = false };
+                queue.Add((c, scene, victimColor, victimColor, Time.time + 20f));
+                return true;
+            } catch (Exception e) {
+                HalloweenPlugin.Logger?.LogWarning($"[Halloween] standalone scene {key}: {e.Message}");
+                return false;
+            }
+        }
+
         /// <summary>Plays a costume cutscene locally as if the local player had just been killed.
         /// Returns a short status line. Keys: freddy, jason (slash), jasonlift, jasonrandom, xeno (tail stab),
         /// xenobite, xenomorph (random of both), ghost / ghostface. "&lt;costume&gt;random" draws like a real kill.</summary>

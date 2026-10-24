@@ -49,6 +49,7 @@ internal static class HollowmereIntro
         {
             byte sub = reader.ReadByte();
             if (sub == SubIntro) return;            // alte Intro-Ansage (vor 24.10.), spielt Atlas jetzt selbst
+            if (sub >= GraveyardWorld.SubFirst) { GraveyardWorld.HandleRpc(sub, reader); return; }   // Friedhof (Pentagramm, 24.10.)
             HollowmereWorld.HandleRpc(sub, reader);
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} rpc failed: {e.Message}"); }

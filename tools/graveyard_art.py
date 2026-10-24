@@ -388,20 +388,34 @@ def headstone(p, c, cx, yb, form, w, h, col, rnd, idx):
         c.line([(cx - sw / 2 + 0.02, fb + 0.03), (cx - sw / 2 + 0.02, top - 0.03)], fill=alpha(shade(col, 1.3), 200), width=0.012)
         moss(c, cx - w * 0.3, yb + 0.1, 0.08, seed=idx)
         return top + 0.06
-    if form == "obelisk":                                                             # Stufensockel, schlanker Obelisk, Urne
+    if form == "obelisk":                                                             # Stufensockel, Obelisk mit Inschrift, Urne
         p.box(x0 - 0.06, yb, x1 + 0.06, yb + 0.3, 0, 0.14, shade(col, 1.1), shade(col, 0.92), w=OUT_W * 0.8)
-        p.box(x0 + 0.04, yb + 0.05, x1 - 0.04, yb + 0.25, 0.14, 0.18, shade(col, 1.1), col, w=OUT_W * 0.8)
-        fb = yb + 0.05 + 0.32 * K
-        ob_w = w * 0.48
-        top = fb + h * K * 1.15
-        c.poly([(cx - ob_w / 2 + 0.03, fb + 0.06), (cx + ob_w / 2 + 0.03, fb + 0.06), (cx + ob_w * 0.3 + 0.03, top), (cx + 0.03, top + 0.09), (cx - ob_w * 0.3 + 0.03, top)],
-               fill=shade(col, 1.2), outline=OUTLINE, width=OUT_W * 0.8)
-        c.poly([(cx - ob_w / 2, fb), (cx + ob_w / 2, fb), (cx + ob_w * 0.3, top - 0.02), (cx, top + 0.06), (cx - ob_w * 0.3, top - 0.02)],
+        p.box(x0 + 0.04, yb + 0.05, x1 - 0.04, yb + 0.25, 0.14, 0.2, shade(col, 1.1), col, w=OUT_W * 0.8)
+        c.rect(x0 + 0.1, yb + 0.05 + 0.17 * K, x1 - 0.1, yb + 0.05 + 0.31 * K, outline=alpha(shade(col, 0.6), 220), width=0.01)
+        c.line([(x0 + 0.15, yb + 0.05 + 0.24 * K), (x1 - 0.15, yb + 0.05 + 0.24 * K)], fill=alpha(shade(col, 0.6), 200), width=0.008)
+        fb = yb + 0.05 + 0.34 * K
+        ob_w = w * 0.5
+        top = fb + h * K * 1.2
+        c.poly([(cx - ob_w / 2 + 0.035, fb + 0.06), (cx + ob_w / 2 + 0.035, fb + 0.06), (cx + ob_w * 0.28 + 0.035, top), (cx + 0.035, top + 0.1), (cx - ob_w * 0.28 + 0.035, top)],
+               fill=shade(col, 1.2), outline=OUTLINE, width=OUT_W * 0.8)                       # Seitenflaeche (hell)
+        c.poly([(cx - ob_w / 2, fb), (cx + ob_w / 2, fb), (cx + ob_w * 0.28, top - 0.02), (cx, top + 0.07), (cx - ob_w * 0.28, top - 0.02)],
                fill=col, outline=OUTLINE, width=OUT_W * 0.8)
-        c.line([(cx, fb + 0.02), (cx, top + 0.04)], fill=alpha(shade(col, 0.82), 200), width=0.01)
-        c.line([(cx - ob_w / 2 + 0.03, fb + 0.03), (cx - ob_w * 0.3 + 0.02, top - 0.04)], fill=alpha(shade(col, 1.3), 200), width=0.012)
-        c.rect(x0 + 0.08, yb + 0.05 + 0.16 * K, x1 - 0.08, yb + 0.05 + 0.28 * K, outline=alpha(shade(col, 0.6), 220), width=0.01)
-        c.ellipse(cx, fb + h * K * 0.35, 0.045, 0.045, outline=alpha(shade(col, 0.55), 230), width=0.012)
+        c.line([(cx, fb + 0.02), (cx, top + 0.05)], fill=alpha(shade(col, 0.82), 200), width=0.01)
+        c.line([(cx - ob_w / 2 + 0.03, fb + 0.03), (cx - ob_w * 0.28 + 0.02, top - 0.04)], fill=alpha(shade(col, 1.3), 220), width=0.014)
+        c.poly([(cx - ob_w * 0.26, top - 0.02), (cx + ob_w * 0.26, top - 0.02), (cx, top + 0.07)], fill=hexc("#c8a050"), outline=OUTLINE, width=0.01)   # Goldspitze
+        # Inschriftfeld mit Zeilen und Kreuz, Blattranke am Fuss
+        iy0, iy1 = fb + h * K * 0.45, fb + h * K * 0.95
+        c.rect(cx - ob_w * 0.3, iy0, cx + ob_w * 0.3, iy1, outline=alpha(shade(col, 0.55), 230), width=0.01)
+        for k in range(4):
+            c.line([(cx - ob_w * 0.2, iy0 + 0.06 + k * 0.07), (cx + ob_w * 0.2, iy0 + 0.06 + k * 0.07)], fill=alpha(shade(col, 0.55), 220), width=0.008)
+        c.line([(cx, iy1 - 0.04), (cx, iy1 - 0.14)], fill=alpha(shade(col, 0.5), 230), width=0.014)
+        c.line([(cx - 0.03, iy1 - 0.07), (cx + 0.03, iy1 - 0.07)], fill=alpha(shade(col, 0.5), 230), width=0.014)
+        c.ellipse(cx, fb + h * K * 0.3, 0.05, 0.05, outline=alpha(shade(col, 0.55), 230), width=0.012)
+        c.ellipse(cx, fb + h * K * 0.3, 0.015, 0.015, fill=alpha(shade(col, 0.55), 230))
+        for k in range(3):                                                                               # Lorbeerzweig
+            c.poly([(cx - ob_w * 0.3 + k * 0.05, fb + 0.1), (cx - ob_w * 0.3 + k * 0.05 + 0.02, fb + 0.16), (cx - ob_w * 0.3 + k * 0.05 + 0.04, fb + 0.1)],
+                   fill=alpha(shade(col, 0.6), 220))
+        c.ellipse(cx + ob_w * 0.42, fb + 0.26, 0.04, 0.03, fill=MOSS)
         lichen(c, cx - ob_w / 3, fb, cx + ob_w / 3, top - 0.1, 8, seed=idx)
         return top + 0.1
     if form == "wood":                                                                # verwittertes Holzkreuz
@@ -445,21 +459,41 @@ def headstone(p, c, cx, yb, form, w, h, col, rnd, idx):
         p.box(x0, yb, x1, yb + 0.3, 0, 0.32, shade(col, 1.08), col, w=OUT_W * 0.8)
         fb = yb + 0.32 * K
         c.rect(x0 + 0.06, yb + 0.08 * K, x1 - 0.06, yb + 0.26 * K, outline=alpha(shade(col, 0.6), 220), width=0.01)
+        c.line([(x0 + 0.12, yb + 0.17 * K), (x1 - 0.12, yb + 0.17 * K)], fill=alpha(shade(col, 0.6), 200), width=0.008)
         gy = fb + 0.03
-        for sx in (-1, 1):                                                            # Fluegel, gesenkt
-            c.poly([(cx + sx * 0.05, gy + 0.3), (cx + sx * 0.26, gy + 0.42), (cx + sx * 0.3, gy + 0.3), (cx + sx * 0.22, gy + 0.08), (cx + sx * 0.1, gy + 0.02)],
-                   fill=shade(col, 1.12), outline=OUTLINE, width=0.03)
-            for k in range(3):
-                c.line([(cx + sx * 0.12, gy + 0.1 + k * 0.08), (cx + sx * 0.25, gy + 0.18 + k * 0.07)], fill=alpha(shade(col, 0.75), 200), width=0.008)
-        c.poly([(cx - 0.13, gy), (cx + 0.13, gy), (cx + 0.08, gy + 0.34), (cx - 0.08, gy + 0.34)], fill=col, outline=OUTLINE, width=0.03)   # Gewand
+        wing_l = shade(col, 1.12)
+        for sx in (-1, 1):                                                            # Fluegel ausgebreitet, Federreihen
+            c.poly([(cx + sx * 0.05, gy + 0.3), (cx + sx * 0.18, gy + 0.48), (cx + sx * 0.36, gy + 0.6), (cx + sx * 0.44, gy + 0.46),
+                    (cx + sx * 0.4, gy + 0.26), (cx + sx * 0.3, gy + 0.1), (cx + sx * 0.14, gy + 0.03)],
+                   fill=wing_l, outline=OUTLINE, width=0.03)
+            for row in range(2):
+                for k in range(3):
+                    t = 0.2 + k * 0.28
+                    fx = cx + sx * (0.12 + 0.28 * t + row * 0.03)
+                    fy = gy + 0.12 + 0.42 * t - row * 0.1
+                    c.line([(fx, fy), (fx - sx * 0.02, fy - 0.08)], fill=alpha(shade(col, 0.72), 200), width=0.008)
+                    c.ellipse(fx - sx * 0.02, fy - 0.085, 0.016, 0.012, outline=alpha(shade(col, 0.72), 200), width=0.006)
+        c.poly(HD.wobble([(cx - 0.15, gy), (cx + 0.15, gy), (cx + 0.1, gy + 0.36), (cx - 0.1, gy + 0.36)], amp=0.008, seed=idx, step=0.05, closed=True),
+               fill=col, outline=OUTLINE, width=0.03)                                                # Gewand
+        for k in range(4):
+            c.line([(cx - 0.08 + k * 0.05, gy + 0.02), (cx - 0.06 + k * 0.04, gy + 0.32)], fill=alpha(shade(col, 0.72), 200), width=0.008)
+        c.line([(cx - 0.1, gy + 0.03), (cx - 0.07, gy + 0.3)], fill=alpha((255, 255, 255, 255), 100), width=0.012)
         for k in range(3):
-            c.line([(cx - 0.06 + k * 0.06, gy + 0.02), (cx - 0.04 + k * 0.04, gy + 0.3)], fill=alpha(shade(col, 0.72), 200), width=0.008)
-        c.ellipse(cx, gy + 0.39, 0.065, 0.06, fill=shade(col, 1.08), outline=OUTLINE, width=0.03)                       # gesenkter Kopf
-        c.ellipse(cx + 0.015, gy + 0.37, 0.035, 0.025, fill=shade(col, 0.6))
-        c.poly([(cx - 0.05, gy + 0.22), (cx + 0.03, gy + 0.3), (cx + 0.05, gy + 0.26), (cx - 0.02, gy + 0.18)], fill=shade(col, 1.15), outline=OUTLINE, width=0.015)  # Haende
+            c.ellipse(cx - 0.1 + k * 0.1, gy, 0.045, 0.02, fill=col, outline=OUTLINE, width=0.012)
+        c.rect(cx - 0.09, gy + 0.34, cx + 0.09, gy + 0.37, fill=shade(col, 0.7))                     # Guertel
+        c.poly([(cx - 0.1, gy + 0.36), (cx + 0.1, gy + 0.36), (cx + 0.08, gy + 0.5), (cx - 0.08, gy + 0.5)], fill=col, outline=OUTLINE, width=0.025)
+        c.ellipse(cx, gy + 0.56, 0.07, 0.07, fill=shade(col, 1.08), outline=OUTLINE, width=0.03)       # gesenkter Kopf
+        c.ellipse(cx - 0.005, gy + 0.6, 0.075, 0.04, fill=shade(col, 0.9), outline=OUTLINE, width=0.012)   # Haar
+        for sx in (-1, 1):                                                            # Arme zum Gesicht
+            c.line([(cx + sx * 0.09, gy + 0.42), (cx + sx * 0.1, gy + 0.5), (cx + sx * 0.03, gy + 0.54)], fill=OUTLINE, width=0.05)
+            c.line([(cx + sx * 0.09, gy + 0.42), (cx + sx * 0.1, gy + 0.5), (cx + sx * 0.03, gy + 0.54)], fill=shade(col, 1.08), width=0.03)
+        c.poly([(cx - 0.055, gy + 0.5), (cx + 0.055, gy + 0.5), (cx + 0.06, gy + 0.58), (cx - 0.06, gy + 0.58)], fill=shade(col, 1.15), outline=OUTLINE, width=0.012)  # Haende
+        for k in range(4):
+            c.line([(cx - 0.04 + k * 0.027, gy + 0.51), (cx - 0.04 + k * 0.027, gy + 0.57)], fill=alpha(shade(col, 0.6), 200), width=0.005)
+        c.ellipse(cx + 0.02, gy + 0.545, 0.007, 0.009, fill=hexc("#1a1e2a"))
         lichen(c, cx - 0.1, gy, cx + 0.1, gy + 0.3, 5, seed=idx)
-        c.line([(cx + 0.02, gy + 0.35), (cx + 0.025, gy + 0.3)], fill=alpha(hexc("#1a1e2a"), 160), width=0.008)         # Traenenspur
-        return gy + 0.46
+        c.line([(cx + 0.02, gy + 0.5), (cx + 0.025, gy + 0.42)], fill=alpha(hexc("#1a1e2a"), 160), width=0.008)         # Traenenspur
+        return gy + 0.66
     return yb
 
 

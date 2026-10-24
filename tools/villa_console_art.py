@@ -485,6 +485,49 @@ def fuel_drum(ppm, idx=0):
     return b.result()
 
 
+def coal_bin(ppm, idx=0):
+    """Kuechen-Variante der Treibstoffkonsole (User 24.10.: das Fass wirkte in der Kueche fehl am Platz): Kohlenkasten
+    aus Gusseisen mit offenem Deckel, Kohlebrocken darin und davor, Kohlenschaufel angelehnt, kleiner Eimer, Russ."""
+    b = WC.Block(-0.38, -0.3, 0.38, 0.3, 1.1 * K, ppm)
+    c = b.c
+    b.shadow(-0.3, -0.24, 0.3, 0.2)
+    coal = hexc("#1e2026")
+    coal_l = hexc("#3a3e48")
+    b.box(-0.3, -0.22, 0.14, 0.18, 0, 0.55, IRON_L, IRON)
+    fz = -0.22
+    ft = fz + 0.55 * K
+    c.rect(-0.26, fz + 0.06, 0.1, ft - 0.06, outline=IRON_D, width=0.015)                               # Fuellung
+    c.line([(-0.2, fz + 0.1), (-0.2, ft - 0.1)], fill=IRON_L, width=0.01)
+    for sx, sy in ((-0.27, fz + 0.05), (0.11, fz + 0.05), (-0.27, ft - 0.05), (0.11, ft - 0.05)):
+        c.ellipse(sx, sy, 0.012, 0.012, fill=STEEL, outline=OUTLINE, width=0.006)
+    _label(c, -0.08, fz + 0.5 * K * 0.55, "COAL", 0.055, col=PORCELAIN, tape=False)
+    # offener Deckel (nach hinten geklappt) und Kohle im Kasten
+    zt = -0.22 + 0.55 * K
+    c.rect(-0.28, zt + 0.02, 0.12, 0.18 + 0.55 * K, fill=coal)
+    rs = random.Random(idx)
+    for _ in range(14):
+        x, y = rs.uniform(-0.25, 0.09), rs.uniform(zt + 0.05, 0.16 + 0.55 * K)
+        c.poly([(x - 0.035, y), (x - 0.01, y + 0.03), (x + 0.03, y + 0.02), (x + 0.035, y - 0.015), (x, y - 0.03)], fill=coal_l if rs.random() < 0.5 else coal, outline=OUTLINE, width=0.008)
+        c.ellipse(x - 0.012, y + 0.01, 0.008, 0.005, fill=alpha((255, 255, 255, 255), 90))
+    c.poly([(-0.3, 0.18 + 0.55 * K), (0.14, 0.18 + 0.55 * K), (0.12, 0.18 + 0.55 * K + 0.3), (-0.28, 0.18 + 0.55 * K + 0.3)], fill=IRON_L, outline=OUTLINE, width=0.02)   # Deckel
+    c.line([(-0.24, 0.18 + 0.55 * K + 0.26), (0.08, 0.18 + 0.55 * K + 0.26)], fill=IRON_D, width=0.012)
+    c.ellipse(-0.08, 0.18 + 0.55 * K + 0.15, 0.03, 0.02, fill=BRASS, outline=OUTLINE, width=0.01)
+    # Kohlenschaufel angelehnt (rechts), Brocken am Boden, Eimer
+    c.line([(0.2, -0.24), (0.3, 0.42)], fill=OUTLINE, width=0.04)
+    c.line([(0.2, -0.24), (0.3, 0.42)], fill=WALNUT, width=0.022)
+    c.poly([(0.1, -0.26), (0.3, -0.24), (0.3, -0.1), (0.12, -0.08)], fill=STEEL, outline=OUTLINE, width=0.015)
+    c.line([(0.14, -0.22), (0.27, -0.21)], fill=alpha((255, 255, 255, 255), 120), width=0.008)
+    c.ellipse(0.3, 0.42, 0.03, 0.02, fill=WALNUT_D, outline=OUTLINE, width=0.01)
+    for x, y in ((-0.34, -0.27), (-0.1, -0.29), (0.02, -0.26)):
+        c.poly([(x - 0.03, y), (x - 0.01, y + 0.025), (x + 0.025, y + 0.015), (x + 0.03, y - 0.012), (x, y - 0.025)], fill=coal, outline=OUTLINE, width=0.008)
+    b.cyl(0.3, 0.1, 0.09, 0, 0.22, IRON_L, IRON, ry=0.045)                                                  # Eimer
+    c.line([(0.21, 0.1 + 0.2 * K), (0.3, 0.1 + 0.2 * K + 0.1), (0.39, 0.1 + 0.2 * K)], fill=OUTLINE, width=0.025)
+    c.line([(0.21, 0.1 + 0.2 * K), (0.3, 0.1 + 0.2 * K + 0.1), (0.39, 0.1 + 0.2 * K)], fill=IRON_L, width=0.012)
+    c.ellipse(0.3, 0.1 + 0.22 * K, 0.07, 0.03, fill=coal)
+    c.ellipse(-0.05, -0.2, 0.12, 0.03, fill=alpha((0, 0, 0, 255), 70))                                        # Russ
+    return b.result()
+
+
 def small_generator(ppm, idx=0):
     """Tragbares Aggregat der Crew: gelb-schwarz, Drehzahlmesser, Starterseil, Auspuff mit Rauch, Kanister."""
     b = WC.Block(-0.48, -0.3, 0.48, 0.3, 1.1 * K, ppm)
@@ -887,6 +930,12 @@ BY_NAME = {
     "SwipeCardConsole": callsheet_post, "MedScanner": ringlight_mat, "MedBayConsole": blood_bench,
     "CleanFilterConsole": flue_hatch, "FuelEngineConsole": fuel_drum, "AlignEngineConsole": small_generator,
     "gasCanConsole": can_pallet, "StabilizeSteeringConsole": eyepiece_desk, "FixCommsConsole": old_radio,
+}
+
+# Motive, die vom Raum abhaengen (User 24.10.: in der Kueche ein Kohlenkasten statt des Treibstofffasses; im Crew
+# Camp bleibt das Fass). villa_consoles._render_all prueft diese Tabelle vor BY_NAME.
+BY_NAME_ROOM = {
+    ("FuelEngineConsole", "kitchen"): coal_bin,
 }
 
 

@@ -595,28 +595,63 @@ def _sarkophag(p, c, x0, y0, x1, y1, idx, rnd):
 
 
 
-@kind("saeule", 2.8, pad=0.4)
+@kind("saeule", 3.0, pad=0.5)
 def _saeule(p, c, x0, y0, x1, y1, idx, rnd):
+    """Saeule der Gruft, neu 24.10.: Plinthe und Basis mit Wulsten, kannelierter Schaft mit Lichtkante, korinthisches
+    Kapitell mit Akanthusblaettern und Voluten, darauf eine Urne mit Tuch, Efeu am Schaft, Risse und Flechten."""
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     r = (x1 - x0) / 2
-    p.box(cx - r - 0.08, cy - r * 0.6 - 0.04, cx + r + 0.08, cy + r * 0.6 + 0.04, 0, 0.2, shade(MARBLE, 1.05), shade(MARBLE, 0.82))
-    H = 2.6
-    yb = cy + 0.2 * K
-    yt = cy + (0.2 + H) * K - 0.25
-    c.rect(cx - r * 0.8, yb, cx + r * 0.8, yt, fill=MARBLE, outline=OUTLINE, width=OUT_W)
-    for k in range(5):                                                                # Kanneluren
-        x = cx - r * 0.6 + k * r * 0.3
-        c.line([(x, yb + 0.05), (x, yt - 0.05)], fill=alpha(shade(MARBLE, 0.72), 220), width=0.012)
-    c.line([(cx - r * 0.7, yb + 0.05), (cx - r * 0.7, yt - 0.05)], fill=alpha((255, 255, 255, 255), 120), width=0.02)
-    c.poly([(cx - r * 1.2, yt), (cx + r * 1.2, yt), (cx + r * 1.0, yt + 0.12), (cx - r * 1.0, yt + 0.12)], fill=shade(MARBLE, 1.05), outline=OUTLINE, width=0.03)   # Kapitell
+    m, m_l, m_d = MARBLE, shade(MARBLE, 1.06), shade(MARBLE, 0.74)
+    p.box(cx - r - 0.1, cy - r * 0.6 - 0.06, cx + r + 0.1, cy + r * 0.6 + 0.06, 0, 0.12, m_l, shade(m, 0.84))
+    p.cyl(cx, cy, r + 0.02, 0.12, 0.07, m_l, m_d, ry=(r + 0.02) * 0.5)                                 # Basiswulst
+    p.cyl(cx, cy, r * 0.9, 0.19, 0.05, m_l, m_d, ry=r * 0.45)
+    H = 2.1
+    yb = cy + 0.24 * K
+    yt = yb + H * K
+    c.rect(cx - r * 0.82, yb, cx + r * 0.82, yt, fill=m, outline=OUTLINE, width=OUT_W)
+    for k in range(6):                                                                # Kanneluren
+        x = cx - r * 0.62 + k * r * 0.25
+        c.line([(x, yb + 0.04), (x, yt - 0.04)], fill=alpha(m_d, 200), width=0.012)
+        c.line([(x + 0.012, yb + 0.04), (x + 0.012, yt - 0.04)], fill=alpha((255, 255, 255, 255), 90), width=0.006)
+    c.line([(cx - r * 0.74, yb + 0.04), (cx - r * 0.74, yt - 0.04)], fill=alpha((255, 255, 255, 255), 140), width=0.022)
+    c.rect(cx + r * 0.5, yb + 0.02, cx + r * 0.82, yt - 0.02, fill=alpha(m_d, 90))                   # Schattenseite
+    # Kapitell: Hals, zwei Reihen Akanthus, Voluten, Deckplatte
+    c.rect(cx - r * 0.86, yt, cx + r * 0.86, yt + 0.05, fill=m_d, outline=OUTLINE, width=0.02)
+    for row, (n, hgt) in enumerate(((5, 0.14), (4, 0.16))):
+        for k in range(n):
+            lx = cx - r * 0.8 + (k + 0.5) * (r * 1.6) / n
+            ly = yt + 0.04 + row * 0.1
+            c.poly([(lx - 0.055, ly), (lx + 0.055, ly), (lx + 0.045, ly + hgt * 0.7), (lx, ly + hgt), (lx - 0.045, ly + hgt * 0.7)],
+                   fill=m_l if (k + row) % 2 else m, outline=OUTLINE, width=0.012)
+            c.line([(lx, ly + 0.02), (lx, ly + hgt - 0.03)], fill=alpha(m_d, 160), width=0.008)
+    for sx in (-1, 1):                                                                # Voluten
+        vx, vy = cx + sx * r * 0.95, yt + 0.3
+        c.ellipse(vx, vy, 0.07, 0.065, fill=m_l, outline=OUTLINE, width=0.02)
+        c.ellipse(vx - sx * 0.01, vy + 0.005, 0.035, 0.03, outline=m_d, width=0.012)
+        c.ellipse(vx - sx * 0.01, vy + 0.005, 0.012, 0.012, fill=m_d)
+    c.poly([(cx - r * 1.25, yt + 0.34), (cx + r * 1.25, yt + 0.34), (cx + r * 1.1, yt + 0.46), (cx - r * 1.1, yt + 0.46)], fill=m_l, outline=OUTLINE, width=0.03)
+    c.line([(cx - r * 1.0, yt + 0.44), (cx + r * 1.0, yt + 0.44)], fill=alpha((255, 255, 255, 255), 110), width=0.012)
+    # Urne mit Tuch auf der Saeule
+    uy = yt + 0.46
+    c.rect(cx - 0.08, uy, cx + 0.08, uy + 0.05, fill=m_d, outline=OUTLINE, width=0.015)
+    c.poly([(cx - 0.07, uy + 0.05), (cx + 0.07, uy + 0.05), (cx + 0.15, uy + 0.2), (cx + 0.13, uy + 0.36), (cx - 0.13, uy + 0.36), (cx - 0.15, uy + 0.2)],
+           fill=m, outline=OUTLINE, width=0.02)
+    c.ellipse(cx, uy + 0.4, 0.1, 0.04, fill=m_l, outline=OUTLINE, width=0.015)
+    c.poly([(cx - 0.12, uy + 0.4), (cx + 0.1, uy + 0.42), (cx + 0.2, uy + 0.2), (cx + 0.14, uy + 0.12), (cx + 0.06, uy + 0.3), (cx - 0.1, uy + 0.3)],
+           fill=CLOTH, outline=OUTLINE, width=0.014)                                     # Tuch haengt ueber
+    c.line([(cx + 0.1, uy + 0.36), (cx + 0.16, uy + 0.18)], fill=alpha(CLOTH_D, 200), width=0.01)
+    c.line([(cx - 0.1, uy + 0.1), (cx - 0.08, uy + 0.3)], fill=alpha((255, 255, 255, 255), 110), width=0.012)
     for sx in (-1, 1):
-        c.ellipse(cx + sx * r * 1.0, yt + 0.05, 0.06, 0.05, fill=shade(MARBLE, 0.95), outline=OUTLINE, width=0.015)
-    c.rect(cx - r * 1.3, yt + 0.12, cx + r * 1.3, yt + 0.22, fill=MARBLE, outline=OUTLINE, width=0.03)
-    G.crack(c, [(cx + r * 0.3, yt - 0.1), (cx + r * 0.1, yt - 0.4), (cx + r * 0.35, yt - 0.7)], seed=idx)
-    vine = HD.wobble([(cx - r * 0.7, yb), (cx + r * 0.5, yb + 0.4), (cx - r * 0.4, yb + 0.8), (cx + r * 0.3, yb + 1.1)], amp=0.03, seed=idx, step=0.05)
+        c.line([(cx + sx * 0.14, uy + 0.3), (cx + sx * 0.22, uy + 0.24), (cx + sx * 0.15, uy + 0.14)], fill=OUTLINE, width=0.04)
+        c.line([(cx + sx * 0.14, uy + 0.3), (cx + sx * 0.22, uy + 0.24), (cx + sx * 0.15, uy + 0.14)], fill=m, width=0.02)
+    # Efeu, Risse, Flechten
+    vine = HD.wobble([(cx - r * 0.7, yb), (cx + r * 0.5, yb + 0.4), (cx - r * 0.4, yb + 0.85), (cx + r * 0.3, yb + 1.2)], amp=0.03, seed=idx, step=0.05)
     c.line(vine, fill=hexc("#2e4a30"), width=0.016)
     for k, (lx, ly) in enumerate(vine[::2]):
-        c.poly([(lx, ly + 0.03), (lx + 0.03, ly), (lx, ly - 0.03), (lx - 0.03, ly)], fill=hexc("#4e7c50") if k % 2 else hexc("#3e6a48"), outline=alpha(OUTLINE, 200), width=0.006)
+        c.poly([(lx, ly + 0.035), (lx + 0.035, ly), (lx, ly - 0.035), (lx - 0.035, ly)], fill=hexc("#4e7c50") if k % 2 else hexc("#3e6a48"), outline=alpha(OUTLINE, 200), width=0.006)
+    G.crack(c, [(cx + r * 0.3, yt - 0.1), (cx + r * 0.1, yt - 0.4), (cx + r * 0.35, yt - 0.7)], seed=idx)
+    G.lichen(c, cx - r * 0.6, yb, cx + r * 0.6, yb + 1.0, 8, seed=idx)
+    G.moss(c, cx - r * 0.5, cy - r * 0.5, 0.08, seed=idx)
 
 
 @kind("urne", 1.3, pad=0.35)

@@ -345,6 +345,9 @@ def _render_all(ppm, brief):
             continue
         if key == "EmergencyButton":
             spr = slate_table(ppm)
+        elif (name, room) in getattr(VCA, "BY_NAME_ROOM", {}):
+            # raumabhaengige Villa-Motive (24.10.: Kohlenkasten in der Kueche)
+            spr = VCA.BY_NAME_ROOM[(name, room)](ppm, sum(ord(ch) for ch in key) % 7)
         elif name in VCA.BY_NAME:
             # Villa-eigene Motive (Audit 15.10.); idx variiert Details je Konsole
             spr = VCA.BY_NAME[name](ppm, sum(ord(ch) for ch in key) % 7)

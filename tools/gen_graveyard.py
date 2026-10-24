@@ -119,7 +119,7 @@ def rings_of(g):
 
 
 def obstacles():
-    return [shape_geom(s) for _k, s, m in L.PROPS if m in ("opaque", "glass")]
+    return [shape_geom(L.hit_shape(s, k)) for k, s, m in L.PROPS if m in ("opaque", "glass")]
 
 
 def place_consoles(walk, rms, doors, obst):
@@ -437,9 +437,12 @@ def emit(ctx, tiles, ppm, props, console_sprites, extra):
     full = box(BX0 - 5, BY0 - 5, BX1 + 5, BY1 + 5)
     solid = full.difference(walk)
     move = walk.difference(translate(solid, 0, -0.3)).buffer(0)
-    shadow = unary_union([walk, translate(walk, 0, 0.45)]).buffer(0)
-    opaque = [shape_geom(s) for _k, s, m in L.PROPS if m == "opaque"]
-    glass = [shape_geom(s) for _k, s, m in L.PROPS if m == "glass"]
+    # Sicht-/Lichtkanten nur an Gebaeuden und am Kartenrand; Grabfelder und Hecken draussen sperren nur den Weg
+    # (User 24.10.: "Bei Waenden, die draussen sind, nur Kollision, keine Lichtblockade")
+    open_air = box(BX0, BY0, BX1, BY1).difference(unary_union(ctx.shells))
+    shadow = unary_union([open_air, walk, translate(walk, 0, 0.45)]).buffer(0)
+    opaque = [shape_geom(L.hit_shape(s, k)) for k, s, m in L.PROPS if m == "opaque"]
+    glass = [shape_geom(L.hit_shape(s, k)) for k, s, m in L.PROPS if m == "glass"]
     edges = unary_union([LineString(r + [r[0]]) for r in rings_of(walk)])
     room_u = unary_union([g for _n, _s, g in rms.values()])
     halls = [g for g in geom_parts(walk.difference(room_u).buffer(0)) if g.area > 1.0]

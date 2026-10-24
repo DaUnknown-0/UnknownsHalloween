@@ -178,6 +178,19 @@ PROPS = [
     ("parkbank", ("rect", 12.0, 13.95, 13.4, 14.35), "glass"),
 ]
 
+# Kollision abweichend von der Zeichenform (User 24.10.): (Art, Form) -> Kollisionsform. Gezeichnet wird weiter aus
+# der Form in PROPS. Laternen/Kandelaber sperren nur den Fuss, der Brunnen ist oval.
+HITBOX = {("brunnen", ("circle", -8.0, 13.0, 0.78)): ("ellipse", -8.0, 12.75, 0.8, 0.5)}
+
+
+def hit_shape(s, kind):
+    if (kind, s) in HITBOX:
+        return HITBOX[(kind, s)]
+    if kind in ("laternenpfahl", "kandelaber") and s[0] == "circle":
+        return ("circle", s[1], s[2], 0.08)
+    return s
+
+
 SKELD_CONSOLES = {
     "Cafeteria": ["Cafeteria/DataConsole/2", "Cafeteria/FixWiringConsole/4", "Cafeteria/GarbageConsole/2"],
     "Admin": ["Admin/SwipeCardConsole/0", "Admin/UploadDataConsole/0", "Admin/FixWiringConsole/2"],

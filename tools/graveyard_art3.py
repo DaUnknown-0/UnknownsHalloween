@@ -416,43 +416,68 @@ def _glockenturm(p, c, x0, y0, x1, y1, idx, rnd):
 MOON_GLOW = hexc("#c4d4ea")
 
 
-@kind("engel", 2.4, pad=0.5)
+@kind("engel", 2.6, pad=0.6)
 def _engel(p, c, x0, y0, x1, y1, idx, rnd):
-    """Weinender Engel: Stufensockel mit Inschrift, Engel mit ausgebreiteten Fluegeln, Haende vor dem Gesicht,
-    Faltenwurf, Moos und Flechten, verwelkter Kranz am Sockel."""
+    """Weinender Engel der alten Graeber, neu 24.10. (User: "alle Statuen neu und detailreicher"): zweistufiger
+    Marmorsockel mit Inschrift und Kranz, Engel im langen Gewand mit Faltenwurf und Guertel, Oberkoerper leicht
+    gebeugt, Haende vor dem Gesicht (ein Auge blickt hindurch), langes Haar, grosse ausgebreitete Fluegel mit drei
+    Federreihen, Moos und Flechten, Risse."""
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     r = (x1 - x0) / 2
-    col = shade(MARBLE, 0.92)
-    p.box(cx - r - 0.05, cy - r * 0.7, cx + r + 0.05, cy + r * 0.7, 0, 0.18, shade(col, 1.05), shade(col, 0.8))
-    p.box(cx - r * 0.75, cy - r * 0.55, cx + r * 0.75, cy + r * 0.55, 0.18, 0.55, shade(col, 1.08), shade(col, 0.92))
+    col = shade(MARBLE, 0.94)
+    col_l, col_d = shade(col, 1.08), shade(col, 0.72)
+    p.box(cx - r - 0.05, cy - r * 0.7, cx + r + 0.05, cy + r * 0.7, 0, 0.18, col_l, shade(col, 0.82))
+    p.box(cx - r * 0.78, cy - r * 0.55, cx + r * 0.78, cy + r * 0.55, 0.18, 0.5, col_l, shade(col, 0.9))
     fy = cy - r * 0.55
-    c.rect(cx - r * 0.6, fy + 0.25 * K, cx + r * 0.6, fy + 0.62 * K, outline=alpha(shade(col, 0.6), 220), width=0.012)
-    for k in range(2):
-        c.line([(cx - r * 0.4, fy + (0.38 + k * 0.1) * K), (cx + r * 0.4, fy + (0.38 + k * 0.1) * K)], fill=alpha(shade(col, 0.55), 220), width=0.01)
-    gy = cy - r * 0.2 + 0.73 * K
-    for sx in (-1, 1):                                                                # Fluegel
-        wing = [(cx + sx * 0.08, gy + 0.55), (cx + sx * 0.3, gy + 0.85), (cx + sx * 0.55, gy + 0.95), (cx + sx * 0.6, gy + 0.7),
-                (cx + sx * 0.5, gy + 0.4), (cx + sx * 0.38, gy + 0.15), (cx + sx * 0.18, gy + 0.2)]
-        c.poly(wing, fill=shade(col, 1.05), outline=OUTLINE, width=0.035)
-        for k in range(5):
-            t = 0.2 + k * 0.15
-            c.line([(cx + sx * (0.15 + 0.05 * k), gy + 0.3 + k * 0.1), (cx + sx * (0.32 + 0.05 * k), gy + 0.75 - k * 0.04)], fill=alpha(shade(col, 0.72), 220), width=0.01)
-    robe = [(cx - 0.2, gy), (cx + 0.2, gy), (cx + 0.14, gy + 0.62), (cx - 0.14, gy + 0.62)]
-    c.poly(robe, fill=col, outline=OUTLINE, width=0.035)
-    for k in range(4):
-        c.line([(cx - 0.13 + k * 0.09, gy + 0.02), (cx - 0.09 + k * 0.06, gy + 0.55)], fill=alpha(shade(col, 0.7), 220), width=0.01)
-    c.ellipse(cx, gy + 0.72, 0.1, 0.1, fill=shade(col, 1.05), outline=OUTLINE, width=0.03)                         # Kopf
-    c.ellipse(cx - 0.02, gy + 0.79, 0.09, 0.05, fill=shade(col, 0.88))                                          # Haar
-    for sx in (-1, 1):                                                                # Arme zum Gesicht
-        c.line([(cx + sx * 0.15, gy + 0.5), (cx + sx * 0.12, gy + 0.6), (cx + sx * 0.04, gy + 0.7)], fill=OUTLINE, width=0.07)
-        c.line([(cx + sx * 0.15, gy + 0.5), (cx + sx * 0.12, gy + 0.6), (cx + sx * 0.04, gy + 0.7)], fill=shade(col, 1.08), width=0.045)
-    c.poly([(cx - 0.06, gy + 0.64), (cx + 0.06, gy + 0.64), (cx + 0.07, gy + 0.76), (cx - 0.07, gy + 0.76)], fill=shade(col, 1.12), outline=OUTLINE, width=0.014)   # Haende
+    c.rect(cx - r * 0.6, fy + 0.26 * K, cx + r * 0.6, fy + 0.6 * K, outline=alpha(col_d, 220), width=0.012)
+    c.text(cx, fy + 0.43 * K, "REQUIESCAT", 0.045, col_d)
     for k in range(3):
-        c.line([(cx - 0.04 + k * 0.04, gy + 0.66), (cx - 0.04 + k * 0.04, gy + 0.75)], fill=alpha(OUTLINE, 160), width=0.005)
-    c.line([(cx + 0.03, gy + 0.64), (cx + 0.035, gy + 0.5)], fill=alpha(hexc("#1a1e2a"), 170), width=0.01)          # Traenenspur
-    lichen(c, cx - 0.3, gy, cx + 0.3, gy + 0.9, 12, seed=idx)
+        c.line([(cx - r * 0.7 + k * r * 0.7, cy - r * 0.68), (cx - r * 0.7 + k * r * 0.7, cy - r * 0.7 + 0.16 * K)], fill=alpha(col_d, 170), width=0.01)
+    G.wreath(c, cx + r * 0.5, cy - r * 0.76, 0.14, rnd)
+    base = cy - r * 0.2 + 0.68 * K
+    # Fluegel (hinten): drei Federreihen, Lichtkante
+    for sx in (-1, 1):
+        wing = [(cx + sx * 0.1, base + 0.5), (cx + sx * 0.3, base + 0.95), (cx + sx * 0.58, base + 1.45), (cx + sx * 0.7, base + 1.25),
+                (cx + sx * 0.68, base + 0.8), (cx + sx * 0.56, base + 0.42), (cx + sx * 0.36, base + 0.18), (cx + sx * 0.18, base + 0.14)]
+        c.poly(wing, fill=col_l, outline=OUTLINE, width=0.035)
+        for row in range(3):
+            for k in range(4):
+                t = 0.15 + k * 0.22
+                fx = cx + sx * (0.16 + 0.5 * t + row * 0.04)
+                fyy = base + 0.22 + 1.0 * t - row * 0.17
+                c.line([(fx, fyy), (fx - sx * 0.03, fyy - 0.14)], fill=alpha(col_d, 170), width=0.01)
+                c.ellipse(fx - sx * 0.03, fyy - 0.15, 0.028, 0.02, outline=alpha(col_d, 170), width=0.008)
+        c.line([(cx + sx * 0.32, base + 0.98), (cx + sx * 0.58, base + 1.4)], fill=alpha((255, 255, 255, 255), 100), width=0.016)
+    # Gewand mit Falten, Saum, Guertel
+    gown = HD.wobble([(cx - 0.3, base), (cx + 0.3, base), (cx + 0.23, base + 0.7), (cx + 0.18, base + 1.1), (cx - 0.18, base + 1.1), (cx - 0.23, base + 0.7)],
+                     amp=0.012, seed=idx, step=0.06, closed=True)
+    c.poly(gown, fill=col, outline=OUTLINE, width=0.035)
+    for k in range(5):
+        c.line(HD.wobble([(cx - 0.14 + k * 0.07, base + 1.05), (cx - 0.22 + k * 0.11, base + 0.04)], amp=0.01, seed=idx + k, step=0.05), fill=alpha(col_d, 170), width=0.012)
+    c.line([(cx - 0.2, base + 0.1), (cx - 0.14, base + 1.0)], fill=alpha((255, 255, 255, 255), 100), width=0.02)
+    for k in range(4):
+        c.ellipse(cx - 0.22 + k * 0.15, base, 0.07, 0.03, fill=col, outline=OUTLINE, width=0.014)
+    c.ellipse(cx + 0.08, base + 0.02, 0.07, 0.03, fill=col_l, outline=OUTLINE, width=0.012)
+    c.rect(cx - 0.17, base + 1.05, cx + 0.17, base + 1.11, fill=col_d, outline=OUTLINE, width=0.012)
+    # Oberkoerper, Kopf, Haar, Arme, Haende
+    c.poly([(cx - 0.2, base + 1.1), (cx + 0.2, base + 1.1), (cx + 0.16, base + 1.38), (cx - 0.16, base + 1.38)], fill=col, outline=OUTLINE, width=0.035)
+    hy = base + 1.47
+    c.ellipse(cx, hy, 0.13, 0.14, fill=col_l, outline=OUTLINE, width=0.03)
+    c.ellipse(cx - 0.01, hy + 0.08, 0.145, 0.085, fill=col, outline=OUTLINE, width=0.015)
+    for k in range(4):
+        c.line([(cx - 0.1 + k * 0.065, hy + 0.14), (cx - 0.13 + k * 0.08, hy - 0.02)], fill=alpha(col_d, 160), width=0.01)
+    for sx in (-1, 1):
+        c.line([(cx + sx * 0.18, base + 1.26), (cx + sx * 0.2, base + 1.38), (cx + sx * 0.06, hy - 0.02)], fill=OUTLINE, width=0.075)
+        c.line([(cx + sx * 0.18, base + 1.26), (cx + sx * 0.2, base + 1.38), (cx + sx * 0.06, hy - 0.02)], fill=col_l, width=0.045)
+    c.poly([(cx - 0.1, hy - 0.1), (cx + 0.1, hy - 0.1), (cx + 0.11, hy + 0.05), (cx - 0.11, hy + 0.05)], fill=shade(col_l, 1.06), outline=OUTLINE, width=0.015)
+    for k in range(5):
+        c.line([(cx - 0.08 + k * 0.04, hy - 0.08), (cx - 0.08 + k * 0.04, hy + 0.03)], fill=alpha(col_d, 180), width=0.006)
+    c.ellipse(cx + 0.045, hy - 0.02, 0.01, 0.014, fill=hexc("#1a1e2a"))
+    c.line([(cx + 0.03, hy - 0.1), (cx + 0.035, hy - 0.22)], fill=alpha(hexc("#1a1e2a"), 150), width=0.01)      # Traenenspur
+    G.crack(c, [(cx - 0.1, base + 0.2), (cx - 0.05, base + 0.5), (cx - 0.12, base + 0.8)], seed=idx)
+    lichen(c, cx - 0.5, base, cx + 0.5, base + 1.2, 12, seed=idx)
     moss(c, cx - r * 0.5, cy - r * 0.6 + 0.05, 0.1, seed=idx)
-    G.wreath(c, cx + r * 0.4, cy - r * 0.75, 0.13, rnd)
+    moss(c, cx + r * 0.3, cy - r * 0.55 + 0.3, 0.08, seed=idx + 1)
 
 
 @kind("rabenbaum", 5.4, pad=2.8)
