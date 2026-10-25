@@ -258,6 +258,9 @@ internal sealed partial class GraveyardWorld : IAtlasMapWorld
 
     private const int Rate = 44100;
 
+    /// <summary>Totenglocke (auch fuer das Pentagramm der Manor).</summary>
+    internal static void PlayKnell(float vol) => PlayClip(ref _bellClip, "ravenhollow_knell", SynthBell, vol);
+
     private static void PlayClip(ref AudioClip clip, string name, Func<float[]> synth, float vol)
     {
         try

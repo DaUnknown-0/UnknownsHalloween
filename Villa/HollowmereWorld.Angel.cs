@@ -9,8 +9,10 @@
 // - in Sichtweite (Bildausschnitt um den Spieler, Lichtradius, keine Wand dazwischen), aber der Spieler schaut weg
 //   (Blickrichtung des Crewmates links/rechts, der Engel steht hinter ihm): der Wert steigt, der Engel geht Stufe fuer
 //   Stufe von "Haende vor den Augen" ueber "starrt an" (turn) zu "greift an" (step);
-// - der Spieler schaut ihn an: der Engel steht sofort wieder mit den Haenden vor den Augen da, der Wert steigt aber
-//   langsamer weiter; schaut er wieder weg, zeigt der Engel die Stufe seines aktuellen Werts (User 25.10.);
+// - der Spieler schaut ihn an: der Wert steigt langsamer weiter;
+// - global (User 25.10.): schaut IRGENDEIN lebender Spieler einen Engel an, steht er fuer alle mit den Haenden vor den
+//   Augen da und toetet niemanden; sonst zeigt er allen die Stufe des hoechsten Werts, den ein Spieler mit ihm hat;
+// - Sichtweite fuer alle wie ein normaler Crewmate (Impostor und Rollen mit mehr Sicht sehen nicht weiter);
 // - gar nicht in Sichtweite (auch im Vent, auf der Leiter, tot): der Wert sinkt langsam, er regt sich wieder ab.
 // Der Host rechnet die Werte fuer alle Spieler, jeder Client dieselbe Formel fuer den eigenen Spieler und zeigt die Pose
 // danach (nichts wird gesendet; Tauschbilder "Prop/<art>/<x>/<y>/turn|step", gen_villa PROP_VARIANTS).
@@ -50,6 +52,7 @@ internal sealed partial class HollowmereWorld
     private readonly List<AngelSlot> _slots = new();
     private readonly Dictionary<(byte Player, int Slot), float> _aggro = new();   // alle Spieler, auf jedem Client
     private float _nextAngelTick;
+    private bool[] _angelWatched = Array.Empty<bool>();   // je Engel: schaut gerade irgendein lebender Spieler hin
     private bool _angelErrorLogged;
     private static readonly HashSet<byte> AngelVictims = new();
 
@@ -129,13 +132,14 @@ internal sealed partial class HollowmereWorld
         if (now < _nextAngelTick) return;
         _nextAngelTick = now + AngelTickEvery;
         AngelAggroTick();
-        // eigenes Bild aus dem eigenen Wert: angeschaut Haende vor den Augen, sonst die Stufe des aktuellen Werts
-        var lp = PlayerControl.LocalPlayer;
+        // Bild, fuer alle gleich (User 25.10. "Engel global"): schaut irgendein lebender Spieler hin, Haende vor den Augen;
+        // sonst die Stufe des hoechsten Werts, den ein Spieler mit diesem Engel hat
         for (int i = 0; i < _slots.Count; i++)
         {
             var s = _slots[i];
-            float aggro = lp != null && _aggro.TryGetValue((lp.PlayerId, i), out float v) ? v : 0f;
-            string pose = SightOf(lp, s) == AngelSight.Watched ? null : PoseFor(aggro);
+            float top = 0f;
+            foreach (var kv in _aggro) if (kv.Key.Slot == i && kv.Value > top) top = kv.Value;
+            string pose = i < _angelWatched.Length && _angelWatched[i] ? null : PoseFor(top);
             if (pose != s.Pose) SetPose(s, pose);
         }
     }
@@ -184,9 +188,27 @@ internal sealed partial class HollowmereWorld
         float halfH = cam != null && cam.orthographic ? cam.orthographicSize : 3f;
         float halfW = halfH * (cam != null && cam.aspect > 0.1f ? cam.aspect : 16f / 9f);
         halfH *= 1.05f; halfW *= 1.05f;
-        float radius = 6f;
-        try { if (ShipStatus.Instance != null) radius = ShipStatus.Instance.CalculateLightRadius(p.Data) + 0.6f; } catch { }
+        float radius = CrewSightRadius() + 0.6f;
         return PointInSight(me, feet, halfW, halfH, radius) || PointInSight(me, feet + new Vector2(0f, 1.6f), halfW, halfH, radius);
+    }
+
+    /// <summary>Sicht eines normalen Crewmates (Lichtschalter, CrewLightMod), fuer alle Spieler gleich: Impostor und Rollen
+    /// mit mehr Sicht (Lighter ...) sehen die Engel nicht weiter als ein Crewmate (User 25.10.).</summary>
+    private static float CrewSightRadius()
+    {
+        try
+        {
+            var ship = ShipStatus.Instance;
+            if (ship == null) return 6f;
+            float lights = 1f;
+            if (ship.Systems.ContainsKey(SystemTypes.Electrical))
+            {
+                var sw = ship.Systems[SystemTypes.Electrical].TryCast<SwitchSystem>();
+                if (sw != null) lights = sw.Value / 255f;
+            }
+            return Mathf.Lerp(ship.MinLightRadius, ship.MaxLightRadius, lights) * GameOptionsManager.Instance.currentNormalGameOptions.CrewLightMod;
+        }
+        catch { return 6f; }
     }
 
     private static bool PointInSight(Vector2 me, Vector2 pt, float halfW, float halfH, float radius)
@@ -202,10 +224,21 @@ internal sealed partial class HollowmereWorld
     /// Host toetet.</summary>
     private void AngelAggroTick()
     {
+        // erst alle Blicke: schaut irgendein lebender Spieler einen Engel an, ist er fuer alle eingefroren (kein Kill)
+        var players = PlayerControl.AllPlayerControls.ToArray().Where(p => p != null && p.Data != null && !p.Data.IsDead && !p.Data.Disconnected).ToList();
+        if (_angelWatched.Length != _slots.Count) _angelWatched = new bool[_slots.Count];
+        Array.Clear(_angelWatched, 0, _angelWatched.Length);
+        var sights = new AngelSight[players.Count, _slots.Count];
+        for (int n = 0; n < players.Count; n++)
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                sights[n, i] = SightOf(players[n], _slots[i]);
+                if (sights[n, i] == AngelSight.Watched) _angelWatched[i] = true;
+            }
         var present = new HashSet<byte>();
-        foreach (var p in PlayerControl.AllPlayerControls.ToArray())
+        for (int n = 0; n < players.Count; n++)
         {
-            if (p == null || p.Data == null || p.Data.IsDead || p.Data.Disconnected) continue;
+            var p = players[n];
             byte pid = p.PlayerId;
             present.Add(pid);
             for (int i = 0; i < _slots.Count; i++)
@@ -213,10 +246,10 @@ internal sealed partial class HollowmereWorld
                 var s = _slots[i];
                 var key = (pid, i);
                 _aggro.TryGetValue(key, out float aggro);
-                var sight = SightOf(p, s);
+                var sight = sights[n, i];
                 aggro = NextAggro(aggro, sight, AngelTickEvery);
                 if (aggro <= 0f) _aggro.Remove(key); else _aggro[key] = aggro;
-                if (!AmHost || !AngelAttackOn || sight != AngelSight.Away || aggro < AngelKillAt) continue;
+                if (!AmHost || !AngelAttackOn || _angelWatched[i] || sight != AngelSight.Away || aggro < AngelKillAt) continue;
                 if (Vector2.Distance(p.GetTruePosition(), s.Pos) > AngelReach) continue;
                 KillByAngel(p);
                 present.Remove(pid);

@@ -44,16 +44,16 @@ internal sealed partial class GraveyardWorld
     private const float CandleReach = 0.9f;
     private const float RitualPpm = 160f;
     private const string EggRes = "UnknownsHalloween.Resources.hw2026.graveyard_egg.";
-    private const float Fps = 12f;
+    internal const float Fps = 12f;
 
     // Kill-Szene (Fable, Auftrag 2026-10-24: 48 Bilder, Blitze 0-basiert bei 22 und 36, letztes Bild 0,5 s stehen lassen)
-    private const string DemonScene = "demon";
-    private const int DemonFrames = 48;
-    private static readonly int[] DemonFlashes = { 22, 36 };
-    private const float DemonHold = 0.5f;
+    internal const string DemonScene = "demon";
+    internal const int DemonFrames = 48;
+    internal static readonly int[] DemonFlashes = { 22, 36 };
+    internal const float DemonHold = 0.5f;
 
     private static GraveyardWorld _current;
-    private static readonly HashSet<byte> DemonVictims = new();
+    internal static readonly HashSet<byte> DemonVictims = new();   // auch das Pentagramm der Manor (HollowmereWorld.Ritual.cs)
 
     private readonly Vector2[] _candlePos = new Vector2[5];
     private readonly SpriteRenderer[] _candleSr = new SpriteRenderer[5];
@@ -64,8 +64,8 @@ internal sealed partial class GraveyardWorld
     private float _ritualStart = -1f, _nextKillCheck;
     private bool _inMeeting;
 
-    private static Sprite _candleOff, _floorGlowSprite, _candleGlowSprite;
-    private static Sprite[] _candleOn, _rise, _idle, _sink;
+    internal static Sprite _candleOff, _floorGlowSprite, _candleGlowSprite;
+    internal static Sprite[] _candleOn, _rise, _idle, _sink;
     private static bool _artTried;
 
     // ------------------------------------------------------------------ Aufbau
@@ -114,7 +114,7 @@ internal sealed partial class GraveyardWorld
         if (_current == this) _current = null;
     }
 
-    private static float Depth(float standY) => (standY + 0.3636f) / 1000f - 0.0002f;
+    internal static float Depth(float standY) => (standY + 0.3636f) / 1000f - 0.0002f;
 
     // ------------------------------------------------------------------ Ablauf
 
@@ -286,7 +286,7 @@ internal sealed partial class GraveyardWorld
     }
 
     // Opfer merken (alle Clients) und auf dem eigenen Client die Kill-Szene spielen
-    private static void MarkVictim(byte pid)
+    internal static void MarkVictim(byte pid)
     {
         DemonVictims.Add(pid);
         try
@@ -349,11 +349,11 @@ internal sealed partial class GraveyardWorld
     }
     private static bool _ritualErrorLogged;
     private static bool AmHost => AmongUsClient.Instance != null && AmongUsClient.Instance.AmHost;
-    private const float AtlasMuseumBuilderFloorZ = 9f;            // AtlasMuseumBuilder.FloorZ (internal)
+    internal const float AtlasMuseumBuilderFloorZ = 9f;            // AtlasMuseumBuilder.FloorZ (internal)
 
     // ------------------------------------------------------------------ Grafik
 
-    private static void LoadArt()
+    internal static void LoadArt()
     {
         if (_artTried) return;
         _artTried = true;
@@ -401,7 +401,7 @@ internal sealed partial class GraveyardWorld
         catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} egg art {file}: {e.Message}"); return null; }
     }
 
-    private static Sprite Painted(int w, int h, Vector2 pivot, Func<int, int, Color32> px)
+    internal static Sprite Painted(int w, int h, Vector2 pivot, Func<int, int, Color32> px)
     {
         var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
         var arr = new Color32[w * h];
