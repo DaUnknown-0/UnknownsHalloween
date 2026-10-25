@@ -120,8 +120,9 @@ FREEPLAY = (21.6, 18.6)
 
 FIXED = {
     # Ritual eskaliert (Reaktor): beide Enden des Seance-Tischs
-    "Reactor/UpperHandConsole/0": (11.95, 2.9),          # 25.10.: Tisch in der Nordwestecke, Pentagramm in der Raummitte
-    "Reactor/LowerHandConsole/1": (15.25, 2.9),
+    "Reactor/UpperHandConsole/0": (12.3, 3.2),           # 25.10.: an der Suedseite des Tischs in der Nordwestecke
+    "Reactor/LowerHandConsole/1": (13.8, 3.2),
+    "Reactor/UnlockManifoldsConsole/2": (20.4, 0.6),      # Puzzle-Box rechts neben dem Kamin (stand am Tisch)
     # Kamin raucht (O2): Kaminklappe + Lueftung im Arbeitszimmer
     "LifeSupp/NoOxyConsole/0": (29.6, 14.5),
     "Admin/NoOxyConsole/1": (33.3, 20.4),
@@ -130,7 +131,6 @@ FIXED = {
     "MedBay/MedScanner/0": (21.4, 21.4),                  # Schminkstuhl
     "Security/FixWiringConsole/5": (11.45, 22.4),         # Regie, Westwand (zu eng fuer die Automatik)
     "Nav/FixWiringConsole/3": (27.6, 7.3),                # Sternwarte, Suedwestecke
-    "Weapons/WeaponConsole/0": (26.45, 12.45),            # Trophy Room, Westwand suedlich der Galerie-Oeffnung (25.10.: vorher hinter dem Baeren)
     # Aufgabe aus Airship (Atlas ForeignTasks): Burger braten am Herd der Kueche (User 15.10.)
     "LowerEngine/MakeBurger/0": (1.55, 1.25),
 }
@@ -168,8 +168,8 @@ VENT_NETS = {
 }
 
 CAMERAS = {
-    "small": [(11.7, 9.4), (25.4, 9.2), (16.0, 0.6), (2.0, 14.6)],
-    "large": [(11.7, 9.4), (16.0, 0.6), (12.6, 24.6), (40.6, 14.6)],
+    "small": [(11.7, 9.4), (25.4, 9.2), (11.75, 0.55), (2.0, 14.6)],      # Seance-Kamera seit 25.10. in der Nordwestecke (stand vor dem Kamin)
+    "large": [(11.7, 9.4), (11.75, 0.55), (12.6, 24.6), (40.6, 14.6)],
 }
 
 # Geheimgaenge (Mechanik, Schritt 4 des Audits 15.10.): Schluessel, Moebel-Art am Eingang (bewegt sich beim
@@ -187,6 +187,12 @@ CLOCK = (12.35, 9.25)                 # 25.10.: Hallen-Nordwand 0,6 m dicker (TH
 
 # Dickere Wandmasse (Plan-Rechtecke, nicht begehbar): die Wandflaeche (villa_floor_map) reicht so hoch wie die Masse, man
 # sieht nicht mehr ueber die Wand in den Raum dahinter (User 25.10., Hallen-Nordwand zum Seance Parlour)
+# Konsolen, die es auf Hollowmere nicht gibt (25.10.: das Fledermaus-Fenster; HollowmereWorld nimmt den Task "Clear Asteroids"
+# aus den Task-Listen, sonst bekaeme jemand einen unloesbaren Task)
+DROP_CONSOLES = {"Weapons/WeaponConsole/0"}
+# Wagen-Konsolen, die naeher an die Wand ruecken (0,3 m nach Norden, wo Platz ist; User 25.10. "alle DAILIES nach oben")
+NUDGE_NORTH = ("DataConsole", "UploadDataConsole")
+
 THICK_WALLS = [(11.0, 8.0, 23.0, 8.8),        # Halle, Nordwand zum Seance Parlour
                (26.0, 8.0, 34.0, 8.8)]        # Trophy Room, Nordwand (Geweihe, Fledermaeuse); Tueroeffnungen bleiben frei
 
@@ -219,12 +225,14 @@ GLASS = [
     (("ellipse", 20.3, 16.8, 0.55, 0.4), "filmkamera", B),
     (("circle", 12.4, 18.6, 0.35), "scheinwerfer", B),
     (("circle", 21.8, 9.4, 0.35), "scheinwerfer", B),
-    (("ellipse", 13.6, 2.9, 1.4, 0.85), "seance_tisch", B),      # 25.10.: Nordwestecke (Raummitte = Pentagramm)
-    (("circle", 12.1, 1.0, 0.25), "kandelaber", B),
+    (("ellipse", 13.0, 1.95, 1.4, 0.85), "seance_tisch", B),     # 25.10.: Nordwestecke, ganz nach oben (Raummitte = Pentagramm)
+    (("rect", 14.9, 1.65, 15.8, 2.45), "sessel", B),              # Seance: zwei Sessel vor dem Kamin, das Baerenfell dazwischen
+    (("rect", 18.2, 1.65, 19.1, 2.45), "sessel", B),
+    (("circle", 19.55, 0.75, 0.25), "kandelaber", B),             # Seance: rechts neben dem Kamin (25.10.)
     (("circle", 22.0, 6.9, 0.25), "kandelaber", B),
     (("rect", 2.2, 3.6, 4.6, 5.0), "kuechentisch", B),
     (("circle", 9.0, 1.3, 0.55), "waschzuber", B),
-    (("rect", 28.0, 2.6, 29.2, 3.6), "requisiten", B),
+    (("rect", 29.2, 1.6, 31.2, 2.5), "requisiten", B),            # Box Room, Raummitte (25.10.)
     (("circle", 28.6, 6.0, 0.55), "teleskop", B),
     (("rect", 5.2, 12.6, 7.0, 13.6), "kohlen", B),
     (("rect", 4.5, 16.0, 6.5, 17.0), "lesetisch", B),
@@ -237,6 +245,7 @@ GLASS = [
     (("circle", 9.85, 19.7, 0.25), "kandelaber", B),
     (("rect", 32.6, 11.0, 33.7, 12.6), "baer", B),
     (("rect", 30.0, 15.4, 30.9, 16.2), "sessel", B),
+    (("rect", 33.25, 18.8, 33.7, 19.7), "safe", B),                  # Study, Ostwand (25.10.: vorher Westwand mit Sichtschatten)
     (("rect", 31.6, 16.4, 32.5, 17.2), "sessel", B),
     (("rect", 29.0, 22.7, 31.4, 23.6), "schreibtisch", B),
     # Garten
@@ -274,7 +283,6 @@ OPAQUE += [
     (("rect", 15.25, 22.5, 15.7, 23.8), "garderobe", B),             # Entrance Hall, Suedarm Westwand
     (("rect", 21.4, 19.3, 22.7, 19.8), "muellcontainer", B),         # Entrance Hall, Suedwand vor der Maske
     (("rect", 19.3, 20.25, 21.9, 20.7), "schminkspiegel", B),        # Makeup, Nordwand: Schminktisch mit Gluehbirnenspiegel (User 24.10.: Garderobe wie frueher)
-    (("rect", 26.3, 19.0, 26.75, 19.9), "safe", B),                  # Study, Westwand
     (("rect", 35.0, 3.0, 37.5, 5.0), "kamerakran", L),               # Terrace
     (("rect", 38.6, 24.0, 39.6, 25.0), "statue_schleier", L),        # Terrace, Suedostecke
     (("rect", 12.6, 24.6, 15.4, 26.3), "van", L),                    # Driveway
@@ -290,11 +298,11 @@ GLASS += [
     (("rect", 7.3, 0.3, 8.35, 1.05), "mangel", B),                   # Laundry, Nordwestecke (stand bis 24.10. vor der Kuechentuer)
     (("rect", 7.3, 7.0, 8.0, 7.75), "seifenkisten", B),              # Laundry, Suedwestecke
     (("circle", 13.0, 6.5, 0.35), "kristallkugel_tisch", B),         # Seance Parlour
-    (("rect", 20.2, 0.9, 21.1, 1.6), "phonograph", B),               # Seance Parlour, neben Vent 3 (stand bis 21.10. darauf)
+    (("rect", 21.85, 5.75, 22.6, 6.4), "phonograph", B),             # Seance Parlour, Ostwand suedlich der Radio-Oeffnung (25.10.)
     (("rect", 26.3, 3.2, 26.75, 4.0), "walkie_station", B),          # Radio Room, Ostwand
     (("circle", 24.4, 2.2, 0.3), "drehstuhl", B),                    # Radio Room
     (("rect", 28.5, 0.3, 31.0, 0.7), "kleiderstange", B),            # Prop Store, Nordwand
-    (("circle", 30.6, 2.4, 0.3), "schneiderpuppe", B),               # Prop Store
+    (("circle", 28.4, 3.2, 0.3), "schneiderpuppe", B),           # Prop Store / Box Room (25.10.: stand im neuen Requisitentisch)
     (("rect", 32.2, 2.6, 33.0, 3.7), "sarg_angelehnt", B),           # Prop Store
     (("rect", 27.3, 0.3, 28.1, 0.72), "nebelmaschine", B),           # Prop Store, Nordwestecke (stand bis 24.10. vor der Tuer zur Sternwarte)
     (("circle", 31.5, 5.0, 0.35), "orrery", B),                      # Observatory

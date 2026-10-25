@@ -394,7 +394,7 @@ def place_consoles(v, walk_w, rooms_w, door_pts, obstacles_w):
             taken += [Point(wp(ent)), Point(wp(ext))]
     taken.append(Point(wp(L.CLOCK)))
     for key, (name, sysname, g) in rooms_w.items():
-        keys = [k for k in SKELD_CONSOLES.get(sysname, []) if k not in fixed]
+        keys = [k for k in SKELD_CONSOLES.get(sysname, []) if k not in fixed and k not in getattr(L, "DROP_CONSOLES", ())]
         if not keys:
             continue
         ring = g.buffer(-0.55)
@@ -423,6 +423,9 @@ def place_consoles(v, walk_w, rooms_w, door_pts, obstacles_w):
                 best = g.representative_point()
                 print(f"WARN [{v}] no spot for {k} in {name}")
             chosen.append(best)
+            if any(n in k for n in getattr(L, "NUDGE_NORTH", ())):
+                up = Point(best.x, best.y + 0.3)                    # Welt: +y = Norden
+                if walk_w.contains(up.buffer(0.25)): best = up
             placed[k] = (round(best.x, 2), round(best.y, 2))
         taken.extend(chosen)
     for k, p in fixed.items():
@@ -626,7 +629,10 @@ def emit(v, walk_w, rooms_w, opens, tiles, props, consoles, labels, console_spri
     full = box(wx0 - 5, wy0 - 5, wx1 + 5, wy1 + 5)
     solid = full.difference(walk_w)
     move = walk_w.difference(affinity.translate(solid, 0, -0.3)).buffer(0)
-    shadow = unary_union([walk_w, affinity.translate(walk_w, 0, 0.45)]).buffer(0)
+    # Sichtkante 0,45 m in der Wand: die Wandflaeche bleibt hell. Dicke Waende (THICK_WALLS) tragen eine 1 m hohe Flaeche,
+    # die ganz hell bleiben muss (25.10.: Geweihe und Fledermaeuse lagen sonst halb im Schatten)
+    thick_w = [box(t[0] - OX, OY - t[3], t[2] - OX, OY - t[1]) for t in getattr(L, "THICK_WALLS", [])]
+    shadow = unary_union([walk_w, affinity.translate(walk_w, 0, 0.45)] + thick_w).buffer(0)
     items = props_of(v)
     opaque = [W(shape(L.hit_shape(s, k))) for s, k, o in items if o is True]
     glass = [W(shape(L.hit_shape(s, k))) for s, k, o in items if o is False]

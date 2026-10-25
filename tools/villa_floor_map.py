@@ -298,6 +298,51 @@ def runner(C, x0, y0, x1, y1, ppm):
         d.line([C.P(xx, y0), C.P(xx, y1)], fill=(196, 160, 90, 220), width=max(1, int(0.05 * ppm)))
 
 
+def grave_mound(d, C, x, y, rnd):
+    """Grabhuegel vor einem Friedhofsengel (25.10., vorher flaches dunkles Rechteck): Steinrand, gerundete Erde mit
+    Lichtkante oben, dunkle Erdklumpen, Grasbueschel an den Raendern, manchmal ein paar Blumen."""
+    ppm = C.ppm
+    img = Path(__file__).resolve().parent / "villa_assets" / "villa_grabhuegel.png"
+    if img.exists():                                                                   # GPT-Erdhuegel (25.10.)
+        m = Image.open(img).convert("RGBA")
+        mw = int(round(0.95 * ppm)); mh = int(round(1.3 * ppm))                 # auf Grablaenge gestreckt
+        m = m.resize((mw, mh), Image.LANCZOS)
+        if rnd.random() < 0.5: m = m.transpose(Image.FLIP_LEFT_RIGHT)
+        px0, py0 = C.P(x, y + 0.7)
+        C.img.paste(m.convert("RGB"), (int(px0 - mw / 2), int(py0 - mh / 2)), m.getchannel("A"))
+        return
+    px = lambda m: max(1, int(m * ppm))
+    x0, x1, y0, y1 = x - 0.44, x + 0.44, y, y + 1.32
+    rim = HD.wobble_rect(x0 - 0.06, y0 - 0.06, x1 + 0.06, y1 + 0.06, amp=0.02, seed=int(x * 7 + y))
+    d.polygon([C.P(*p) for p in rim], fill=(96, 94, 90, 235), outline=(28, 26, 26, 255), width=px(0.025))
+    for k in range(14):                                                              # Fugen im Steinrand
+        t = k / 14.0
+        if k % 2:
+            yy = y0 - 0.06 + t * (y1 - y0 + 0.12)
+            d.line([C.P(x0 - 0.06, yy), C.P(x0, yy)], fill=(60, 58, 56, 200), width=px(0.012))
+            d.line([C.P(x1, yy), C.P(x1 + 0.06, yy)], fill=(60, 58, 56, 200), width=px(0.012))
+    soil = HD.wobble_rect(x0 + 0.01, y0 + 0.01, x1 - 0.01, y1 - 0.01, amp=0.035, seed=int(x * 13 + y))
+    d.polygon([C.P(*p) for p in soil], fill=(78, 56, 40, 255), outline=(30, 22, 16, 255), width=px(0.02))
+    hl = HD.wobble_rect(x0 + 0.1, y0 + 0.08, x1 - 0.1, y0 + 0.55, amp=0.03, seed=int(x * 17 + y))   # Lichtkante (Kopfende)
+    d.polygon([C.P(*p) for p in hl], fill=(104, 78, 56, 255))
+    for _ in range(16):                                                               # Erdklumpen
+        cx, cy, r = rnd.uniform(x0 + 0.08, x1 - 0.08), rnd.uniform(y0 + 0.1, y1 - 0.08), rnd.uniform(0.025, 0.05)
+        d.ellipse([*C.P(cx - r, cy - r * 0.7), *C.P(cx + r, cy + r * 0.7)], fill=(52, 36, 26, 255))
+        d.ellipse([*C.P(cx - r * 0.5, cy - r * 0.6), *C.P(cx + r * 0.2, cy - r * 0.1)], fill=(120, 94, 70, 200))
+    for _ in range(5):                                                                # Gras an den Raendern
+        side = rnd.choice((x0 + 0.04, x1 - 0.04))
+        gy = rnd.uniform(y0 + 0.2, y1 - 0.1)
+        for b in range(4):
+            a = -0.9 + b * 0.6
+            d.line([C.P(side, gy), C.P(side + 0.07 * math.sin(a), gy - 0.12 * math.cos(a) * 0.8)], fill=(70, 120, 52, 255), width=px(0.018))
+    if rnd.random() < 0.5:                                                            # ein paar Blumen
+        fx, fy = rnd.uniform(x0 + 0.15, x1 - 0.15), rnd.uniform(y0 + 0.6, y1 - 0.3)
+        for k in range(3):
+            ox, oy = fx + (k - 1) * 0.07, fy + (k % 2) * 0.05
+            d.ellipse([*C.P(ox - 0.035, oy - 0.03), *C.P(ox + 0.035, oy + 0.03)],
+                      fill=rnd.choice(((220, 220, 230, 255), (170, 120, 210, 255), (200, 70, 80, 255))), outline=(30, 24, 24, 255))
+
+
 def horror_floor(d, C, rnd, av):
     """Bodenspuren der Horror-Schicht (Audit 15.10.): Schleifspur zur Treppe, Russ-Fussspuren aus dem Kamin,
     Kreidekreis unter dem Seance-Tisch, Blut in Kueche und Waschkueche, Glasscherben und Wurzeln im Gewaechshaus,
@@ -313,7 +358,7 @@ def horror_floor(d, C, rnd, av):
     # Baerenfell vor dem grossen Kamin im Seance Parlour (25.10., Vorlage villa_assets/villa_baerenfell.png)
     rug_path = Path(__file__).resolve().parent / "villa_assets" / "villa_baerenfell.png"
     if rug_path.exists():
-        rug = Image.open(rug_path).convert("RGBA")
+        rug = Image.open(rug_path).convert("RGBA").rotate(90, expand=True)   # Kopf nach links (User 25.10.)
         rw = int(round(1.9 * ppm)); rh = int(round(rug.height * rw / rug.width))
         rug = rug.resize((rw, rh), Image.LANCZOS)
         rx, ry = C.P(17.0, 2.05)
@@ -382,7 +427,8 @@ def decorate(C, walk, geoms, opens, rnd):
         if av.ok(x - 0.2, y - 0.2, x + 0.2, y + 0.2):
             VF.floor_tape_mark(d, C.Pw, ppm, x, -y, k, a)
     # Tatort: Kreide-Umrisse und Kunstblut
-    for x, y, s, r, seed in ((6.0, 16.6, 1.0, 0.5, 21), (24.5, 19.0, 0.9, -0.3, 22), (45.5, 26.0, 1.0, 1.2, 23)):
+    # (dritter Umriss seit 25.10. in der Family Crypt neben der Blutlache, vorher mitten auf einem Grab des Friedhofs)
+    for x, y, s, r, seed in ((6.0, 16.6, 1.0, 0.5, 21), (24.5, 19.0, 0.9, -0.3, 22), (48.6, 29.9, 1.0, 0.4, 23)):
         if av.ok(x - 0.7, y - 0.7, x + 0.7, y + 0.7):
             chalk_outline(d, C, x, y, s, r, seed)
     for x, y, r in ((20.3, 22.6, 0.22), (5.4, 17.2, 0.3), (9.6, 4.2, 0.18), (47.0, 30.6, 0.35), (24.6, 13.6, 0.16)):
@@ -411,9 +457,7 @@ def decorate(C, walk, geoms, opens, rnd):
         d.line([C.P(12.2, 27.6 + off), C.P(17.5, 27.1 + off), C.P(23.8, 27.8 + off)], fill=(70, 66, 58, 120), width=max(1, int(0.22 * ppm)), joint="curve")
     for x, y in ((42.9, 17.3), (45.4, 17.3), (47.9, 17.3), (42.9, 21.3), (45.4, 21.3), (47.9, 21.3), (42.9, 25.3), (45.4, 25.3)):
         if av.ok(x - 0.5, y - 0.2, x + 0.5, y + 1.4):
-            pts = HD.wobble_rect(x - 0.42, y, x + 0.42, y + 1.3, amp=0.03, seed=int(x * y))
-            d.polygon([C.P(*p) for p in pts], fill=(64, 50, 40, 200))
-            d.line([C.P(x - 0.42, y + 0.05), C.P(x + 0.42, y + 0.05)], fill=(110, 92, 70, 160), width=max(1, int(0.03 * ppm)))
+            grave_mound(d, C, x, y, random.Random(int(x * 100 + y)))
 
 
 # ------------------------------------------------------------------ Ablauf

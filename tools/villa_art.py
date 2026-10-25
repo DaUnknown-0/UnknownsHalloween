@@ -495,6 +495,39 @@ def _filmkamera(p, c, x0, y0, x1, y1, idx, rnd):
     cable(c, [(vx - dir_ * 0.02, fz - 0.05), (vx - dir_ * 0.15, fz - 0.4), (vx - dir_ * 0.2, y0 - 0.05), (vx - dir_ * 0.5, y0 - 0.1)], seed=idx)
 
 
+_SPOT_IMG = "villa_scheinwerfer.png"      # 25.10.: GPT, Lampe zeigt nach links; Linse bei (30 %, 17,5 %) des Bilds
+_SPOT_LENS = (0.30, 0.175)
+
+
+def _spot_image(c, fx, hy, cy, dir_, off):
+    """Lampe und Stativ aus dem Bild: Linse genau auf den Kegelursprung (fx, hy), Fuesse knapp unter cy; dir_ > 0 spiegelt
+    (Lampe nach rechts). off: Linse dunkel (Tauschbild "Licht aus")."""
+    path = os.path.join(_IMG_DIR, _SPOT_IMG)
+    if not os.path.exists(path):
+        return False
+    src = Image.open(path).convert("RGBA")
+    if off:
+        px = src.load()
+        for yy in range(int(src.height * 0.35)):
+            for xx in range(src.width):
+                r, g, b, a = px[xx, yy]
+                if a > 0 and r > 200 and g > 175 and b > 110:
+                    px[xx, yy] = (72, 66, 58, a)
+    lx = _SPOT_LENS[0]
+    if dir_ > 0:
+        src = src.transpose(Image.FLIP_LEFT_RIGHT)
+        lx = 1 - lx
+    h_m = (hy - (cy - 0.35)) / (1 - _SPOT_LENS[1])
+    w_m = h_m * src.width / src.height
+    left, top = fx - lx * w_m, hy + _SPOT_LENS[1] * h_m
+    im = src.resize((max(1, round(w_m * c.s)), max(1, round(h_m * c.s))), Image.LANCZOS)
+    x, y = c.p(left, top)
+    layer = Image.new("RGBA", c.img.size, (0, 0, 0, 0))
+    layer.paste(im, (int(round(x)), int(round(y))))
+    c.img.alpha_composite(layer)
+    return True
+
+
 def _scheinwerfer(p, c, x0, y0, x1, y1, idx, rnd, variant=None):
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     dir_ = -1 if idx % 2 == 0 else 1
@@ -507,6 +540,10 @@ def _scheinwerfer(p, c, x0, y0, x1, y1, idx, rnd, variant=None):
         for s, a_ in ((1.0, 26), (0.7, 26), (0.4, 28)):
             c.poly([(fx, hy + 0.08), (ex + dir_ * 0.9 * s, ey + 0.35 * s), (ex + dir_ * 1.0 * s, ey), (ex + dir_ * 0.9 * s, ey - 0.35 * s),
                     (ex - dir_ * 0.2 * s, ey - 0.5 * s), (fx, hy - 0.08)], fill=alpha(col, a_))
+    if _spot_image(c, fx, hy, cy, dir_, variant == "off"):                                 # GPT-Lampe (User 25.10.)
+        if variant != "off":
+            c.glow(fx, hy, 0.5, col, 0.8)
+        return
     for (lx, ly) in ((cx - 0.3, cy - 0.22), (cx + 0.3, cy - 0.2), (cx + 0.05, cy + 0.3)):     # Stativbeine
         c.line([(cx, cy + 0.55 * K), (lx, ly)], fill=OUTLINE, width=0.05)
         c.line([(cx, cy + 0.55 * K), (lx, ly)], fill=MATTE_L, width=0.025)
@@ -2336,7 +2373,10 @@ _KIND_FN = {"standuhr": _standuhr, "seance_tisch": _seance_tisch, "buecherregal"
 
 # Objekte aus einem fertigen Bild statt prozedural (Datei in tools/villa_assets/, Hoehe des ganzen Sprites in Metern).
 # Der Baer kommt seit 24.10. aus einem vom User gelieferten Bild (gerade Vorderansicht, Blick nach Westen in den Raum).
-IMAGE_PROPS = {"baer": ("villa_baer.png", 3.0)}
+IMAGE_PROPS = {"baer": ("villa_baer.png", 3.0),
+               "kamin_gross": ("villa_kamin_gross.png", 2.6),      # 25.10.: GPT, Vorderansicht, Seance Parlour
+               "requisiten": ("villa_requisiten.png", 1.35),       # 25.10.: GPT, Requisitentisch in der Box Room
+               "engelsstatue_tuch": ("villa_engel_betend.png", 2.5)}   # 25.10.: GPT, betender Engel statt Tuchstatue (Kapelle)
 _IMG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "villa_assets")
 
 
