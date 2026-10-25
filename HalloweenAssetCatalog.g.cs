@@ -8,7 +8,7 @@ namespace UnknownsHalloween;
 
 internal static class HalloweenAssetCatalog
 {
-    public const string Tag = "v8";
+    public const string Tag = "v9";
 
     public static readonly (string Name, long Size, string Sha256)[] Files =
     {
