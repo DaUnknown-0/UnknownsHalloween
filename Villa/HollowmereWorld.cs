@@ -199,11 +199,18 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         return false;
     }
 
+    /// <summary>Sichtverbindung zur Kerze (gleiche Schattenmaske wie die Sicht): kein Kerzenschein durch Waende (Bericht 25.10.).</summary>
+    private static bool CandleVisible(Vector2 p, Vector2 candle)
+    {
+        try { return !PhysicsHelpers.AnythingBetween(p, candle + new Vector2(0f, 0.3f), Constants.ShadowMask, false); }
+        catch { return true; }
+    }
+
     private int NearestLitCandle(Vector2 p, float radius)
     {
         float now = Time.time;
         for (int i = 0; i < _candles.Count; i++)
-            if (now < _burnUntil[i] && Vector2.Distance(p, _candles[i].Pos) < radius) return i;
+            if (now < _burnUntil[i] && Vector2.Distance(p, _candles[i].Pos) < radius && CandleVisible(p, _candles[i].Pos)) return i;
         return -1;
     }
 

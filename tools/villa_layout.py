@@ -148,7 +148,7 @@ FIXED_LARGE = {
 FIXED_BOTH_EXTRA = {
     "Security/DivertPowerConsole/1": (12.6, 21.2),       # Regie
     "MedBay/MedBayConsole/0": (22.5, 20.7),              # Maske, rechts vom Kunstblutregal
-    "LifeSupp/DivertPowerConsole/1": (33.3, 17.3),       # Kaminzimmer, Suedostecke
+    "LifeSupp/DivertPowerConsole/1": (29.2, 17.45),      # Kaminzimmer, Suedwand (25.10.: in der Suedostecke lag Vent 8 in ihrer Fussflaeche)
 }
 FIXED.update(FIXED_BOTH_EXTRA)
 

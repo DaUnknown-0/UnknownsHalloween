@@ -632,7 +632,17 @@ def emit(v, walk_w, rooms_w, opens, tiles, props, consoles, labels, console_spri
     # Sichtkante 0,45 m in der Wand: die Wandflaeche bleibt hell. Dicke Waende (THICK_WALLS) tragen eine 1 m hohe Flaeche,
     # die ganz hell bleiben muss (25.10.: Geweihe und Fledermaeuse lagen sonst halb im Schatten)
     thick_w = [box(t[0] - OX, OY - t[3], t[2] - OX, OY - t[1]) for t in getattr(L, "THICK_WALLS", [])]
-    shadow = unary_union([walk_w, affinity.translate(walk_w, 0, 0.45)] + thick_w).buffer(0)
+    # Je Bereich nur der Streifen ueber der EIGENEN Nordkante, mit 6 cm Abstand zu allen anderen Bereichen: frueher
+    # verband die verschobene Kopie der ganzen Flaeche benachbarte Raeume ueber die 0,4 m duennen Waende und loeschte
+    # deren Sichtkante (Bericht 25.10.: Kueche/Heizungskeller, Bibliothek/Kapelle, Kaminzimmer/Arbeitszimmer).
+    zones = [g for _n, _s, g in rooms_w.values()] + [g for g in geom_parts(walk_w.difference(unary_union([g for _n, _s, g in rooms_w.values()])).buffer(0)) if g.area > 0.05]
+    strips = []
+    for i, z in enumerate(zones):
+        others = unary_union([o for j, o in enumerate(zones) if j != i])
+        st = affinity.translate(z, 0, 0.45).difference(z)
+        if not others.is_empty: st = st.difference(others.buffer(0.06))
+        strips.append(st)
+    shadow = unary_union([walk_w] + strips + thick_w).buffer(0)
     items = props_of(v)
     opaque = [W(shape(L.hit_shape(s, k))) for s, k, o in items if o is True]
     glass = [W(shape(L.hit_shape(s, k))) for s, k, o in items if o is False]
@@ -726,11 +736,12 @@ def emit(v, walk_w, rooms_w, opens, tiles, props, consoles, labels, console_spri
         ax, at, a0, b0 = o[:4]
         c = W(opening_box(o)).centroid
         label = f"{ax}{at:g}-{(a0 + b0) / 2:g}"
-        (vert if ax == "x" else hori).append((label, c.x, c.y, b0 - a0, group))
+        iron = L.DOOR_KIND.get((ax, at, (a0 + b0) / 2), "wood") == "iron"
+        (vert if ax == "x" else hori).append((label, c.x, c.y, b0 - a0, group, iron))
     for nm, lst in (("VerticalDoors", vert), ("HorizontalDoors", hori)):
         a(f"    public static readonly AtlasMuseumLayout.DoorSlot[] {nm} =\n    {{")
-        for label, cx, cy, length, grp in lst:
-            a(f"        new(\"{label}\", {cx:.3f}f, {cy:.3f}f, {length:.2f}f, SystemTypes.{grp}, seeThrough: false),")
+        for label, cx, cy, length, grp, iron in lst:
+            a(f"        new(\"{label}\", {cx:.3f}f, {cy:.3f}f, {length:.2f}f, SystemTypes.{grp}, seeThrough: {'true' if iron else 'false'}),")
         a("    };")
     a("    public static readonly Vector2[] Cameras =\n    {")
     for p in L.CAMERAS[v]:
@@ -758,7 +769,7 @@ def emit(v, walk_w, rooms_w, opens, tiles, props, consoles, labels, console_spri
     OUT_CS.mkdir(exist_ok=True)
     (OUT_CS / f"{cls}.g.cs").write_text("\n".join(Ls) + "\n", encoding="utf-8")
     groups = {}
-    for _l, _x, _y, _len, grp in vert + hori:
+    for _l, _x, _y, _len, grp, _iron in vert + hori:
         groups[grp] = groups.get(grp, 0) + 1
     print(f"[{v}] doors {len(vert)}V/{len(hori)}H {groups}, consoles {len(consoles)}, hallways {len(halls)}, rooms {len(rooms_w)}, tiles {len(my_tiles)}, props {len(my_props)}")
     if len(vert) != 7 or len(hori) != 6:
