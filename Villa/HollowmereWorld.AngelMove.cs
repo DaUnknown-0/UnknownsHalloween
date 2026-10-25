@@ -4,7 +4,8 @@
 // HollowmereWorld.AngelMove - die Friedhofsengel der grossen Manor bewegen sich (User 25.10.), dazu Blinzeln und die
 // Sabotage "Engel-Ausbruch". Die Brunnenfigur bleibt stehen (sie gehoert zum Brunnen).
 //
-// Spruenge (Option 1952 "Weeping Angels Move", Host-autoritativ): schaut niemand einen Engel an und hat er einen Spieler im
+// Spruenge (Option 1952 "Weeping Angels Move", Host-autoritativ; User 25.10.: NUR waehrend der Sabotage "Angel Breakout",
+// sonst stehen die Engel fest auf ihrem Platz): schaut niemand einen Engel an und hat er einen Spieler im
 // Visier (der Spieler schaut weg und der Wert hat "starrt an" erreicht, oder er hat gerade geblinzelt), springt der Engel
 // hoechstens 1,5 m naeher, nie naeher als 0,8 m und nie weiter als 6 m von seinem Platz. Der Weg folgt einem Laufraster
 // (0,5 m, beim ersten Tick aus den Kollidern gebaut), damit kein Engel durch eine Wand springt; vor jedem Sprung prueft eine
@@ -12,8 +13,11 @@
 // Glass-Kollider von Atlas an ihren Plaetzen werden abgeschaltet). Position als RPC Modul 236 Sub 11 (Host -> alle).
 // Bei jedem Meeting stehen alle wieder auf ihrem Platz (jeder Client fuer sich).
 //
-// Blinzeln (nur Host): jeder Spieler blinzelt alle 8 bis 14 s fuer einen Tick (0,2 s); in diesem Tick zaehlt sein Blick
-// nicht. Schaut sonst niemand hin, kann der Engel in genau diesem Moment springen.
+// Blinzeln (Host entscheidet, nur waehrend der Sabotage): jeder Spieler, der gerade einen Engel im Blick hat, blinzelt alle 8 bis 14 s fuer einen Tick
+// (0,2 s); in diesem Tick zaehlt sein Blick nicht. Schaut sonst niemand hin, kann der Engel in genau diesem Moment springen.
+// Der Host meldet jeden Lidschlag (Sub 14 [spieler]); der Spieler sieht auf seinem Bildschirm zwei Augenlider kurz zu- und
+// aufgehen (User 25.10.). Lokaler Schalter "Angel Blink Effect" auf UCs Einstellungsseite (AppDomain-Vertrag
+// "Unknowns.Options.Toggles", Config [Weeping Angels] BlinkEffect): aus = kein Bild, geblinzelt wird trotzdem.
 //
 // Engel-Ausbruch (Option 1953, nur mit Friedhofsengeln): der Host fuehrt einen gemeinsamen Zornpegel. Er steigt fuer jeden
 // Spieler, der einem Engel den Ruecken zukehrt (0,6/s) oder nahe bei einem steht (unter 3 m, 0,4/s), und sinkt ohne das
@@ -44,6 +48,9 @@ internal sealed partial class HollowmereWorld
     internal const byte SubAngelMove = 11;       // [slot][x][y]           Host -> alle
     internal const byte SubBreakout = 12;        // [phase] 0 Ende, 1 Countdown, 2 Ausbruch   Host -> alle
     internal const byte SubSealHold = 13;        // [siegel][an]           jeder -> Host
+    internal const byte SubScenePreview = 15;   // [spieler][szene]         Host -> alle (Role Control, HalloweenCostumes.PreviewFor)
+    internal const byte SubBlink = 14;           // [spieler]              Host -> alle (nur der Spieler selbst zeigt den Lidschlag)
+    internal static BepInEx.Configuration.ConfigEntry<bool> BlinkEffect;
 
     private const float JumpMax = 1.5f, JumpKeep = 0.8f, JumpEvery = 0.8f, RampageEvery = 0.6f, HomeLeash = 6f;
     private const float BlinkMin = 8f, BlinkMax = 14f;
@@ -234,25 +241,129 @@ internal sealed partial class HollowmereWorld
 
     // ------------------------------------------------------------------ Host: Blinzeln, Spruenge, Zornpegel
 
-    /// <summary>Wer blinzelt in diesem Tick? (Host; jeder Spieler alle 8 bis 14 s einen Tick lang)</summary>
-    private void BlinkTick(List<PlayerControl> players)
+    /// <summary>Wer blinzelt in diesem Tick? (Host; wer gerade einen Engel im Blick hat, alle 8 bis 14 s einen Tick lang.)
+    /// Wer keinen Engel sieht, blinzelt nicht und merkt nichts davon.</summary>
+    private void BlinkTick(List<PlayerControl> players, AngelSight[,] sights)
     {
         _blinking.Clear();
-        if (!AmHost) return;
+        if (!AmHost || _breakout == 0) return;                                // Blinzeln zaehlt nur, solange die Engel springen koennen
         float now = Time.time;
-        foreach (var p in players)
+        for (int n = 0; n < players.Count; n++)
         {
+            var p = players[n];
+            bool sees = false;
+            for (int i = 0; i < _slots.Count && !sees; i++) sees = sights[n, i] != AngelSight.Hidden;
+            if (!sees) continue;                                              // Uhr laeuft weiter, Lidschlag erst mit Engel im Blick
             if (!_blinkAt.TryGetValue(p.PlayerId, out float at)) { _blinkAt[p.PlayerId] = now + Random.Range(BlinkMin, BlinkMax); continue; }
             if (now < at) continue;
             _blinking.Add(p.PlayerId);
             _blinkAt[p.PlayerId] = now + Random.Range(BlinkMin, BlinkMax);
+            SendBlink(p.PlayerId);
+            ShowBlinkIfMe(p.PlayerId);
         }
+    }
+
+    // ------------------------------------------------------------------ Lidschlag (lokal)
+
+    private static SpriteRenderer _lidTop, _lidBottom;
+    private static float _blinkStart = -1f;
+    private const float LidClose = 0.07f, LidHold = 0.06f, LidOpen = 0.09f;
+
+    internal static void RegisterBlinkToggle()
+    {
+        try
+        {
+            var domain = AppDomain.CurrentDomain;
+            lock (domain)
+            {
+                if (domain.GetData("Unknowns.Options.Toggles") is not List<object> list)
+                {
+                    list = new List<object>();
+                    domain.SetData("Unknowns.Options.Toggles", list);
+                }
+                list.Add(new object[] { (Func<string>)(() => "Angel Blink Effect"), (Func<bool>)(() => BlinkEffect == null || BlinkEffect.Value),
+                                        (Action<bool>)(v => { if (BlinkEffect != null) BlinkEffect.Value = v; }) });
+            }
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} blink toggle not registered: {e.Message}"); }
+    }
+
+    private static void ShowBlinkIfMe(byte pid)
+    {
+        try
+        {
+            var lp = PlayerControl.LocalPlayer;
+            if (lp == null || lp.PlayerId != pid || lp.Data == null || lp.Data.IsDead) return;
+            if (BlinkEffect != null && !BlinkEffect.Value) return;           // geblinzelt wird trotzdem (Host), nur ohne Bild
+            _blinkStart = Time.time;
+        }
+        catch { }
+    }
+
+    /// <summary>Jeden Frame: Augenlider oben und unten schliessen sich kurz und gehen wieder auf (HUD-Ebene).</summary>
+    private static void BlinkFrame()
+    {
+        if (_blinkStart < 0f) return;
+        float t = Time.time - _blinkStart;
+        float total = LidClose + LidHold + LidOpen;
+        if (t > total || MeetingHud.Instance != null)
+        {
+            _blinkStart = -1f;
+            if (_lidTop != null) _lidTop.gameObject.SetActive(false);
+            if (_lidBottom != null) _lidBottom.gameObject.SetActive(false);
+            return;
+        }
+        var hud = HudManager.InstanceExists ? HudManager.Instance : null;
+        var cam = Camera.main;
+        if (hud == null || cam == null) return;
+        if (_lidTop == null) { _lidTop = MakeLid(hud.transform, "AngelLidTop"); _lidBottom = MakeLid(hud.transform, "AngelLidBottom"); }
+        float halfH = cam.orthographicSize, halfW = halfH * cam.aspect;
+        float close = t < LidClose ? t / LidClose : t < LidClose + LidHold ? 1f : 1f - (t - LidClose - LidHold) / LidOpen;
+        close = Mathf.SmoothStep(0f, 1f, close);
+        float lidH = halfH * 1.15f;
+        foreach (var (sr, sign) in new[] { (_lidTop, 1f), (_lidBottom, -1f) })
+        {
+            sr.gameObject.SetActive(true);
+            sr.transform.localScale = new Vector3(halfW * 2.4f, lidH / 8f, 1f);   // Sprite ist 1x8 Einheiten
+            float y = sign * (halfH + lidH / 2f - close * (halfH + 0.06f));
+            sr.transform.localPosition = new Vector3(0f, y, -400f);
+        }
+    }
+
+    private static SpriteRenderer MakeLid(Transform parent, string name)
+    {
+        var go = new GameObject(name) { layer = 5 };
+        go.transform.SetParent(parent, false);
+        var sr = go.AddComponent<SpriteRenderer>();
+        var tex = new Texture2D(1, 8, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset };
+        var px = new Color32[8];
+        for (int i = 0; i < 8; i++) px[i] = new Color32(6, 4, 8, (byte)(i == 0 || i == 7 ? 200 : 255));
+        tex.SetPixels32(px); tex.Apply();
+        sr.sprite = Sprite.Create(tex, new Rect(0, 0, 1, 8), new Vector2(0.5f, 0.5f), 1f);
+        sr.sortingOrder = 1000;
+        go.transform.localScale = new Vector3(1f, 1f / 8f, 1f);
+        go.SetActive(false);
+        return sr;
+    }
+
+    private static void SendBlink(byte pid)
+    {
+        try
+        {
+            if (PlayerControl.LocalPlayer == null || AmongUsClient.Instance == null) return;
+            var w = UCRpc.Begin(HollowmereIntro.RpcModule);
+            w.Write(SubBlink);
+            w.Write(pid);
+            AmongUsClient.Instance.FinishRpcImmediately(w);
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} blink send failed: {e.Message}"); }
     }
 
     /// <summary>Host: unbeobachtete Engel springen auf ihr Ziel zu (Sub 11).</summary>
     private void AngelMoveHost(List<PlayerControl> players, AngelSight[,] sights, bool[] blinked)
     {
-        if (!AmHost || !_moveReady || !AngelMoveOn && _breakout != 2) return;
+        // User 25.10.: die Engel verlassen ihren Platz nur waehrend "Angel Breakout" (Countdown: an der Leine, Ausbruch: frei)
+        if (!AmHost || !_moveReady || _breakout == 0 || !AngelMoveOn && _breakout != 2) return;
         float now = Time.time;
         bool rampage = _breakout == 2;
         for (int i = 0; i < _slots.Count; i++)
@@ -481,6 +592,7 @@ internal sealed partial class HollowmereWorld
     /// <summary>Jeden Frame: Siegel anbieten, Pfeile und Zeile oben (alle Clients).</summary>
     private void BreakoutFrame()
     {
+        BlinkFrame();
         if (_breakout == 0 || !MovableAngels) { HideBreakoutHud(); return; }
         if (MeetingHud.Instance != null || ExileController.Instance != null) { HideBreakoutHud(); return; }
         var lp = PlayerControl.LocalPlayer;
@@ -666,12 +778,14 @@ internal sealed partial class HollowmereWorld
             case 0:
                 HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag: angels ready {_moveReady} (grid {_gw}x{_gh}), movable {_slots.Count(s => s.Movable)}");
                 try { lp.NetTransform.RpcSnapTo(spot); } catch { }
+                SendBreakout(1); ApplyBreakout(1);                          // Spruenge gibt es nur waehrend der Sabotage
                 _diagStep = 1; _diagAt = now + 1f;
                 break;
             case 1: case 2: case 3: case 4: case 5: case 6:   // 1,5 s Abstand: vor dem Kill (Wert voll nach 5 s) weiter
                 Face();
                 HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag: angels t{_diagStep} player {lp.GetTruePosition().x:F1}/{lp.GetTruePosition().y:F1} dead {lp.Data.IsDead} at {Where()}");
                 if (_diagStep == 3) AtlasMaps.Shot("angels", "jump");
+                if (_diagStep == 2) { _blinkStart = Time.time - LidClose - 0.02f; BlinkFrame(); AtlasMaps.Shot("angels", "blink"); }
                 _diagStep = _diagStep == 3 ? 7 : _diagStep + 1; _diagAt = now + 1.5f;
                 if (lp.Data.IsDead) _diagStep = 7;
                 break;
@@ -772,6 +886,12 @@ internal sealed partial class HollowmereWorld
             int phase = reader.ReadByte();
             if (w == null || !UCRpc.RequireHost("Hollowmere.Breakout")) return;
             if (phase <= 2) w.ApplyBreakout(phase);
+        }
+        else if (sub == SubBlink)
+        {
+            byte pid = reader.ReadByte();
+            if (!UCRpc.RequireHost("Hollowmere.Blink")) return;
+            ShowBlinkIfMe(pid);
         }
         else if (sub == SubSealHold)
         {

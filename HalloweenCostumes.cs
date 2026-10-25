@@ -117,59 +117,73 @@ namespace UnknownsHalloween {
         }
 
         private static readonly Costume[] Costumes = {
-            new Costume { Key = "freddy", KillKey = "freddy", Name = "Halloween Freddy", KillFrames = 46, Flashes = new[] { 14, 20 }, HasLegs = false },
-            new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 46, Flashes = new[] { 16, 30 }, HasLegs = false,
+            // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py freddy): whole figure, cyan sweater stripes = wearer's colour.
+            new Costume { Key = "freddy", KillKey = "freddy", Name = "Halloween Freddy", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false,
+                HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
+            // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
+            new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f,
                 // diagonal slash (main) or the one-armed lift with the machete run through (2026-10-07)
                 Alt = new[] { new KillScene { Key = "jasonlift", Frames = 60, Flashes = new[] { 25, 45 } } } },
-            new Costume { Key = "xenomorph", KillKey = "xeno", Name = "Halloween Xenomorph", KillFrames = 46, Flashes = new[] { 17, 22 }, HasLegs = false, HasAccent = true,
+            new Costume { Key = "xenomorph", KillKey = "xeno", Name = "Halloween Xenomorph", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true,
                 // tail stab (main) or the inner-jaw bite
                 Alt = new[] { new KillScene { Key = "xenobite", Frames = 46, Flashes = new[] { 18, 31 } } } },
-            // 2026-10-07: rebuilt after the Dead-by-Daylight mori (yank down, three stabs, head hauled up, selfie, rip)
-            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 66, Flashes = new[] { 19, 23, 27, 44, 56 }, HasLegs = false, HasAccent = true },
+            // 2026-10-07: rebuilt after the Dead-by-Daylight mori (yank down, three stabs, head hauled up, selfie, rip);
+            // 2026-10-25 the same mori redrawn by GPT (kill_frames.py): flashes on the three stabs and the selfie
+            // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
+            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 45, Flashes = new[] { 10, 15, 20, 30 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
             // 2026-10-13: three more (kill5_<key>.py): assimilation, wrist blades, out of the vent
-            new Costume { Key = "thing", KillKey = "thing", Name = "Halloween Thing", KillFrames = 60, Flashes = new[] { 12, 41 }, HasLegs = false, HasAccent = true },
-            new Costume { Key = "predator", KillKey = "predator", Name = "Halloween Predator", KillFrames = 62, Flashes = new[] { 25, 33 }, HasLegs = false, HasAccent = true },
-            new Costume { Key = "sadako", KillKey = "sadako", Name = "Halloween Sadako", KillFrames = 62, Flashes = new[] { 31, 56 }, HasLegs = false, HasAccent = true },
+            new Costume { Key = "thing", KillKey = "thing", Name = "Halloween Thing", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true },
+            // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
+            new Costume { Key = "predator", KillKey = "predator", Name = "Halloween Predator", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
+            new Costume { Key = "sadako", KillKey = "sadako", Name = "Halloween Sadako", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true },
             // 2026-10-16: knitted spider costume (spider.py), BVB fan (bvb.py) and the angel ghost (angel.py,
             // the real body is hidden). Only costumes with a KillKey get a cutscene and a host option.
             // abseil behind the victim, cocoon from the feet up, bite, the cocoon tips over (kill5_spider.py).
             // 2026-10-17 spider v2: the killer's own crewmate under the costume, in the killer's colour
-            new Costume { Key = "spider", KillKey = "spider", Name = "Halloween Spider", KillFrames = 64, Flashes = new[] { 16, 42 }, HasLegs = false, HasAccent = true, KillerLayers = true,
+            new Costume { Key = "spider", KillKey = "spider", Name = "Halloween Spider", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true,
                 // Spidertron: the body glides level, every leg steps on its own (SpiderLegs); the walk loop
-                // is only the fallback for players the live legs cannot run on
-                StillWalk = true, WalkFps = 12f, LiveLegs = true },
+                // is only the fallback for players the live legs cannot run on. 2026-10-25 (User: new look, keep the
+                // per-leg concept): body frames and leg parts redrawn by GPT, cyan face patch = wearer's colour.
+                StillWalk = true, WalkFps = 12f, LiveLegs = true, HidesBody = true },
             new Costume { Key = "bvb", KillKey = null, Name = "Halloween BVB Fan", HasLegs = false, HasAccent = true },
             new Costume { Key = "angel", KillKey = null, Name = "Halloween Angel Ghost", HasLegs = false, HasAccent = true, HidesBody = true, NoLiveBob = true,
                 // 2026-10-24: floats like the reaper - idle pose under it (StillWalk) and its own gentle idle float while
                 // walking; the 12 walk frames have a ~40 px bob painted in, so NoLiveBob skips them
+                // (2026-10-25: a GPT redraw was compared and the user kept this one)
                 StillWalk = true, WalkFps = 12f },
             // 2026-10-20: Pumpkin Head (pumpkin.py; the glow jumps over to the victim and goes out, kill5_pumpkin.py)
             // and Reaper (reaper.py; floats on the idle pose like the spider, one scythe swing and the soul rises,
             // kill5_reaper.py). Appended at the end so their options take 1978 and 1979.
-            new Costume { Key = "pumpkin", KillKey = "pumpkin", Name = "Halloween Pumpkin Head", KillFrames = 56, Flashes = new[] { 22, 44 }, HasLegs = false, HasAccent = true },
-            new Costume { Key = "reaper", KillKey = "reaper", Name = "Halloween Reaper", KillFrames = 58, Flashes = new[] { 19, 30 }, HasLegs = false, HasAccent = true,
-                StillWalk = true, WalkFps = 12f },
+            // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py pumpkin): whole figure, cyan scarf = wearer's colour.
+            new Costume { Key = "pumpkin", KillKey = "pumpkin", Name = "Halloween Pumpkin Head", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true,
+                HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
+            new Costume { Key = "reaper", KillKey = "reaper", Name = "Halloween Reaper", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true,
+                StillWalk = true, WalkFps = 12f, HidesBody = true, IdleFps = 8f },   // 25.10.: GPT frames, cyan rope belt = wearer's colour
             // 2026-10-20 (Grafik-Lieferung, vampire.py / medusa.py, kill5_vampire.py / kill5_medusa.py): Vampire (the cape
             // closes around the victim, bat swarm; player colour in the cape lining, collar and medallion band) and
             // Medusa (the gaze turns the victim to stone; player colour in the sash and the snakes' tongues). Normal
             // 12-frame walk on the run cycle. Their options take 1944 and 1945 (1970-1979 is full).
-            new Costume { Key = "vampire", KillKey = "vampire", Name = "Halloween Vampire", KillFrames = 56, Flashes = new[] { 24, 44 }, HasLegs = false, HasAccent = true },
+            new Costume { Key = "vampire", KillKey = "vampire", Name = "Halloween Vampire", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true,
+                HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },   // 25.10.: GPT frames, cyan cape lining = wearer's colour
             // the scene ends on the grey statue; without a hold it would only stand for one frame (1/15 s)
             // 2026-10-25: costume frames redrawn by GPT (villa_qwen/gpt_costume.py medusa): the image IS the figure now
             // (HidesBody), the sash is the accent in the wearer's colour; snakes sway, curl, strike and hiss (IdleFps 8),
             // the walk loop lets them trail like ribbons on its own clock (StillWalk). The kill scene stays.
-            new Costume { Key = "medusa", KillKey = "medusa", Name = "Halloween Medusa", KillFrames = 56, Flashes = new[] { 20, 40 }, HasLegs = false, HasAccent = true,
+            // 2026-10-25: kill scene redrawn from GPT frames (villa_qwen/kill_frames.py, hybrid: 18 GPT frames, then her gaze frames with
+            // the victim petrifying step by step in the stone GPT painted, then she sways beside the statue): 45 frames,
+            // flashes when the gaze hits and when the statue is complete.
+            new Costume { Key = "medusa", KillKey = "medusa", Name = "Halloween Medusa", KillFrames = 45, Flashes = new[] { 14, 33 }, HasLegs = false, HasAccent = true,
                 KillHold = 1.2f, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
             // 2026-10-25 (User: Engelskin nach Vorbild der Karten-Engel, jedes Bild von GPT; villa_qwen/angel_costume.py): Weeping
             // Angel. The image IS the figure (stone crewmate with wings), the visor glows in the wearer's colour (accent). Idle:
             // weeps, peeks with a cracked visor, hides again (IdleFps 6). Walk: stalks with claws on its own clock (StillWalk).
             // Kill: the four Weeping Angel scenes of Hollowmere Manor (hk_angel_a1..a4, "Blink" with three flashes). Option 1946.
-            new Costume { Key = "weepingangel", KillKey = "angel_a1", Name = "Halloween Weeping Angel", KillFrames = 48, Flashes = new[] { 13, 25, 37 }, KillHold = 0.4f,
+            new Costume { Key = "weepingangel", KillKey = "angel_a1", Name = "Halloween Weeping Angel", KillFrames = 45, Flashes = new[] { 8, 17, 24 }, KillHold = 0.4f,
                 HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 6f,
                 Alt = new[] {
-                    new KillScene { Key = "angel_a2", Frames = 48, Flashes = new[] { 13, 25, 37 }, Hold = 0.4f },
-                    new KillScene { Key = "angel_a3", Frames = 48, Flashes = new[] { 13, 25, 37 }, Hold = 0.4f },
-                    new KillScene { Key = "angel_a4", Frames = 48, Flashes = new[] { 13, 25, 37 }, Hold = 0.4f } } },
+                    new KillScene { Key = "angel_a2", Frames = 45, Flashes = new[] { 8, 17, 24 }, Hold = 0.4f },
+                    new KillScene { Key = "angel_a3", Frames = 45, Flashes = new[] { 8, 17, 24 }, Hold = 0.4f },
+                    new KillScene { Key = "angel_a4", Frames = 45, Flashes = new[] { 8, 17, 24 }, Hold = 0.4f } } },
         };
 
         // ==================== host options (2026-10-07) ====================
@@ -902,16 +916,81 @@ namespace UnknownsHalloween {
         /// <summary>Plays a costume cutscene locally as if the local player had just been killed.
         /// Returns a short status line. Keys: freddy, jason (slash), jasonlift, jasonrandom, xeno (tail stab),
         /// xenobite, xenomorph (random of both), ghost / ghostface. "&lt;costume&gt;random" draws like a real kill.</summary>
+        // Scenes without a costume (map deaths): key, file key, frames, flashes, hold. Kept in step with
+        // GraveyardWorld.Demon* and HollowmereWorld.AngelScene*.
+        private static readonly (string Key, string Label, int Frames, int[] Flashes, float Hold)[] Standalone = {
+            ("demon", "Demon (pentagram)", 48, new[] { 22, 36 }, 0.5f),
+            ("angel_a1", "Weeping Angel: Mourning", 45, new[] { 8, 17, 24 }, 0.4f),
+            ("angel_a2", "Weeping Angel: Hooded", 45, new[] { 8, 17, 24 }, 0.4f),
+            ("angel_a3", "Weeping Angel: Cherub", 45, new[] { 8, 17, 24 }, 0.4f),
+            ("angel_a4", "Weeping Angel: Ruined", 45, new[] { 8, 17, 24 }, 0.4f),
+        };
+
+        /// <summary>Every playable kill scene as "key|Label" (Role Control builds its list from this, by reflection):
+        /// each costume's main scene, its alternatives, "random" for costumes with several, then the map scenes.</summary>
+        public static string[] SceneList() {
+            var list = new List<string>();
+            foreach (var c in Costumes) {
+                if (c.KillKey == null) continue;
+                string name = c.Name.Replace("Halloween ", "");
+                bool alts = c.Alt != null && c.Alt.Length > 0;
+                list.Add($"{c.KillKey}|{name}{(alts ? ": 1" : "")}");
+                if (alts) {
+                    for (int i = 0; i < c.Alt.Length; i++) list.Add($"{c.Alt[i].Key}|{name}: {i + 2}");
+                    list.Add($"{c.Key}random|{name}: Random");
+                }
+            }
+            foreach (var s in Standalone) list.Add($"{s.Key}|{s.Label}");
+            return list.ToArray();
+        }
+
+        /// <summary>Plays a scene on another player's screen (host only; Role Control). The target client plays it
+        /// locally as if it had been killed; nobody dies. RPC module 236 sub 15.</summary>
+        public static string PreviewFor(string key, byte targetId) {
+            try {
+                var lp = PlayerControl.LocalPlayer;
+                if (lp != null && lp.PlayerId == targetId) return Preview(key);
+                if (AmongUsClient.Instance == null || !AmongUsClient.Instance.AmHost) return "Only the host can play a scene for someone else.";
+                var w = UCRpc.Begin(HollowmereIntro.RpcModule);
+                w.Write(HollowmereWorld.SubScenePreview);
+                w.Write(targetId);
+                w.Write(key ?? "");
+                AmongUsClient.Instance.FinishRpcImmediately(w);
+                return $"Scene '{key}' sent to player {targetId}.";
+            } catch (Exception e) {
+                return "Fehler: " + e.Message;
+            }
+        }
+
+        internal static void HandleScenePreview(Hazel.MessageReader reader) {
+            byte target = reader.ReadByte();
+            string key = reader.ReadString();
+            if (!UCRpc.RequireHost("Halloween.ScenePreview")) return;
+            var lp = PlayerControl.LocalPlayer;
+            if (lp == null || lp.PlayerId != target) return;
+            HalloweenPlugin.Logger?.LogInfo("[Halloween] host played kill scene for you: " + Preview(key));
+        }
+
         public static string Preview(string key) {
             try {
                 Setup();
                 key = (key ?? string.Empty).Trim().ToLowerInvariant();
+                foreach (var s in Standalone) {
+                    if (s.Key != key && !(key.Length >= 4 && s.Key.StartsWith(key))) continue;
+                    if (HudManager.Instance == null) return "Kein HUD - erst in eine Lobby oder Runde gehen.";
+                    int col = 0;
+                    try { col = PlayerControl.LocalPlayer.Data.DefaultOutfit.ColorId; } catch { }
+                    EndSequence();
+                    queue.Clear();
+                    return PlayStandaloneScene(s.Key, s.Frames, s.Flashes ?? Array.Empty<int>(), s.Hold, col)
+                        ? $"Kill-Szene {s.Label} wird abgespielt." : $"Szene {s.Label}: Bilder noch nicht geladen.";
+                }
                 bool random = key.EndsWith("random", StringComparison.Ordinal);
                 if (random) key = key.Substring(0, key.Length - "random".Length);
                 var c = Costumes.Where(x => x.KillKey != null).FirstOrDefault(x => x.Key == key || x.KillKey == key
                                                      || (x.Alt != null && x.Alt.Any(s => s.Key == key))
                                                      || (key.Length >= 3 && x.Key.StartsWith(key)));
-                if (c == null) return "Unbekannt. Moeglich: freddy, jason, jasonlift, jasonrandom, xeno, xenobite, xenomorph (zufaellig), ghost.";
+                if (c == null) return "Unbekannt. Moeglich: " + string.Join(", ", SceneList().Select(s => s.Split('|')[0]));
                 if (HudManager.Instance == null) return "Kein HUD - erst in eine Lobby oder Runde gehen.";
                 int color = 0;
                 try { color = PlayerControl.LocalPlayer.Data.DefaultOutfit.ColorId; } catch { }

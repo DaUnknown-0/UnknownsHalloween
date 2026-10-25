@@ -588,7 +588,11 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         {
             HandleAngelRpc(reader);
         }
-        else if (sub == SubAngelMove || sub == SubBreakout || sub == SubSealHold)
+        else if (sub == SubScenePreview)
+        {
+            HalloweenCostumes.HandleScenePreview(reader);
+        }
+        else if (sub == SubAngelMove || sub == SubBreakout || sub == SubSealHold || sub == SubBlink)
         {
             HandleAngelMoveRpc(sub, reader);
         }

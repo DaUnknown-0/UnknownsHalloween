@@ -79,8 +79,8 @@ internal sealed partial class HollowmereWorld
     // engel bekommen reihum eine Variante, sortiert nach Position (x, dann y): rechnet jeder Client gleich, ohne RPC. Der
     // Brunnenengel ist a1. tools: villa_qwen/angel_scene.py (GPT-Schluesselbilder, "Blink"-Ablauf mit drei Blitzen).
     private const int AngelVariants = 4;
-    private const int AngelSceneFrames = 48;
-    private static readonly int[] AngelSceneFlashes = { 13, 25, 37 };
+    private const int AngelSceneFrames = 45;       // 25.10.: Szenen aus GPT-Blaettern (villa_qwen/kill_frames.py), Blinzeln = schwarze Bilder
+    private static readonly int[] AngelSceneFlashes = { 8, 17, 24 };
     private const float AngelSceneHold = 0.4f;
     private static readonly List<(Vector2 Pos, int Variant)> AngelVariantAt = new();
 
@@ -242,13 +242,15 @@ internal sealed partial class HollowmereWorld
         var players = PlayerControl.AllPlayerControls.ToArray().Where(p => p != null && p.Data != null && !p.Data.IsDead && !p.Data.Disconnected).ToList();
         if (_angelWatched.Length != _slots.Count) _angelWatched = new bool[_slots.Count];
         Array.Clear(_angelWatched, 0, _angelWatched.Length);
-        BlinkTick(players);
         var sights = new AngelSight[players.Count, _slots.Count];
         var blinked = new bool[players.Count];
         for (int n = 0; n < players.Count; n++)
             for (int i = 0; i < _slots.Count; i++)
-            {
                 sights[n, i] = SightOf(players[n], _slots[i]);
+        BlinkTick(players, sights);                                          // nur wer gerade einen Engel im Blick hat
+        for (int n = 0; n < players.Count; n++)
+            for (int i = 0; i < _slots.Count; i++)
+            {
                 // Blinzeln (Host, AngelMove.cs): in diesem Tick zaehlt der Blick nicht
                 if (sights[n, i] == AngelSight.Watched && _blinking.Contains(players[n].PlayerId)) { sights[n, i] = AngelSight.Away; blinked[n] = true; }
                 if (sights[n, i] == AngelSight.Watched) _angelWatched[i] = true;

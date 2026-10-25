@@ -40,7 +40,7 @@ public class HalloweenPlugin : BasePlugin
 {
     public const string PluginGuid = "com.daunknown.unknownshalloween";
     public const string PluginName = "Unknown's Halloween";
-    public const string PluginVersion = "0.1.3.15";
+    public const string PluginVersion = "0.1.3.16";
     public static readonly System.Version Version = System.Version.Parse(PluginVersion);
     private const string AtlasGuid = "com.daunknown0.atlas";
 
@@ -51,6 +51,9 @@ public class HalloweenPlugin : BasePlugin
     {
         Logger = Log;
         CfgEnabled = Config.Bind("General", "Enabled", true, "Master switch of Unknown's Halloween.");
+        HollowmereWorld.BlinkEffect = Config.Bind("Weeping Angels", "BlinkEffect", true,
+            "Show the eyelid blink on your screen when the Weeping Angels make you blink. Off = no visual effect; you still blink (the host decides it).");
+        HollowmereWorld.RegisterBlinkToggle();
         HwGuessSpell.LocalSwitch = Config.Bind("Sounds", "GuesserSpellSound", true,
             "Play \"Avada Kedavra ... Kurwa!\" at every Guesser shot (contains a swear word). The host can switch it off for everyone (option 2102).");
 
