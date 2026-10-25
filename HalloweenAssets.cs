@@ -481,5 +481,10 @@ internal sealed class HalloweenResourceAssembly : Assembly
 public class HalloweenAssetHost : MonoBehaviour
 {
     public HalloweenAssetHost(IntPtr ptr) : base(ptr) { }
-    private void Update() => HalloweenAssets.Tick();
+    private void Update()
+    {
+        HalloweenAssets.Tick();
+        try { TextureVersions.Tick(this); }
+        catch (Exception e) { HalloweenPlugin.Logger?.LogError($"[Halloween/MapArt] {e.Message}"); }
+    }
 }

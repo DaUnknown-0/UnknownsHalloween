@@ -121,6 +121,9 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             DarkVision = CustomOption.Create(1967, CustomOption.CustomOptionType.General, "Dark Room Vision", DarkChoices, null, false, null, "Hollowmere Manor");
             CandleBurn = CustomOption.Create(1968, CustomOption.CustomOptionType.General, "Candle Burn Time", 60f, 20f, 120f, 10f, DarkVision);
             BlowOut = CustomOption.Create(1969, CustomOption.CustomOptionType.General, "Impostor Blow-Out Cooldown", BlowChoices, DarkVision);
+            // 1961 war bis 24.10. "Hollowmere Intro" (entfernt); seitdem die Weeping Angels (HollowmereWorld.Angel.cs)
+            AngelAttack = CustomOption.Create(1961, CustomOption.CustomOptionType.General, "Weeping Angels Attack", true, null, false, null, "Hollowmere Manor");
+            AngelReplayRegister();
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} options failed: {e}"); }
         try
@@ -231,7 +234,8 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         Collect("portrait", _portraits, "l", "r");
         Collect("scheinwerfer", _spots, "off");
         Collect("kandelaber", _candles, "off");
-        Collect("brunnen_blut", _angels, "turn", "step");             // Weeping Angel (HollowmereWorld.Angel.cs)
+        Collect("brunnen_blut", _angels, "turn", "step");             // Weeping Angels (HollowmereWorld.Angel.cs)
+        Collect("weeping_angel", _graveAngels, "turn", "step");
         AngelReset();
         _burnUntil = new float[_candles.Count];
         foreach (var pv in _candles) Show(pv, "off");                  // die Kerzen starten erloschen
@@ -562,6 +566,10 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             byte phase = reader.ReadByte();
             if (w == null || !UCRpc.RequireHost("Hollowmere.Clock")) return;
             w.ApplyClock(phase);
+        }
+        else if (sub == SubAngelVictim)
+        {
+            HandleAngelRpc(reader);
         }
         else if (sub == SubCandle)
         {

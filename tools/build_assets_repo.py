@@ -107,6 +107,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     keep_files = {n + ".hwp" for n in packs}
     for old in out.iterdir():
+        if old.is_dir(): continue                       # files/variants: build_texture_variants.py
         if old.name not in keep_files:
             old.unlink()
             print(f"removed {old.name}")

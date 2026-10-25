@@ -1,116 +1,399 @@
 // Unknown's Halloween - Copyright (C) 2026 DaUnknown-0
 // Licensed under GPL-3.0-or-later. See LICENSE for details.
 //
-// HollowmereWorld.Angel - die Brunnenfigur im Fountain Court als Weeping Angel (User 2026-10-24, Vorbild Doctor Who).
+// HollowmereWorld.Angel - Weeping Angels in Hollowmere Manor (User 2026-10-24, Vorbild Doctor Who): die Brunnenfigur im
+// Fountain Court (Art brunnen_blut) und die Engel auf dem Friedhof der grossen Manor (Art weeping_angel, statt der
+// Grabsteine). Grundpose: Haende vor den Augen.
 //
-// Solange man hinsieht, steht der Engel mit den Haenden vor den Augen still. Nur wenn der eigene Spieler ihn gerade NICHT
-// sieht (ausserhalb des Bildes, ausserhalb der Sicht oder hinter einer Wand), wechselt er selten die Pose: Kopf gedreht mit
-// Fratze ("turn") oder ein Stueck vorgerueckt und greifend ("step"). Schaut man wieder hin, steht er so da; nach einer
-// Weile ausser Sicht nimmt er die Haende wieder vor die Augen. Tauschbilder "Prop/brunnen_blut/<x>/<y>/turn|step" aus
-// dem Konsolen-Atlas (gen_villa PROP_VARIANTS). Rein lokal und kosmetisch: jeder Client entscheidet fuer seine eigene
-// Sicht, nichts wird gesendet, Kollision und Spiel bleiben unberuehrt.
+// Aggressivitaet (User 25.10., pro Spieler und Engel): jeder Engel hat mit jedem lebenden Spieler einen eigenen Wert.
+// - in Sichtweite (Bildausschnitt um den Spieler, Lichtradius, keine Wand dazwischen), aber der Spieler schaut weg
+//   (Blickrichtung des Crewmates links/rechts, der Engel steht hinter ihm): der Wert steigt, der Engel geht Stufe fuer
+//   Stufe von "Haende vor den Augen" ueber "starrt an" (turn) zu "greift an" (step);
+// - der Spieler schaut ihn an: die Pose bleibt stehen, der Wert steigt trotzdem langsamer weiter (beim Wegdrehen springt
+//   der Engel dann gleich weiter);
+// - gar nicht in Sichtweite (auch im Vent, auf der Leiter, tot): der Wert sinkt langsam, er regt sich wieder ab.
+// Der Host rechnet die Werte fuer alle Spieler, jeder Client dieselbe Formel fuer den eigenen Spieler und zeigt die Pose
+// danach (nichts wird gesendet; Tauschbilder "Prop/<art>/<x>/<y>/turn|step", gen_villa PROP_VARIANTS).
+//
+// Angriff (Host-autoritativ, Option 1961 "Weeping Angels Attack", Standard an): voller Wert, weggeschaut und hoechstens
+// 3 m entfernt -> "zurueck in die Zeit geschickt": Tod ueber TORs UncheckedMurderPlayer wie beim Pentagramm, ohne Schild,
+// ohne Erstkill-Schild, ohne Bait-Selbstbericht; die Rollenzeile sagt "sent back in time". Weiter weg bleibt der Engel in
+// der Angriffspose, bis man naeher kommt oder er sich abregt. Das Opfer sieht die Kill-Szene seines Engels
+// (hk_angel_a<n>_*). RPC Modul 236 Sub 10 (Host -> alle, vor dem Kill). Ist die Option aus, wechseln nur die Posen.
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using HarmonyLib;
+using TheOtherRoles;
 using UnityEngine;
+using UnknownsCollection;
+using static TheOtherRoles.TheOtherRoles;
 
 namespace UnknownsHalloween;
 
 internal sealed partial class HollowmereWorld
 {
-    private readonly List<PropVar> _angels = new();
-    private string _anglePose;                   // null = Haende vor den Augen
-    private float _angelUnseenSince = -1f, _angelNextRoll;
+    public static CustomOption AngelAttack;
+    internal const byte SubAngelVictim = 10;     // [spieler]  Host -> alle, vor dem Kill
+
+    private sealed class AngelSlot
+    {
+        public readonly List<PropVar> Props = new();
+        public Vector2 Pos;                     // Mitte der Standlinie; Abstand und Blickrichtung messen dagegen
+        public string Pose;                     // null = Haende vor den Augen
+    }
+
+    private enum AngelSight { Hidden, Away, Watched }
+
+    private readonly List<PropVar> _angels = new(), _graveAngels = new();
+    private readonly List<AngelSlot> _slots = new();
+    private readonly Dictionary<(byte Player, int Slot), float> _aggro = new();   // alle Spieler, auf jedem Client
+    private float _nextAngelTick;
     private bool _angelErrorLogged;
+    private static readonly HashSet<byte> AngelVictims = new();
 
-    // Mitte der Figur (Plan 31,0 / 31,05 = Brunnenmitte, Figur steht gut 1,5 m darueber im Bild)
-    private static readonly Vector2 AngelFeet = new(31.0f - 17.0f, 14.0f - 31.05f);
-    private static readonly Vector2 AngelHead = AngelFeet + new Vector2(0f, 1.6f);
+    // Brunnenfigur: Plan 31,0 / 31,05 = Brunnenmitte
+    private static readonly Vector2 FountainAngel = new(31.0f - 17.0f, 14.0f - 31.05f);
 
-    private const float AngelRollEvery = 1.5f;   // so oft wird gewuerfelt, solange er ungesehen ist
-    private const float AngelMinUnseen = 3f;     // erst nach so vielen Sekunden ausser Sicht
-    private const float AngelMoveChance = 0.12f; // je Wurf: Pose wechseln (selten)
-    private const float AngelBackAfter = 9f;     // geaenderte Pose: nach so langer Zeit ungesehen evtl. zurueck
-    private const float AngelBackChance = 0.35f;
+    private const float AngelReach = 3f;         // Meter, nur fuer den Kill
+    private const float AngelStareAt = 3f;       // Wert ab "starrt an" (turn)
+    private const float AngelStepAt = 6f;        // Wert ab "greift an" (step)
+    private const float AngelKillAt = 8f;        // voller Wert: Kill in Reichweite; hoeher steigt er nicht
+    private const float AngelGainAway = 1f;      // pro Sekunde, sichtbar und weggeschaut
+    private const float AngelGainWatched = 0.4f; // pro Sekunde, angeschaut (Pose steht, Wert waechst)
+    private const float AngelCalm = 0.5f;        // pro Sekunde ausser Sicht (von voll bis ruhig 16 s)
+    private const float AngelTickEvery = 0.2f;
+
+    // Engel-Varianten (User 25.10.): vier Gestalten (a1 Trauerengel, a2 verhuellter Engel, a3 Putte, a4 Ruinenengel), je mit
+    // eigenen Karten-Posen (in den Atlanten, je Platz eigene Rechtecke) und eigener Kill-Szene hk_angel_a<n>_*. Die Friedhofs-
+    // engel bekommen reihum eine Variante, sortiert nach Position (x, dann y): rechnet jeder Client gleich, ohne RPC. Der
+    // Brunnenengel ist a1. tools: villa_qwen/angel_scene.py (GPT-Schluesselbilder, "Blink"-Ablauf mit drei Blitzen).
+    private const int AngelVariants = 4;
+    private const int AngelSceneFrames = 48;
+    private static readonly int[] AngelSceneFlashes = { 13, 25, 37 };
+    private const float AngelSceneHold = 0.4f;
+    private static readonly List<(Vector2 Pos, int Variant)> AngelVariantAt = new();
+
+    /// <summary>Kill-Szene des Engels, der dem Opfer am naechsten steht.</summary>
+    private static string AngelSceneFor(Vector2 victim)
+    {
+        int v = 1; float best = float.MaxValue;
+        foreach (var (pos, variant) in AngelVariantAt)
+        {
+            float d = (pos - victim).sqrMagnitude;
+            if (d < best) { best = d; v = variant; }
+        }
+        return $"angel_a{v}";
+    }
+
+    private static bool AngelAttackOn { get { try { return AngelAttack == null || AngelAttack.getBool(); } catch { return true; } } }
 
     private void AngelReset()
     {
-        _anglePose = null;
-        _angelUnseenSince = -1f;
-        _angelNextRoll = 0f;
-        foreach (var pv in _angels) Show(pv, null);
+        _slots.Clear();
+        _aggro.Clear();
+        AngelVictims.Clear();
+        if (_angels.Count > 0)
+        {
+            var s = new AngelSlot { Pos = FountainAngel };
+            s.Props.AddRange(_angels);
+            _slots.Add(s);
+        }
+        foreach (var pv in _graveAngels)
+        {
+            var s = new AngelSlot { Pos = pv.Pos };
+            s.Props.Add(pv);
+            _slots.Add(s);
+        }
+        foreach (var s in _slots) SetPose(s, null);
+        AngelVariantAt.Clear();
+        if (_angels.Count > 0) AngelVariantAt.Add((FountainAngel, 1));
+        int i = 0;
+        foreach (var pv in _graveAngels.OrderBy(p => p.Pos.x).ThenBy(p => p.Pos.y))
+            AngelVariantAt.Add((pv.Pos, i++ % AngelVariants + 1));
+        if (_slots.Count > 0)
+            HalloweenPlugin.Logger.LogInfo($"{LogPrefix} weeping angels: {_slots.Count} (attack {(AngelAttackOn ? "on" : "off")})");
     }
 
     private void AngelTick()
     {
-        if (_angels.Count == 0) return;
+        if (_slots.Count == 0) return;
         float now = Time.time;
         if (MeetingHud.Instance != null || ExileController.Instance != null)
         {
-            // im Meeting sieht ihn keiner: danach wieder in der Grundpose
-            if (_anglePose != null) SetAngelPose(null);
-            _angelUnseenSince = -1f;
+            foreach (var s in _slots) if (s.Pose != null) SetPose(s, null);
+            _aggro.Clear();
             return;
         }
-        if (AngelSeen())
-        {
-            _angelUnseenSince = -1f;
-            return;
-        }
-        if (_angelUnseenSince < 0f) { _angelUnseenSince = now; _angelNextRoll = now + AngelRollEvery; return; }
-        if (now < _angelNextRoll) return;
-        _angelNextRoll = now + AngelRollEvery;
-        float unseen = now - _angelUnseenSince;
-        if (unseen < AngelMinUnseen) return;
-        var rnd = UnityEngine.Random.value;
-        if (_anglePose == null)
-        {
-            if (rnd < AngelMoveChance) SetAngelPose(UnityEngine.Random.value < 0.65f ? "turn" : "step");
-        }
-        else if (unseen >= AngelBackAfter && rnd < AngelBackChance) SetAngelPose(null);
-    }
-
-    private void SetAngelPose(string pose)
-    {
-        _anglePose = pose;
-        foreach (var pv in _angels) Show(pv, pose);
-        if (DiagOnAngel) HalloweenPlugin.Logger.LogInfo($"{LogPrefix} weeping angel: {pose ?? "weeping"}");
-    }
-
-    /// <summary>Sieht der eigene Spieler den Engel? Im Bild (mit Rand), bei Lebenden zusaetzlich in Lichtweite und
-    /// ohne Wand dazwischen; Geister sehen alles im Bild.</summary>
-    private static bool AngelSeen()
-    {
+        if (now < _nextAngelTick) return;
+        _nextAngelTick = now + AngelTickEvery;
+        AngelAggroTick();
+        // eigenes Bild aus dem eigenen Wert. Angeschaut bleibt die Pose stehen; der Tausch passiert, waehrend man wegschaut
+        // oder der Engel ausser Sicht ist.
         var lp = PlayerControl.LocalPlayer;
-        var cam = Camera.main;
-        if (lp == null || cam == null) return false;
-        bool inView = false;
-        foreach (var pt in new[] { AngelFeet, AngelHead })
+        for (int i = 0; i < _slots.Count; i++)
         {
-            var v = cam.WorldToViewportPoint(new Vector3(pt.x, pt.y, 0f));
-            if (v.x > -0.05f && v.x < 1.05f && v.y > -0.05f && v.y < 1.05f) { inView = true; break; }
+            var s = _slots[i];
+            if (SightOf(lp, s) == AngelSight.Watched) continue;
+            float aggro = lp != null && _aggro.TryGetValue((lp.PlayerId, i), out float v) ? v : 0f;
+            string pose = PoseFor(aggro);
+            if (pose != s.Pose) SetPose(s, pose);
         }
-        if (!inView) return false;
-        if (lp.Data == null || lp.Data.IsDead) return true;
-        var me = lp.GetTruePosition();
-        float radius = 6f;
-        try { if (ShipStatus.Instance != null) radius = ShipStatus.Instance.CalculateLightRadius(lp.Data) + 0.6f; } catch { }
-        foreach (var pt in new[] { AngelFeet, AngelHead })
-        {
-            if (Vector2.Distance(me, pt) > radius) continue;
-            bool blocked = false;
-            try { blocked = PhysicsHelpers.AnythingBetween(me, pt, Constants.ShadowMask, false); } catch { }
-            if (!blocked) return true;
-        }
-        return false;
     }
 
-    private static bool DiagOnAngel => Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") == "angel";
+    private static void SetPose(AngelSlot s, string pose)
+    {
+        s.Pose = pose;
+        foreach (var pv in s.Props) Show(pv, pose);
+    }
+
+    private static string PoseFor(float aggro) => aggro >= AngelStepAt ? "step" : aggro >= AngelStareAt ? "turn" : null;
+
+    private static float NextAggro(float aggro, AngelSight sight, float dt) => sight switch
+    {
+        AngelSight.Away => Mathf.Min(AngelKillAt, aggro + AngelGainAway * dt),
+        AngelSight.Watched => Mathf.Min(AngelKillAt, aggro + AngelGainWatched * dt),
+        _ => Mathf.Max(0f, aggro - AngelCalm * dt),
+    };
+
+    /// <summary>Wie steht der Spieler zum Engel? Tote, Spieler im Vent oder auf der Leiter zaehlen als ausser Sicht.</summary>
+    private static AngelSight SightOf(PlayerControl p, AngelSlot s)
+    {
+        if (p == null || p.Data == null || p.Data.IsDead || p.Data.Disconnected || p.inVent || p.onLadder) return AngelSight.Hidden;
+        if (!AngelInSight(p, s.Pos)) return AngelSight.Hidden;
+        return LooksAway(p, s.Pos) ? AngelSight.Away : AngelSight.Watched;
+    }
+
+    /// <summary>Schaut der Spieler vom Engel weg? Blickrichtung = Ausrichtung des Crewmates (links/rechts); der Engel muss
+    /// hinter ihm stehen. Steht er fast genau ueber oder unter ihm, zaehlt das als Hinsehen.</summary>
+    private static bool LooksAway(PlayerControl p, Vector2 angel)
+    {
+        bool left;
+        try { left = p.cosmetics.currentBodySprite.BodySprite.flipX; } catch { return false; }
+        float dx = angel.x - p.GetTruePosition().x;
+        if (Mathf.Abs(dx) < 0.3f) return false;
+        return left ? dx > 0f : dx < 0f;
+    }
+
+    /// <summary>Hat der Spieler den Engel in Sichtweite? Fuss oder Kopf im Bildausschnitt um den Spieler (Kameragroesse des
+    /// eigenen Clients, die Kamera folgt dem Spieler), in Lichtweite und ohne Wand dazwischen. Rechnet fuer jeden Spieler
+    /// gleich, damit Host (Kill) und Client (Bild) dasselbe Ergebnis haben.</summary>
+    private static bool AngelInSight(PlayerControl p, Vector2 feet)
+    {
+        var me = p.GetTruePosition();
+        var cam = Camera.main;
+        float halfH = cam != null && cam.orthographic ? cam.orthographicSize : 3f;
+        float halfW = halfH * (cam != null && cam.aspect > 0.1f ? cam.aspect : 16f / 9f);
+        halfH *= 1.05f; halfW *= 1.05f;
+        float radius = 6f;
+        try { if (ShipStatus.Instance != null) radius = ShipStatus.Instance.CalculateLightRadius(p.Data) + 0.6f; } catch { }
+        return PointInSight(me, feet, halfW, halfH, radius) || PointInSight(me, feet + new Vector2(0f, 1.6f), halfW, halfH, radius);
+    }
+
+    private static bool PointInSight(Vector2 me, Vector2 pt, float halfW, float halfH, float radius)
+    {
+        var d = pt - me;
+        if (Mathf.Abs(d.x) > halfW || Mathf.Abs(d.y) > halfH || d.magnitude > radius) return false;
+        try { return !PhysicsHelpers.AnythingBetween(me, pt, Constants.ShadowMask, false); } catch { return true; }
+    }
+
+    // ------------------------------------------------------------------ Werte aller Spieler (jeder Client), Angriff (Host)
+
+    /// <summary>Jeder Client rechnet die Werte aller Spieler mit derselben Formel (das Replay zeigt sie fuer jeden); nur der
+    /// Host toetet.</summary>
+    private void AngelAggroTick()
+    {
+        var present = new HashSet<byte>();
+        foreach (var p in PlayerControl.AllPlayerControls.ToArray())
+        {
+            if (p == null || p.Data == null || p.Data.IsDead || p.Data.Disconnected) continue;
+            byte pid = p.PlayerId;
+            present.Add(pid);
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                var s = _slots[i];
+                var key = (pid, i);
+                _aggro.TryGetValue(key, out float aggro);
+                var sight = SightOf(p, s);
+                aggro = NextAggro(aggro, sight, AngelTickEvery);
+                if (aggro <= 0f) _aggro.Remove(key); else _aggro[key] = aggro;
+                if (!AmHost || !AngelAttackOn || sight != AngelSight.Away || aggro < AngelKillAt) continue;
+                if (Vector2.Distance(p.GetTruePosition(), s.Pos) > AngelReach) continue;
+                KillByAngel(p);
+                present.Remove(pid);
+                break;
+            }
+        }
+        foreach (var k in _aggro.Keys.ToList()) if (!present.Contains(k.Player)) _aggro.Remove(k);
+    }
+
+    // ------------------------------------------------------------------ Round Replay (UTS, RoundReplayMarkers.cs)
+
+    private static readonly string[] AngelVariantNames = { "Mourning angel", "Hooded angel", "Cherub", "Ruined angel" };
+
+    /// <summary>Einmal beim Start: die Engel als Replay-Marker fuer UTS (AppDomain, ohne Verweis). Die Funktionen lesen die
+    /// Welt der laufenden Runde; ausserhalb von Hollowmere liefern sie nichts.</summary>
+    internal static void AngelReplayRegister()
+    {
+        try
+        {
+            AppDomain.CurrentDomain.SetData("UTS.ReplayMarkers.Layout", (Func<string>)AngelReplayLayout);
+            AppDomain.CurrentDomain.SetData("UTS.ReplayMarkers.Values", (Func<byte, float[]>)AngelReplayValues);
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} replay markers not registered: {e.Message}"); }
+    }
+
+    private static string AngelReplayLayout()
+    {
+        var w = _current;
+        if (w == null || w._slots.Count == 0) return null;
+        var ci = System.Globalization.CultureInfo.InvariantCulture;
+        var sb = new System.Text.StringBuilder("Weeping Angels: aggression");
+        sb.Append('|').Append((AngelStareAt / AngelKillAt).ToString(ci)).Append('|').Append((AngelStepAt / AngelKillAt).ToString(ci));
+        foreach (var s in w._slots)
+        {
+            int v = 1;
+            foreach (var (pos, variant) in AngelVariantAt) if ((pos - s.Pos).sqrMagnitude < 0.01f) { v = variant; break; }
+            sb.Append('\n').Append(AngelVariantNames[(v - 1) % AngelVariantNames.Length])
+              .Append('|').Append(s.Pos.x.ToString(ci)).Append('|').Append(s.Pos.y.ToString(ci));
+        }
+        return sb.ToString();
+    }
+
+    private static float[] AngelReplayValues(byte pid)
+    {
+        var w = _current;
+        if (w == null || w._slots.Count == 0) return null;
+        float[] res = null;
+        for (int i = 0; i < w._slots.Count; i++)
+        {
+            if (!w._aggro.TryGetValue((pid, i), out float a) || a <= 0f) continue;
+            res ??= new float[w._slots.Count];
+            res[i] = a / AngelKillAt;
+        }
+        return res;
+    }
+
+    private static void KillByAngel(PlayerControl p)
+    {
+        try
+        {
+            byte pid = p.PlayerId;
+            SendAngelVictim(pid);
+            MarkAngelVictim(pid);
+            bool freeplay = AmongUsClient.Instance != null && AmongUsClient.Instance.NetworkMode == NetworkModes.FreePlay;
+            if (freeplay) p.MurderPlayer(p, MurderResultFlags.Succeeded);
+            else Helpers.MurderPlayer(p, p, false);
+            HalloweenPlugin.Logger.LogInfo($"{LogPrefix} weeping angel sent {p.Data?.PlayerName} back in time");
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} angel kill failed: {e.Message}"); }
+    }
+
+    // Opfer merken (alle Clients) und auf dem eigenen Client die Kill-Szene spielen
+    private static void MarkAngelVictim(byte pid)
+    {
+        AngelVictims.Add(pid);
+        try
+        {
+            var lp = PlayerControl.LocalPlayer;
+            if (lp == null || lp.PlayerId != pid) return;
+            int color = lp.Data != null ? lp.Data.DefaultOutfit.ColorId : 0;
+            string scene = AngelSceneFor(lp.GetTruePosition());
+            if (!HalloweenCostumes.PlayStandaloneScene(scene, AngelSceneFrames, AngelSceneFlashes, AngelSceneHold, color))
+                HalloweenPlugin.Logger.LogInfo($"{LogPrefix} angel kill scene {scene} not delivered yet - no overlay");
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} angel scene failed: {e.Message}"); }
+    }
+
+    private static void SendAngelVictim(byte pid)
+    {
+        try
+        {
+            if (PlayerControl.LocalPlayer == null || AmongUsClient.Instance == null) return;
+            var w = UCRpc.Begin(HollowmereIntro.RpcModule);
+            w.Write(SubAngelVictim);
+            w.Write(pid);
+            AmongUsClient.Instance.FinishRpcImmediately(w);
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} angel send failed: {e.Message}"); }
+    }
+
+    private static void HandleAngelRpc(Hazel.MessageReader reader)
+    {
+        byte pid = reader.ReadByte();
+        if (!UCRpc.RequireHost("Hollowmere.Angel")) return;
+        MarkAngelVictim(pid);
+    }
 
     private void AngelError(Exception e)
     {
         if (_angelErrorLogged) return;
         _angelErrorLogged = true;
-        HalloweenPlugin.Logger.LogError($"{LogPrefix} weeping angel failed (logged once): {e}");
+        HalloweenPlugin.Logger.LogError($"{LogPrefix} weeping angels failed (logged once): {e}");
+    }
+
+    // ------------------------------------------------------------------ TOR-Nacharbeit (wie GraveyardWorld.Ritual)
+
+    private static string _angelFirstKillBefore;
+    private static System.Reflection.FieldInfo _angelFirstKillField;
+
+    [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.MurderPlayer))]
+    private static class AngelMurderPatch
+    {
+        [HarmonyPriority(Priority.First)]
+        public static void Prefix([HarmonyArgument(0)] PlayerControl target)
+        {
+            try
+            {
+                if (target == null || !AngelVictims.Contains(target.PlayerId)) return;
+                _angelFirstKillField ??= AccessTools.Field(AccessTools.TypeByName("TheOtherRoles.TORMapOptions"), "firstKillName");
+                _angelFirstKillBefore = _angelFirstKillField?.GetValue(null) as string;
+            }
+            catch { }
+        }
+
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix(PlayerControl __instance, [HarmonyArgument(0)] PlayerControl target)
+        {
+            try
+            {
+                if (target == null || __instance == null || __instance.PlayerId != target.PlayerId || !AngelVictims.Contains(target.PlayerId)) return;
+                if (string.IsNullOrEmpty(_angelFirstKillBefore) && _angelFirstKillField != null) _angelFirstKillField.SetValue(null, "");
+                foreach (var k in Bait.active.Keys.ToList()) if (k.player != null && k.player.PlayerId == target.PlayerId) Bait.active.Remove(k);
+            }
+            catch { }
+        }
+    }
+
+    // Kein Vanilla-Overlay ("toetet sich selbst"); die Szene spielt MarkAngelVictim.
+    [HarmonyPatch(typeof(KillOverlay), nameof(KillOverlay.ShowKillAnimation), typeof(NetworkedPlayerInfo), typeof(NetworkedPlayerInfo))]
+    private static class AngelOverlayPatch
+    {
+        [HarmonyPriority(Priority.First)]
+        public static bool Prefix([HarmonyArgument(0)] NetworkedPlayerInfo killer, [HarmonyArgument(1)] NetworkedPlayerInfo victim)
+        {
+            try
+            {
+                if (killer != null && victim != null && killer.PlayerId == victim.PlayerId && AngelVictims.Contains(victim.PlayerId)) return false;
+            }
+            catch { }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(RoleInfo), nameof(RoleInfo.GetRolesString))]
+    private static class AngelRoleStringPatch
+    {
+        public static void Postfix(PlayerControl p, ref string __result)
+        {
+            try
+            {
+                if (AngelVictims.Count == 0 || p == null || __result == null || !AngelVictims.Contains(p.PlayerId) || p.Data == null || !p.Data.IsDead) return;
+                int i = __result.IndexOf(" - killed by ", StringComparison.Ordinal);
+                if (i >= 0) __result = __result.Substring(0, i) + " - <color=#9FB4C7>sent back in time</color>";
+            }
+            catch { }
+        }
     }
 }

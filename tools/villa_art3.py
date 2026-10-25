@@ -951,6 +951,17 @@ def _jeep(p, c, x0, y0, x1, y1, idx, rnd):
         c.ellipse(x0 + rnd.uniform(0.3, W_ - 0.3), y0 + rnd.uniform(-0.05, 0.1), 0.08, 0.03, fill=alpha(mud, 150))
 
 
+
+def _weeping_angel(p, c, x0, y0, x1, y1, idx, rnd, variant=None):
+    """Weeping Angel auf dem Friedhof der grossen Manor (User 24.10., statt der Grabsteine): niedriger, verwitterter
+    Steinsockel, darauf die Engelsfigur des Brunnens (VA.fountain_statue). variant None = Haende vor den Augen,
+    "turn" = Kopf gedreht mit Fratze, "step" = vorgerueckt und greifend (Tauschbilder der Mod, gleiche Leinwand)."""
+    cx = (x0 + x1) / 2
+    stone_block(p, x0, y0, x1, y1, 0, 0.3)
+    c.ellipse(cx + 0.12, y0 + 0.3 * K + 0.04, 0.08, 0.03, fill=alpha(hexc("#4d6b3a"), 170))   # Moos am Sockel
+    VA.fountain_statue(c, cx, (y0 + y1) / 2 + 0.3 * K, idx, pose=variant)
+
+
 GARDEN_H = {
     "kamerakran": 2.8, "statue_schleier": 2.6, "gartentisch": 1.0, "kuebelpflanze": 1.5, "vogelschwarm": 0.6, "van": 2.3,
     "lichtstativ": 2.5, "campingtisch": 0.9, "kabeltrommel": 0.7, "dixi": 2.4, "zelt_aufgeschlitzt": 2.6, "schlafsack": 0.3,
@@ -960,12 +971,14 @@ GARDEN_H = {
     "tunnelausgang": 0.3,
     # Maske und Crew Camp (User 24.10.)
     "schminkspiegel": 2.4, "dosenregal": 2.4, "jeep": 2.3,
+    "weeping_angel": 4.2,
 }
 GARDEN_PAD = {"kamerakran": 0.8, "lichtstativ": 0.6, "wandfackel": 0.9, "riesenpflanze": 0.9, "van": 0.5,
               "gartentisch": 0.6, "brunnen_blut": 0.6, "kletterpflanzen": 0.6, "kuebelpflanze": 0.5, "kabeltrommel": 0.7,
               "schlauchtrommel": 0.6, "offenes_grab": 0.5, "grabstein_hausherr": 0.4, "nischen_urnen": 0.5,
               "tunneleingang": 0.4, "zerbrochene_urne": 0.4, "giesskannen": 0.4, "kraehen": 0.4, "vogelschwarm": 0.4,
-              "tunnelausgang": 0.4, "schminkspiegel": 0.5, "dosenregal": 0.4, "jeep": 0.6, "brunnen_blut": 0.85}
+              "tunnelausgang": 0.4, "schminkspiegel": 0.5, "dosenregal": 0.4, "jeep": 0.6, "brunnen_blut": 0.85,
+              "weeping_angel": 0.75}
 GARDEN_NO_SHADOW = {"vogelschwarm", "schlafsack", "kletterpflanzen", "brunnen_blut", "kraehen", "nischen_urnen",
                     "wandfackel", "zerbrochene_urne", "tunneleingang", "offenes_grab", "tunnelausgang"}
 

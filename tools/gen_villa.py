@@ -323,7 +323,7 @@ def draw_block(kind, ws):
 # Konsolen-Atlas unter "Prop/<Art>/<welt_x>/<welt_y>/<Variante>" (3 Dezimalen wie in der g.cs), Anker unten links
 # wie das Prop selbst, damit der Renderer nur das Sprite tauscht.
 PROP_VARIANTS = {"portrait": ("l", "r"), "standuhr": ("p1", "p2"), "scheinwerfer": ("off",), "kandelaber": ("off",),
-                 "brunnen_blut": ("turn", "step")}      # Weeping Angel im Brunnen (Posen nur, wenn niemand hinsieht)
+                 "brunnen_blut": ("turn", "step"), "weeping_angel": ("turn", "step")}   # Weeping Angels (HollowmereWorld.Angel.cs)
 PROP_VARIANT_SPRITES = {}
 
 
