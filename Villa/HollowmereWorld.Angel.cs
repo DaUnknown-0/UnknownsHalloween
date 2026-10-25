@@ -9,7 +9,7 @@
 // - in Sichtweite (Bildausschnitt um den Spieler, Lichtradius, keine Wand dazwischen), aber der Spieler schaut weg
 //   (Blickrichtung des Crewmates links/rechts, der Engel steht hinter ihm): der Wert steigt, der Engel geht Stufe fuer
 //   Stufe von "Haende vor den Augen" ueber "starrt an" (turn) zu "greift an" (step);
-// - der Spieler schaut ihn an: der Wert steigt langsamer weiter;
+// - angeschaut: der Wert faellt auf 0 und steigt danach neu (1,6 pro Sekunde), springt also nicht sofort wieder hoch;
 // - global (User 25.10.): schaut IRGENDEIN lebender Spieler einen Engel an, steht er fuer alle mit den Haenden vor den
 //   Augen da und toetet niemanden; sonst zeigt er allen die Stufe des hoechsten Werts, den ein Spieler mit ihm hat;
 // - Sichtweite fuer alle wie ein normaler Crewmate (Impostor und Rollen mit mehr Sicht sehen nicht weiter);
@@ -18,7 +18,7 @@
 // danach (nichts wird gesendet; Tauschbilder "Prop/<art>/<x>/<y>/turn|step", gen_villa PROP_VARIANTS).
 //
 // Angriff (Host-autoritativ, Option 1951 "Weeping Angels Attack", Standard an): voller Wert, weggeschaut und hoechstens
-// 3 m entfernt -> "zurueck in die Zeit geschickt": Tod ueber TORs UncheckedMurderPlayer wie beim Pentagramm, ohne Schild,
+// 1,5 m entfernt -> "zurueck in die Zeit geschickt": Tod ueber TORs UncheckedMurderPlayer wie beim Pentagramm, ohne Schild,
 // ohne Erstkill-Schild, ohne Bait-Selbstbericht; die Rollenzeile sagt "sent back in time". Weiter weg bleibt der Engel in
 // der Angriffspose, bis man naeher kommt oder er sich abregt. Das Opfer sieht die Kill-Szene seines Engels
 // (hk_angel_a<n>_*). RPC Modul 236 Sub 10 (Host -> alle, vor dem Kill). Ist die Option aus, wechseln nur die Posen.
@@ -59,11 +59,11 @@ internal sealed partial class HollowmereWorld
     // Brunnenfigur: Plan 31,0 / 31,05 = Brunnenmitte
     private static readonly Vector2 FountainAngel = new(31.0f - 17.0f, 14.0f - 31.05f);
 
-    private const float AngelReach = 3f;         // Meter, nur fuer den Kill
+    private const float AngelReach = 1.5f;       // Meter, nur fuer den Kill (25.10.: 3 m war zu weit)
     private const float AngelStareAt = 3f;       // Wert ab "starrt an" (turn)
     private const float AngelStepAt = 6f;        // Wert ab "greift an" (step)
     private const float AngelKillAt = 8f;        // voller Wert: Kill in Reichweite; hoeher steigt er nicht
-    private const float AngelGainAway = 1f;      // pro Sekunde, sichtbar und weggeschaut
+    private const float AngelGainAway = 1.6f;    // pro Sekunde, sichtbar und weggeschaut (Anstarren ~2 s, Angriff ~4 s, Kill 5 s)
     private const float AngelGainWatched = 0.4f; // pro Sekunde, angeschaut (Pose steht, Wert waechst)
     private const float AngelCalm = 0.5f;        // pro Sekunde ausser Sicht (von voll bis ruhig 16 s)
     private const float AngelTickEvery = 0.2f;
@@ -247,7 +247,8 @@ internal sealed partial class HollowmereWorld
                 var key = (pid, i);
                 _aggro.TryGetValue(key, out float aggro);
                 var sight = sights[n, i];
-                aggro = NextAggro(aggro, sight, AngelTickEvery);
+                // angeschaut (von irgendwem): zurueck auf 0 (User 25.10.), danach steigt er neu von unten
+                aggro = _angelWatched[i] ? 0f : NextAggro(aggro, sight, AngelTickEvery);
                 if (aggro <= 0f) _aggro.Remove(key); else _aggro[key] = aggro;
                 if (!AmHost || !AngelAttackOn || _angelWatched[i] || sight != AngelSight.Away || aggro < AngelKillAt) continue;
                 if (Vector2.Distance(p.GetTruePosition(), s.Pos) > AngelReach) continue;

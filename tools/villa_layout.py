@@ -72,7 +72,7 @@ OPENINGS = [
     ("y", 8, 23.5, 25.5, {"small": "open", "large": "open"}),                                   # Radio - Gallery
     ("x", 27, 0.75, 3.25, {"small": ("door", "Storage"), "large": "open"}),                     # Radio - Box Room
     ("y", 4, 29.5, 32.0, {"small": ("door", "Storage"), "large": "open"}),                      # Box Room - Observatory
-    ("y", 8, 30.0, 32.5, {"small": ("door", "Storage"), "large": "open"}),                      # Observatory - Trophy
+    ("y", 8, 30.0, 32.5, {"small": ("door", "Storage")}),                                       # Observatory - Trophy (gross seit 25.10. zugemauert: Wand fuer Geweihe und Fledermaeuse)
     ("y", 8, 2.0, 4.5, {"small": ("door", "LowerEngine"), "large": ("door", "LowerEngine")}),   # Kitchen - Boiler
     # Mitte
     ("x", 8, 9.5, 12.0, {"small": ("door", "Electrical"), "large": ("door", "Electrical")}),    # Library (Nordarm) - Boiler
@@ -120,8 +120,8 @@ FREEPLAY = (21.6, 18.6)
 
 FIXED = {
     # Ritual eskaliert (Reaktor): beide Enden des Seance-Tischs
-    "Reactor/UpperHandConsole/0": (15.0, 4.2),
-    "Reactor/LowerHandConsole/1": (19.0, 4.2),
+    "Reactor/UpperHandConsole/0": (11.95, 2.9),          # 25.10.: Tisch in der Nordwestecke, Pentagramm in der Raummitte
+    "Reactor/LowerHandConsole/1": (15.25, 2.9),
     # Kamin raucht (O2): Kaminklappe + Lueftung im Arbeitszimmer
     "LifeSupp/NoOxyConsole/0": (29.6, 14.5),
     "Admin/NoOxyConsole/1": (33.3, 20.4),
@@ -130,6 +130,7 @@ FIXED = {
     "MedBay/MedScanner/0": (21.4, 21.4),                  # Schminkstuhl
     "Security/FixWiringConsole/5": (11.45, 22.4),         # Regie, Westwand (zu eng fuer die Automatik)
     "Nav/FixWiringConsole/3": (27.6, 7.3),                # Sternwarte, Suedwestecke
+    "Weapons/WeaponConsole/0": (26.45, 12.45),            # Trophy Room, Westwand suedlich der Galerie-Oeffnung (25.10.: vorher hinter dem Baeren)
     # Aufgabe aus Airship (Atlas ForeignTasks): Burger braten am Herd der Kueche (User 15.10.)
     "LowerEngine/MakeBurger/0": (1.55, 1.25),
 }
@@ -175,14 +176,19 @@ CAMERAS = {
 # Durchgang; der Speiseaufzug hat an beiden Enden eine Klappe), Eingang, Ausgang (Plan-Meter, jeweils einen
 # Schritt vor dem Moebel), beide Richtungen, Varianten. Use-Knopf "ENTER" in 1 m Naehe, Teleport nach 0,5 s.
 SECRETS = [
-    ("tapestry", "wandteppich", (21.0, 7.1), (21.0, 8.9), False, B),         # Seance -> Halle, Einbahn
+    ("tapestry", "wandteppich", (21.0, 7.1), (21.0, 9.45), False, B),         # Seance -> Halle, Einbahn
     ("bookcase", "drehregal", (10.0, 16.5), (11.8, 16.5), True, B),          # Bibliothek <-> Halle
     ("dumbwaiter", "speiseaufzug", (6.3, 5.5), (26.3, 6.8), False, B),       # Kueche -> Funkraum, Einbahn
     ("tunnel", "tunneleingang", (44.8, 34.2), (1.4, 22.7), False, L),        # Gruft -> Kapelle, Einbahn; Ausgang einen Schritt VOR der Klappe (lag 17.10. im Hindernis 0.8-1.6/23.1-23.7, man steckte fest)
 ]
 
 # Mitternachtsuhr (Mechanik spaeter): die Standuhr in der Halle
-CLOCK = (12.35, 8.7)
+CLOCK = (12.35, 9.25)                 # 25.10.: Hallen-Nordwand 0,6 m dicker (THICK_WALLS)
+
+# Dickere Wandmasse (Plan-Rechtecke, nicht begehbar): die Wandflaeche (villa_floor_map) reicht so hoch wie die Masse, man
+# sieht nicht mehr ueber die Wand in den Raum dahinter (User 25.10., Hallen-Nordwand zum Seance Parlour)
+THICK_WALLS = [(11.0, 8.0, 23.0, 8.8),        # Halle, Nordwand zum Seance Parlour
+               (26.0, 8.0, 34.0, 8.8)]        # Trophy Room, Nordwand (Geweihe, Fledermaeuse); Tueroeffnungen bleiben frei
 
 # ------------------------------------------------------------------ Hindernisse (Plan-Meter)
 # ("rect", x0, y0, x1, y1) | ("circle", cx, cy, r) | ("ellipse", cx, cy, rx, ry); Art = Sprite-Art.
@@ -190,7 +196,7 @@ CLOCK = (12.35, 8.7)
 OPAQUE = [
     (("rect", 15.0, 8.2, 19.0, 10.4), "freitreppe", B),
     (("rect", 15.2, 9.7, 18.8, 10.9), "treppensperre", B),     # Moebel am Treppenfuss: oben ist nichts (User 15.10.)
-    (("rect", 12.0, 8.25, 12.7, 8.7), "standuhr", B),
+    (("rect", 12.0, 8.85, 12.7, 9.3), "standuhr", B),
     (("rect", 0.3, 0.25, 2.8, 0.85), "herd", B),
     (("rect", 23.3, 0.25, 25.5, 0.85), "funktisch", B),
     (("rect", 32.0, 0.25, 33.75, 1.2), "kisten", B),
@@ -201,8 +207,9 @@ OPAQUE = [
     (("rect", 7.0, 19.25, 9.4, 19.85), "altar", B),             # Chapel, Nordwand mit Wandkreuz (User 24.10.: wie eine echte Kirche, Baenke blicken zum Altar)
     (("rect", 11.3, 23.25, 14.7, 23.8), "monitorwand", B),
     (("rect", 19.9, 23.3, 21.6, 23.8), "dosenregal", B),         # Makeup, Suedwand: Regal mit Schminkdosen, Puder, Tiegeln (User 24.10.)
-    (("rect", 26.3, 8.25, 28.4, 8.7), "gewehrschrank", B),
+    (("rect", 26.3, 8.85, 28.4, 9.3), "gewehrschrank", B),
     (("rect", 30.5, 13.25, 32.8, 13.85), "kamin", B),
+    (("rect", 15.0, 0.25, 19.0, 1.0), "kamin_gross", B),            # Seance, Nordwand (25.10.: statt Ouija-Wand), Baerenfell davor im Boden
     (("rect", 31.0, 18.25, 33.6, 18.7), "buecherregal", B),
     # Garten
     (("rect", 0.6, 33.6, 3.6, 35.4), "aggregat", L),
@@ -212,7 +219,7 @@ GLASS = [
     (("ellipse", 20.3, 16.8, 0.55, 0.4), "filmkamera", B),
     (("circle", 12.4, 18.6, 0.35), "scheinwerfer", B),
     (("circle", 21.8, 9.4, 0.35), "scheinwerfer", B),
-    (("ellipse", 17.0, 4.2, 1.4, 0.85), "seance_tisch", B),
+    (("ellipse", 13.6, 2.9, 1.4, 0.85), "seance_tisch", B),      # 25.10.: Nordwestecke (Raummitte = Pentagramm)
     (("circle", 12.1, 1.0, 0.25), "kandelaber", B),
     (("circle", 22.0, 6.9, 0.25), "kandelaber", B),
     (("rect", 2.2, 3.6, 4.6, 5.0), "kuechentisch", B),
@@ -274,7 +281,6 @@ OPAQUE += [
     (("rect", 1.0, 26.0, 4.0, 28.8), "zelt_aufgeschlitzt", L),       # Crew Camp
     (("rect", 10.8, 24.4, 11.7, 25.6), "dixi", L),                   # Crew Camp, Ostwand
     (("rect", 47.2, 3.6, 49.0, 5.2), "riesenpflanze", L),            # Greenhouse
-    (("rect", 41.0, 14.5, 42.0, 15.5), "engelsstatue", L),           # Graveyard, Nordwestecke
     (("rect", 44.3, 34.6, 45.3, 35.7), "tunneleingang", L),          # Family Crypt, Suedwestecke
     (("rect", 0.8, 23.1, 1.6, 23.7), "tunnelausgang", L),            # Chapel, Suedwestecke: das andere Tunnelende
 ]
@@ -339,7 +345,6 @@ DECOR = [
     (("rect", 26.75, 6.3, 27.0, 7.3), "speiseaufzug", B),            # Radio Room, Ostwand: das andere Ende des Aufzugs
     (("rect", 0.6, 2.6, 1.6, 2.9), "fleischerhaken", B),             # Kitchen, haengt von der Decke
     (("rect", 7.4, 6.2, 10.6, 6.5), "waescheleine", B),              # Laundry, Laken wie Gestalten
-    (("rect", 14.5, 0.25, 19.5, 0.5), "seance_wand", B),             # Seance, Nordwand: Ouija-Tableau, Fotos, Vorhaenge
     (("rect", 20.0, 7.5, 22.0, 7.75), "wandteppich", B),             # Seance, Suedwand (Geheimgang zur Halle)
     (("rect", 14.0, 6.6, 14.9, 7.2), "umgestuerzter_stuhl", B),      # Seance
     (("rect", 24.8, 5.6, 25.8, 6.4), "tonband_boden", B),            # Radio Room, abgewickelte Spule
@@ -355,9 +360,11 @@ DECOR = [
     (("rect", 25.55, 17.0, 25.75, 18.0), "portrait", B),
     (("rect", 25.55, 23.0, 25.75, 23.8), "portrait", B),
     (("rect", 23.25, 19.5, 23.45, 20.5), "leerer_rahmen", B),        # Portrait Gallery, Westwand
-    (("rect", 29.0, 8.25, 31.0, 8.5), "geweihe", B),                 # Trophy Room, Nordwand
+    (("rect", 29.0, 8.85, 31.0, 9.1), "geweihe", L),                 # Trophy Room, Nordwand (gross: an der zugemauerten Oeffnung)
+    (("rect", 28.5, 8.85, 29.95, 9.1), "geweihe", ("small",)),       # klein: links neben der Tuer
     (("rect", 33.5, 8.8, 33.75, 9.8), "hirschkopf", B),              # Trophy Room, Ostwand
-    (("rect", 31.5, 8.25, 33.0, 8.5), "fledermaeuse", B),            # Trophy Room, unter der Decke
+    (("rect", 31.5, 8.85, 33.0, 9.1), "fledermaeuse", L),            # Trophy Room, unter der Decke
+    (("rect", 32.55, 8.85, 33.4, 9.1), "fledermaeuse", ("small",)),  # klein: rechts neben der Tuer
     (("rect", 31.5, 13.9, 31.8, 14.1), "kinderschuh", B),            # Fireplace Room, vor dem Kamin
     (("rect", 33.5, 21.2, 33.75, 22.0), "lueftungsgitter", B),       # Study, Ostwand
     (("rect", 29.6, 23.65, 30.2, 23.9), "schreibmaschine", B),      # Study, auf dem Schreibtisch (Standlinie vor dem Tisch, Hoehe mitgezeichnet)
@@ -380,6 +387,7 @@ HITBOX = {
     ("aggregat", ("rect", 0.6, 33.6, 3.6, 35.4)): ("rect", 1.1, 34.3, 3.55, 35.4),    # Fussflaeche statt Dach
     ("brunnen", ("circle", 31.0, 31.0, 1.2)): ("ellipse", 31.0, 31.05, 1.2, 0.75),   # Becken ist oval
     ("laterne", ("circle", 10.4, 8.6, 0.2)): ("circle", 10.4, 8.65, 0.12),
+    ("baer", ("rect", 32.6, 11.0, 33.7, 12.6)): ("rect", 32.6, 12.0, 33.7, 12.6),     # 25.10.: nur der Sockel (Figur von vorn)
     ("laterne", ("circle", 37.0, 20.0, 0.2)): ("circle", 37.0, 20.05, 0.12),
     ("laterne", ("circle", 34.5, 28.5, 0.2)): ("circle", 34.5, 28.55, 0.12),
     ("laterne", ("circle", 27.5, 28.5, 0.2)): ("circle", 27.5, 28.55, 0.12),

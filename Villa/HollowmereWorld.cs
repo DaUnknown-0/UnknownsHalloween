@@ -239,6 +239,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         Collect("weeping_angel", _graveAngels, "turn", "step");
         AngelReset();
         try { RitualBuild(); } catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} pentagram failed: {e.Message}"); }   // HollowmereWorld.Ritual.cs
+        GraveReset();                                                                                                                       // HollowmereWorld.Grave.cs
         _burnUntil = new float[_candles.Count];
         foreach (var pv in _candles) Show(pv, "off");                  // die Kerzen starten erloschen
         _darkAreas.Clear();
@@ -288,6 +289,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
     {
         try { AngelTick(); } catch (Exception e) { AngelError(e); }
         try { RitualTick(); } catch (Exception e) { RitualError(e); }
+        try { GraveTick(); } catch { }
         AnimTick();
         ClockTick(dt);
         CandleTick(dt);

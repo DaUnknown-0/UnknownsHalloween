@@ -12,12 +12,12 @@ internal static class TextureVariantCatalog
     public static readonly (string Map, string Id, string LabelEn, string LabelDe, string File, long Size, string Sha256)[] Variants =
     {
         ("villa", "installed", "Previous art (installed)", "Bisherige Grafik (installiert)", null, 0L, null),
-        ("villa", "auswahl", "Claude's pick (GPT + previous)", "Claudes Auswahl (GPT + bisher)", "villa_auswahl.hwp", 19675072L, "72343396e84fcf21379927459f27b0f086b47883dae58e9bc56231ab90dcb0b9"),
-        ("villa", "gpt", "GPT (25.10.)", "GPT (25.10.)", "villa_gpt.hwp", 19692202L, "73dd32868078295d3357598202cf71399dcedeb5f4d1daa9713d6d4dea4c3293"),
-        ("villa", "qwen", "Qwen 2.1 (25.10., partial)", "Qwen 2.1 (25.10., teilweise)", "villa_qwen.hwp", 18907764L, "2bfb0c9bfd777be56cf75d2105726cf6c20940ed3f6acf2819c3a38fd7919e0a"),
-        ("villa", "v7", "Release 0.1.3.5 (24.10.)", "Release 0.1.3.5 (24.10.)", "villa_v7.hwp", 19208012L, "089ab21bd32e1663f92602aede81154baca42ea5b8e0adcacfa66243b8eb3de5"),
-        ("villa", "v6", "Release 0.1.3.4 (24.10.)", "Release 0.1.3.4 (24.10.)", "villa_v6.hwp", 19223889L, "cafa673cb3bc624a949f28f81299496439a117bb43cc2b3c44c5f7e03e89a844"),
-        ("villa", "v5", "Release 0.1.3.3 (24.10.)", "Release 0.1.3.3 (24.10.)", "villa_v5.hwp", 19253770L, "b01e97826cbc1652b5fa804e74a00a3880481750acf8f58f3b40d3a6ca927a7e"),
-        ("villa", "v1", "Release 0.1.3.2 (first art, 20.10.)", "Release 0.1.3.2 (erste Grafik, 20.10.)", "villa_v1.hwp", 18775585L, "8c15362a624d65b10bbe97ef8a9d76f60bd84cc205dbb12a1609ea593bdbec47"),
+        ("villa", "auswahl", "Claude's pick (GPT + previous)", "Claudes Auswahl (GPT + bisher)", "villa_auswahl.hwp", 19713338L, "6dc1134e2409234261dabaf0ef5cd954a61c26efc894f74bbd83d6a3f7071925"),
+        ("villa", "gpt", "GPT (25.10.)", "GPT (25.10.)", "villa_gpt.hwp", 19666707L, "d3c5680a7bab4394d370ae743075164e9e7213bedb6bc7d7288400507a7a5898"),
+        ("villa", "qwen", "Qwen 2.1 (25.10., partial)", "Qwen 2.1 (25.10., teilweise)", "villa_qwen.hwp", 18914354L, "0b203172ccc70bf2d900324175de491bf4715cd994ffab44efe02865a7d69567"),
+        ("villa", "v7", "Release 0.1.3.5 (24.10.)", "Release 0.1.3.5 (24.10.)", "villa_v7.hwp", 19306663L, "812fd32cc42b7c6ea4cbb5c3d3e8837721905b39a7e233aa01d84a6a23c7dacb"),
+        ("villa", "v6", "Release 0.1.3.4 (24.10.)", "Release 0.1.3.4 (24.10.)", "villa_v6.hwp", 19283686L, "0c41ad71182bc1924320608ad2d2f1c101a40222742cdf368aa792b59c3c28cf"),
+        ("villa", "v5", "Release 0.1.3.3 (24.10.)", "Release 0.1.3.3 (24.10.)", "villa_v5.hwp", 19232711L, "ac21038d8d5772671ae43525e8684b8ce7b761f5a0cf0be9898b8ea81852b3dd"),
+        ("villa", "v1", "Release 0.1.3.2 (first art, 20.10.)", "Release 0.1.3.2 (erste Grafik, 20.10.)", "villa_v1.hwp", 18740249L, "018bd7333f3df08a580c2e74d51bdf2f6a52567212636fa50bc05c5c3397779f"),
     };
 }

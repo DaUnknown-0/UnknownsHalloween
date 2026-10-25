@@ -178,6 +178,9 @@ def faces(C, walk, geoms):
                 else:
                     style = STYLE.get(room, "tapete")
                     hmax = 0.4 if y > 0.6 else 0.9                              # Innenwand = Wandmasse
+                    for tb in getattr(L, "THICK_WALLS", []):                     # dickere Wand: Flaeche so hoch wie die Masse
+                        if abs(y - tb[3]) < 0.05 and xb > tb[0] and xa < tb[2]:
+                            hmax = max(hmax, tb[3] - tb[1] + L.WALL / 2)
                 fh = face_depth(pclip, xa, xb, y, hmax)
                 if fh < 0.15:
                     continue
@@ -306,13 +309,15 @@ def horror_floor(d, C, rnd, av):
         pts = [(17.0, 17.4 + off), (17.1, 15.0 + off), (16.9, 12.6 + off), (17.0, 11.0 + off)]
         d.line([C.P(*q) for q in HD.wobble(pts, amp=0.03, seed=41, step=0.1)], fill=(60, 10, 16, 150), width=px(0.08), joint="curve")
     footprints(d, C, [(17.3, 17.0), (17.6, 14.5), (17.4, 12.0), (17.2, 11.0)], rnd)
-    # Kreidekreis mit Zeichen unter dem Seance-Tisch (auf dem Teppich)
-    cx, cy = 17.0, 4.2
-    d.ellipse([*C.P(cx - 1.65, cy - 1.15), *C.P(cx + 1.65, cy + 1.15)], outline=(232, 228, 220, 150), width=px(0.03))
-    for k in range(5):
-        a1 = math.pi * 2 * k / 5 - math.pi / 2
-        a2 = math.pi * 2 * ((k + 2) % 5) / 5 - math.pi / 2
-        d.line([C.P(cx + 1.55 * math.cos(a1), cy + 1.05 * math.sin(a1)), C.P(cx + 1.55 * math.cos(a2), cy + 1.05 * math.sin(a2))], fill=(232, 228, 220, 110), width=px(0.02))
+    # (Kreidekreis unter dem Seance-Tisch seit 25.10. entfernt: dort liegt jetzt das Pentagramm der Mod, HollowmereWorld.Ritual.cs)
+    # Baerenfell vor dem grossen Kamin im Seance Parlour (25.10., Vorlage villa_assets/villa_baerenfell.png)
+    rug_path = Path(__file__).resolve().parent / "villa_assets" / "villa_baerenfell.png"
+    if rug_path.exists():
+        rug = Image.open(rug_path).convert("RGBA")
+        rw = int(round(1.9 * ppm)); rh = int(round(rug.height * rw / rug.width))
+        rug = rug.resize((rw, rh), Image.LANCZOS)
+        rx, ry = C.P(17.0, 2.05)
+        C.img.paste(rug.convert("RGB"), (int(rx - rw / 2), int(ry - rh / 2)), rug.getchannel("A"))
     # Russ-Fussspuren aus dem Kamin ins Zimmer, werden schwaecher
     pts = [(31.6, 14.2), (31.2, 15.2), (30.4, 16.0), (29.4, 16.8)]
     ls = LineString(pts)

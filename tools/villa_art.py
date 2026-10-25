@@ -76,7 +76,7 @@ GLASS = alpha(hexc("#c4d8e8"), 170)
 WEB = alpha(hexc("#e8ecf2"), 115)
 MOSS = hexc("#6f9a4e")
 
-PROP_H = {"standuhr": 2.3, "seance_tisch": 0.8, "buecherregal": 2.6, "kamin": 1.7, "kandelaber": 1.6,
+PROP_H = {"standuhr": 2.3, "seance_tisch": 0.8, "buecherregal": 2.6, "kamin": 1.7, "kamin_gross": 2.5, "kandelaber": 1.6,
           "kandelaber_aus": 1.6, "filmkamera": 1.7, "scheinwerfer": 2.0, "schminktisch": 1.9, "sessel": 1.1,
           "sarg": 0.6, "grabstein": 1.0, "aggregat": 2.0, "absperrung": 1.0,
           # seit dem Stilblatt: alle Objektarten aus villa_layout.OPAQUE/GLASS plus die Barrikade
@@ -90,7 +90,7 @@ PROP_H = {"standuhr": 2.3, "seance_tisch": 0.8, "buecherregal": 2.6, "kamin": 1.
 KINDS = set(PROP_H)
 NO_SHADOW = set()        # Arten ohne Bodenschatten (Wandbilder, Haengendes, Bodenkram; villa_art2 traegt ein)
 # Leinwandrand je Objekt (Standard 0,3 m): Lichtkegel, Glutschein und Lichtlachen reichen ueber die Grundflaeche
-PROP_PAD = {"scheinwerfer": 2.3, "kamin": 0.8, "kandelaber": 1.3, "kandelaber_aus": 0.5, "aggregat": 0.6,
+PROP_PAD = {"scheinwerfer": 2.3, "kamin": 0.8, "kamin_gross": 1.0, "kandelaber": 1.3, "kandelaber_aus": 0.5, "aggregat": 0.6,
             "filmkamera": 0.6, "seance_tisch": 0.5, "standuhr": 0.35, "schminktisch": 0.4,
             "lesetisch": 0.7, "schreibtisch": 0.6, "altar": 0.6, "kessel": 0.5, "zelt": 0.6, "funktisch": 0.5,
             "monitorwand": 0.5, "herd": 0.5, "kuechentisch": 0.4, "brunnen": 0.7, "teleskop": 0.4, "catering": 0.4,
@@ -370,19 +370,20 @@ def _buecherregal(p, c, x0, y0, x1, y1, idx, rnd):
     dust(c, x0 + 0.05, y0 + 2.6 * K + 0.03, x1 - 0.05, y1 + 2.6 * K - 0.03, 10, seed=idx + 1)
 
 
-def _kamin(p, c, x0, y0, x1, y1, idx, rnd):
+def _kamin(p, c, x0, y0, x1, y1, idx, rnd, hgt=1.5):
     w = x1 - x0
     cx = (x0 + x1) / 2
+    s = hgt / 1.5                                                                      # kamin_gross: hoeher
     stone = MARBLE if idx % 2 == 0 else STONE_L
-    floor_light(c, cx, y0 - 0.25, 1.2, 0.5, EMBER, 0.35, seed=idx)                    # Glutschein davor
-    p.box(x0, y0, x1, y1, 0, 1.5, shade(stone, 1.05), stone)
+    floor_light(c, cx, y0 - 0.25 * s, 1.2 * s, 0.5 * s, EMBER, 0.35, seed=idx)        # Glutschein davor
+    p.box(x0, y0, x1, y1, 0, hgt, shade(stone, 1.05), stone)
     for k in range(4):                                                                 # Marmoradern
         vx = rnd.uniform(x0 + 0.05, x1 - 0.05)
-        c.line(HD.wobble([(vx, y0 + 0.05), (vx + rnd.uniform(-0.2, 0.2), y0 + 1.45 * K)], amp=0.03, seed=idx * 5 + k, step=0.05),
+        c.line(HD.wobble([(vx, y0 + 0.05), (vx + rnd.uniform(-0.2, 0.2), y0 + (hgt - 0.05) * K)], amp=0.03, seed=idx * 5 + k, step=0.05),
                fill=alpha(shade(stone, 0.7), 120), width=0.01)
     # Feuerraum mit Rundbogen, innen russschwarz; Glutbett, Scheite, Flammen, Feuerboecke
     ox0, ox1 = x0 + w * 0.22, x1 - w * 0.22
-    oy0, oy1 = y0 + 0.08 * K, y0 + 1.0 * K
+    oy0, oy1 = y0 + 0.08 * K, y0 + 1.0 * s * K
     inner = hexc("#2a1c18")
     c.rect(ox0, oy0, ox1, oy1 - 0.12, fill=inner, outline=OUTLINE, width=0.03)
     c.ellipse(cx, oy1 - 0.12, (ox1 - ox0) / 2, 0.14, fill=inner, outline=OUTLINE, width=0.03)
@@ -403,8 +404,8 @@ def _kamin(p, c, x0, y0, x1, y1, idx, rnd):
         c.ellipse(ax, oy0 + 0.19, 0.025, 0.02, fill=BRASS, outline=OUTLINE, width=0.01)
     c.ellipse(cx, oy1 + 0.1, (ox1 - ox0) * 0.4, 0.07, fill=alpha((20, 14, 10, 255), 70))              # Russ
     # Sims als eigener Vorsprung; darauf Kerzen und eine Urne; Spinnwebe unter dem Sims
-    p.box(x0 - 0.05, y0 - 0.04, x1 + 0.05, y1, 1.5, 0.12, shade(stone, 1.12), shade(stone, 0.9))
-    sy = y0 + 0.2 + 1.62 * K
+    p.box(x0 - 0.05, y0 - 0.04, x1 + 0.05, y1, hgt, 0.12, shade(stone, 1.12), shade(stone, 0.9))
+    sy = y0 + 0.2 + (hgt + 0.12) * K
     for k, sx in enumerate((x0 + 0.3, x1 - 0.3)):
         c.ellipse(sx, sy, 0.05, 0.025, fill=BRASS, outline=OUTLINE, width=0.012)
         c.line([(sx, sy), (sx, sy + 0.12)], fill=OUTLINE, width=0.035)
@@ -414,7 +415,12 @@ def _kamin(p, c, x0, y0, x1, y1, idx, rnd):
     c.poly([(cx - 0.08, sy + 0.03), (cx + 0.08, sy + 0.03), (cx + 0.05, sy + 0.2), (cx + 0.04, sy + 0.26), (cx - 0.04, sy + 0.26), (cx - 0.05, sy + 0.2)],
            fill=BRASS, outline=OUTLINE, width=0.015)
     c.line([(cx - 0.03, sy + 0.06), (cx - 0.03, sy + 0.18)], fill=BRASS_L, width=0.01)
-    cobweb(c, x1 + 0.05, y0 - 0.04 + 1.5 * K, 0.2, -1, -1, seed=idx + 2)
+    cobweb(c, x1 + 0.05, y0 - 0.04 + hgt * K, 0.2, -1, -1, seed=idx + 2)
+
+
+def _kamin_gross(p, c, x0, y0, x1, y1, idx, rnd):
+    """Grosser Kamin im Seance Parlour (User 25.10., "ein fetter Kamin statt der Ouija-Wand"): wie _kamin, 2,2 m hoch."""
+    _kamin(p, c, x0, y0, x1, y1, idx, rnd, hgt=2.2)
 
 
 def _kandelaber(p, c, x0, y0, x1, y1, idx, rnd, lit=True, variant=None):
@@ -2316,7 +2322,7 @@ def _treppensperre(p, c, x0, y0, x1, y1, idx, rnd):
     blood_drips(c, fx0 + 0.9, fy0 + 1.0 * K, 3, 0.1, seed=idx + 6)
 
 
-_KIND_FN = {"standuhr": _standuhr, "seance_tisch": _seance_tisch, "buecherregal": _buecherregal, "kamin": _kamin,
+_KIND_FN = {"standuhr": _standuhr, "seance_tisch": _seance_tisch, "buecherregal": _buecherregal, "kamin": _kamin, "kamin_gross": _kamin_gross,
             "kandelaber": _kandelaber, "kandelaber_aus": lambda *a: _kandelaber(*a, lit=False), "filmkamera": _filmkamera,
             "scheinwerfer": _scheinwerfer, "schminktisch": _schminktisch, "sessel": _sessel, "sarg": _sarg,
             "grabstein": _grabstein, "aggregat": _aggregat, "absperrung": _absperrung,

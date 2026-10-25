@@ -2,14 +2,14 @@
 // Licensed under GPL-3.0-or-later. See LICENSE for details.
 //
 // HollowmereWorld.Ritual - das Pentagramm von Ravenhollow auch in Hollowmere Manor (User 2026-10-25: "an einem Ort, den du
-// dir aussuchst"): im Seance Parlour, links vom Seance-Tisch (Welt -4,0 / 10,25, beide Kartengroessen). Ablauf wie auf dem
+// dir aussuchst"): in der Mitte des Seance Parlour auf dem runden Teppich (25.10.: der Seance-Tisch steht dafuer in der
+// Nordwestecke; Welt 0 / 9,8, beide Kartengroessen). Ablauf wie auf dem
 // Friedhof (GraveyardWorld.Ritual.cs): fuenf Kerzen an den Sternspitzen, lebende Spieler zuenden sie mit "LIGHT" an; brennen
 // alle, ruft der Host den Daemon, der 6,66 s in der Mitte steht, und wer ab 2 s im inneren Kreis steht, stirbt (Szene "demon",
 // "The Demon" in der Rollenzeile, kein Erstkill-Schild, kein Bait-Bericht: die Patches und Opferliste des Friedhofs).
 //
-// Platz: 85 % des Friedhofssterns, damit die Kerze an der rechten Spitze 1,15 m Abstand zur Reaktor-Konsole an der linken
-// Tischkante (-2,0 / 9,8) haelt und der Todeskreis 1 m davor endet. Der Stern ist hier keine Bodentextur, sondern ein zur
-// Laufzeit gemaltes Bodenbild (Kreidekreis in getrocknetem Blut), Atlanten und F9-Fassungen bleiben unberuehrt.
+// Platz: 85 % des Friedhofssterns, damit die obere Kerze das Baerenfell vor dem Kamin nicht beruehrt. Der Stern ist hier
+// keine Bodentextur, sondern ein zur Laufzeit gemaltes Bodenbild (Kreidekreis in getrocknetem Blut).
 // RPC: Modul 236, Sub 30 Kerze (jeder -> alle), 31 Ritual (Host -> alle), 32 Opfer (Host -> alle).
 
 using System;
@@ -30,7 +30,7 @@ internal sealed partial class HollowmereWorld
     private const byte SubRitualStart = 31;        // -          Host -> alle
     private const byte SubRitualVictim = 32;       // [spieler]  Host -> alle, vor dem Kill
 
-    private static readonly Vector2 RitualCenter = new(-4.0f, 10.25f);
+    private static readonly Vector2 RitualCenter = new(0f, 9.8f);
     private const float RitualScale = 0.85f;
     private const float StarRx = 1.52f * RitualScale, StarRy = 1.216f * RitualScale;   // Sternspitzen
     private const float KillRx = 1.1f * RitualScale, KillRy = 0.88f * RitualScale;     // Todeszone (innerer Kreis)
@@ -54,6 +54,7 @@ internal sealed partial class HollowmereWorld
     private void RitualBuild()
     {
         GraveyardWorld.LoadArt();
+        GraveyardWorld.DemonVictims.Clear();                       // Opfer frueherer Runden (sonst "The Demon" an fremden Toden)
         _pentagramSprite ??= PaintPentagram();
         // wie auf dem Friedhof: eigene Ebene auf Weltposition 0 und Massstab 1 (der worldRoot haengt am Schiff)
         _ritualRoot = new GameObject("Hollowmere_Ritual").transform;

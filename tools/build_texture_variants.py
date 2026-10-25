@@ -11,7 +11,10 @@
 #
 # Quellen alter Staende: Paket files/villa_map.hwp am Tag des Asset-Repos (../UnknownsHalloween-Assets, git show),
 # Rechtecke aus der .g.cs am Commit der Mod-Version, die diesen Tag nutzte. Die Fassung "vor Qwen" kommt aus
-# tools/_villa_vorqwen (Kopie der Atlas-Quellen vom 25.10. vor dem Neumalen, gleiche Aufteilung wie heute).
+# tools/_villa_vorqwen (Kopie der Atlas-Quellen vom 25.10. vor dem Neumalen).
+# Seit dem Kartenumbau 25.10. abends (dicke Waende, Kamin im Seance Parlour) haben die Ordner-Fassungen die Aufteilung von
+# v0.1.3.9 (dritter Eintrag = Commit): sie werden wie die Tag-Fassungen umgepackt und nehmen den HEUTIGEN Boden.
+# Ersatz fuer fehlende Sprites ist die installierte Grafik (Resources/villa).
 #
 # Ausgabe: ../UnknownsHalloween-Assets/files/variants/villa_<id>.hwp und Villa/TextureVariantCatalog.g.cs.
 # Aufruf: python tools/build_texture_variants.py
@@ -41,9 +44,9 @@ import pack_textures  # noqa: E402
 INSTALLED = ("Previous art (installed)", "Bisherige Grafik (installiert)")
 # id, Label en, Label de, Quelle: ("dir", Ordner) oder ("tag", Asset-Tag, Commit der Mod mit passender .g.cs)
 VERSIONS = [
-    ("auswahl", "Claude's pick (GPT + previous)", "Claudes Auswahl (GPT + bisher)", ("dir", ROOT / "tools" / "_villa_auswahl")),
-    ("gpt", "GPT (25.10.)", "GPT (25.10.)", ("dir", ROOT / "tools" / "_villa_gpt")),
-    ("qwen", "Qwen 2.1 (25.10., partial)", "Qwen 2.1 (25.10., teilweise)", ("dir", ROOT / "tools" / "_villa_qwen")),
+    ("auswahl", "Claude's pick (GPT + previous)", "Claudes Auswahl (GPT + bisher)", ("dir", ROOT / "tools" / "_villa_auswahl", "0ff8d04")),
+    ("gpt", "GPT (25.10.)", "GPT (25.10.)", ("dir", ROOT / "tools" / "_villa_gpt", "0ff8d04")),
+    ("qwen", "Qwen 2.1 (25.10., partial)", "Qwen 2.1 (25.10., teilweise)", ("dir", ROOT / "tools" / "_villa_qwen", "0ff8d04")),
     ("v7", "Release 0.1.3.5 (24.10.)", "Release 0.1.3.5 (24.10.)", ("tag", "v7", "1d03826")),
     ("v6", "Release 0.1.3.4 (24.10.)", "Release 0.1.3.4 (24.10.)", ("tag", "v6", "970122f")),
     ("v5", "Release 0.1.3.3 (24.10.)", "Release 0.1.3.3 (24.10.)", ("tag", "v5", "0ac85ca")),
@@ -163,11 +166,15 @@ def main():
     cur_texts = [(ROOT / "Villa" / f).read_text(encoding="utf-8") for f in ("VillaSmall.g.cs", "VillaLarge.g.cs")]
     cur, cur_pos = layout(cur_texts)
     cur_floor = floor_sizes(cur_texts[1]) | floor_sizes(cur_texts[0])
-    base = sheets_from_dir(ROOT / "tools" / "_villa_vorqwen")      # heutige Aufteilung, Ersatz fuer fehlende Sprites
+    base = sheets_from_dir(ROOT / "Resources" / "villa")          # heutige Aufteilung, Ersatz fuer fehlende Sprites
     OUT.mkdir(parents=True, exist_ok=True)
     rows = []
     for vid, en, de, src in VERSIONS:
-        if src[0] == "dir":
+        if src[0] == "dir" and len(src) > 2:
+            old_sheets = {k: v for k, v in sheets_from_dir(src[1]).items() if k[0] != "floor"}   # Boden von heute
+            ol, op = layout([git(ROOT, "show", f"{src[2]}:Villa/{f}").decode("utf-8") for f in ("VillaSmall.g.cs", "VillaLarge.g.cs")])
+            old = match(cur, cur_pos, ol, op)
+        elif src[0] == "dir":
             old_sheets, old = sheets_from_dir(src[1]), dict(cur)
         else:
             old_sheets = sheets_from_tag(src[1])

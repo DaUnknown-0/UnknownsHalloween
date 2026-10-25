@@ -70,7 +70,7 @@ ROOM_COL = {
 KIND_COL = {
     "freitreppe": (120, 60, 50), "standuhr": (90, 60, 40), "herd": (60, 60, 64), "funktisch": (70, 70, 60),
     "kisten": (140, 110, 70), "kessel": (80, 60, 50), "buecherregal": (100, 70, 40), "altar": (200, 190, 170),
-    "monitorwand": (30, 30, 40), "schminktisch": (220, 200, 200), "gewehrschrank": (90, 60, 40), "kamin": (120, 70, 60),
+    "monitorwand": (30, 30, 40), "schminktisch": (220, 200, 200), "gewehrschrank": (90, 60, 40), "kamin": (120, 70, 60), "kamin_gross": (120, 70, 60),
     "aggregat": (200, 170, 40), "zelt": (60, 80, 60), "hecke": (40, 80, 40), "filmkamera": (30, 30, 30),
     "scheinwerfer": (40, 40, 40), "seance_tisch": (80, 40, 40), "kandelaber": (220, 180, 80), "kuechentisch": (160, 120, 80),
     "waschzuber": (150, 150, 160), "requisiten": (150, 120, 90), "teleskop": (180, 150, 70), "kohlen": (40, 40, 40),
@@ -162,6 +162,17 @@ def build(v):
     geoms = {a[0]: area_geom(a, areas) for a in areas}
     opens = [o for o in L.OPENINGS if v in o[4]]
     walk = unary_union(list(geoms.values()) + [opening_box(o) for o in opens]).buffer(0)
+    thick = [box(*t) for t in getattr(L, "THICK_WALLS", [])]                   # dickere Wandmasse (25.10.)
+    if thick:
+        tu = unary_union(thick)
+        # Tueren und Oeffnungen dieser Variante in einer dicken Wand: Durchgang durch die ganze Masse frei lassen
+        for o in opens:
+            if o[0] != "y": continue
+            for t in getattr(L, "THICK_WALLS", []):
+                if abs(o[1] - t[1]) < 0.01 and o[3] > t[0] and o[2] < t[2]:
+                    tu = tu.difference(box(o[2], t[1] - 0.01, o[3], t[3] + 0.01))
+        walk = walk.difference(tu).buffer(0)
+        geoms = {k: g.difference(tu).buffer(0) for k, g in geoms.items()}
     return walk, geoms, opens
 
 
