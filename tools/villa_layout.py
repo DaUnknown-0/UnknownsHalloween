@@ -194,7 +194,8 @@ DROP_CONSOLES = {"Weapons/WeaponConsole/0"}
 NUDGE_NORTH = ("DataConsole", "UploadDataConsole")
 
 THICK_WALLS = [(11.0, 8.0, 23.0, 8.8),        # Halle, Nordwand zum Seance Parlour
-               (26.0, 8.0, 34.0, 8.8)]        # Trophy Room, Nordwand (Geweihe, Fledermaeuse); Tueroeffnungen bleiben frei
+               (26.0, 8.0, 34.0, 8.8),        # Trophy Room, Nordwand (Geweihe, Fledermaeuse); Tueroeffnungen bleiben frei
+               (26.0, 13.0, 34.0, 13.8)]      # Kaminzimmer, Nordwand (25.10.: "angedeutete Waende hochziehen")
 
 # ------------------------------------------------------------------ Hindernisse (Plan-Meter)
 # ("rect", x0, y0, x1, y1) | ("circle", cx, cy, r) | ("ellipse", cx, cy, rx, ry); Art = Sprite-Art.
@@ -214,7 +215,7 @@ OPAQUE = [
     (("rect", 11.3, 23.25, 14.7, 23.8), "monitorwand", B),
     (("rect", 19.9, 23.3, 21.6, 23.8), "dosenregal", B),         # Makeup, Suedwand: Regal mit Schminkdosen, Puder, Tiegeln (User 24.10.)
     (("rect", 26.3, 8.85, 28.4, 9.3), "gewehrschrank", B),
-    (("rect", 30.5, 13.25, 32.8, 13.85), "kamin", B),
+    (("rect", 30.5, 13.85, 32.8, 14.45), "kamin", B),                # Kaminzimmer (25.10.: vor die dicke Nordwand)
     (("rect", 15.0, 0.25, 19.0, 1.0), "kamin_gross", B),            # Seance, Nordwand (25.10.: statt Ouija-Wand), Baerenfell davor im Boden
     (("rect", 31.0, 18.25, 33.6, 18.7), "buecherregal", B),
     # Garten
@@ -276,7 +277,7 @@ GLASS = [
 # werden gezeichnet und sortiert wie Props, sperren aber weder Weg noch Sicht.
 OPAQUE += [
     (("rect", 10.1, 1.2, 10.75, 2.4), "kupferkessel", B),           # Laundry, Ostwand
-    (("rect", 26.3, 4.3, 26.75, 5.9), "bandregal", B),                # Radio Room, Ostwand (stand bis 21.10. vor der Tuer, bis 24.10. frei mitten im Raum)
+    (("rect", 25.65, 4.3, 26.75, 5.9), "bandregal", B),                # Radio Room, Ostwand (stand bis 21.10. vor der Tuer, bis 24.10. frei mitten im Raum)
     (("rect", 33.3, 1.6, 33.75, 3.6), "maskenregal", B),             # Prop Store, Ostwand
     (("rect", 8.25, 12.2, 8.7, 13.9), "garderobe", B),               # Long Library, Nordarm Westwand
     (("rect", 0.4, 19.3, 1.2, 19.9), "engelsstatue_tuch", B),        # Chapel, Nordwestecke
@@ -324,7 +325,7 @@ GLASS += [
     (("rect", 28.5, 10.2, 31.3, 11.7), "billardtisch", B),           # Trophy Room
     (("circle", 27.0, 11.8, 0.35), "globusbar", B),                  # Trophy Room
     (("circle", 31.3, 15.6, 0.25), "beistelltisch", B),              # Fireplace Room, zwischen den Sesseln
-    (("rect", 33.2, 13.3, 33.6, 13.8), "schuerhaken", B),            # Fireplace Room, neben dem Kamin
+    (("rect", 33.2, 13.9, 33.6, 14.4), "schuerhaken", B),            # Fireplace Room, neben dem Kamin
     (("rect", 33.0, 14.0, 33.75, 14.8), "holzkorb", B),              # Fireplace Room, Ostwand
     (("rect", 26.4, 16.6, 27.2, 17.5), "schaukelstuhl", B),          # Fireplace Room
     (("rect", 26.3, 22.6, 27.4, 23.7), "aktenkisten", B),            # Study, Suedwestecke
@@ -373,7 +374,7 @@ DECOR = [
     (("rect", 33.5, 8.8, 33.75, 9.8), "hirschkopf", B),              # Trophy Room, Ostwand
     (("rect", 31.5, 8.85, 33.0, 9.1), "fledermaeuse", L),            # Trophy Room, unter der Decke
     (("rect", 32.55, 8.85, 33.4, 9.1), "fledermaeuse", ("small",)),  # klein: rechts neben der Tuer
-    (("rect", 31.5, 13.9, 31.8, 14.1), "kinderschuh", B),            # Fireplace Room, vor dem Kamin
+    (("rect", 31.5, 14.55, 31.8, 14.75), "kinderschuh", B),            # Fireplace Room, vor dem Kamin
     (("rect", 33.5, 21.2, 33.75, 22.0), "lueftungsgitter", B),       # Study, Ostwand
     (("rect", 29.6, 23.65, 30.2, 23.9), "schreibmaschine", B),      # Study, auf dem Schreibtisch (Standlinie vor dem Tisch, Hoehe mitgezeichnet)
     (("rect", 38.0, 2.3, 39.8, 2.6), "vogelschwarm", L),             # Terrace, auf der Balustrade
@@ -399,6 +400,53 @@ HITBOX = {
     ("laterne", ("circle", 37.0, 20.0, 0.2)): ("circle", 37.0, 20.05, 0.12),
     ("laterne", ("circle", 34.5, 28.5, 0.2)): ("circle", 34.5, 28.55, 0.12),
     ("laterne", ("circle", 27.5, 28.5, 0.2)): ("circle", 27.5, 28.55, 0.12),
+    # Fable-Pruefung 25.10. (_reviews/hollowmere-large/KOLLISION.md): Kollision passend zur GPT-Zeichnung
+    ("kupferkessel", ("rect", 10.1, 1.2, 10.75, 2.4)): ("rect", 10.1, 1.85, 10.75, 2.4),
+    ("bandregal", ("rect", 25.65, 4.3, 26.75, 5.9)): ("rect", 25.7, 5.0, 26.75, 5.9),
+    ("herd", ("rect", 0.3, 0.25, 2.8, 0.85)): ("rect", 0.75, 0.25, 2.5, 0.85),
+    ("waschzuber", ("circle", 9.0, 1.3, 0.55)): ("ellipse", 8.93, 1.25, 0.53, 0.38),
+    ("seance_tisch", ("ellipse", 13.0, 1.95, 1.4, 0.85)): ("ellipse", 13.0, 2.1, 1.15, 0.7),
+    ("kristallkugel_tisch", ("circle", 13.0, 6.5, 0.35)): ("circle", 13.0, 6.4, 0.3),
+    ("funktisch", ("rect", 23.3, 0.25, 25.5, 0.85)): ("rect", 23.8, 0.25, 25.0, 0.85),
+    ("kleiderstange", ("rect", 28.5, 0.3, 31.0, 0.7)): ("rect", 28.5, 0.45, 31.0, 1.05),
+    ("teleskop", ("circle", 28.6, 6.0, 0.55)): ("ellipse", 28.62, 5.95, 0.38, 0.22),
+    ("lesetisch", ("rect", 4.5, 16.0, 6.5, 17.0)): ("rect", 4.7, 16.0, 6.3, 17.0),
+    ("kirchenbank", ("rect", 5.8, 20.9, 7.8, 21.35)): ("rect", 6.15, 20.9, 7.45, 21.35),
+    ("kirchenbank", ("rect", 8.6, 20.9, 10.6, 21.35)): ("rect", 8.95, 20.9, 10.25, 21.35),
+    ("kirchenbank", ("rect", 5.8, 21.9, 7.8, 22.35)): ("rect", 6.15, 21.9, 7.45, 22.35),
+    ("kirchenbank", ("rect", 8.6, 21.9, 10.6, 22.35)): ("rect", 8.95, 21.9, 10.25, 22.35),
+    ("zersplitterte_bank", ("rect", 5.8, 22.9, 7.8, 23.35)): ("rect", 6.4, 22.9, 7.5, 23.4),
+    ("mischpult", ("rect", 11.3, 20.5, 11.75, 21.8)): ("rect", 11.2, 21.4, 11.8, 22.0),
+    ("schminkspiegel", ("rect", 19.3, 20.25, 21.9, 20.7)): ("rect", 19.7, 20.25, 21.5, 20.7),
+    ("gewehrschrank", ("rect", 26.3, 8.85, 28.4, 9.3)): ("rect", 26.85, 8.85, 27.85, 9.3),
+    ("billardtisch", ("rect", 28.5, 10.2, 31.3, 11.7)): ("rect", 28.7, 10.2, 31.1, 11.7),
+    ("kamin", ("rect", 30.5, 13.85, 32.8, 14.45)): ("rect", 30.75, 13.85, 32.55, 14.45),
+    ("beistelltisch", ("circle", 31.3, 15.6, 0.25)): ("circle", 31.3, 15.45, 0.22),
+    ("buecherregal", ("rect", 31.0, 18.25, 33.6, 18.7)): ("rect", 31.45, 18.25, 33.15, 18.7),
+    ("schreibtisch", ("rect", 29.0, 22.7, 31.4, 23.6)): ("rect", 29.45, 22.7, 30.95, 23.6),
+    ("kamerakran", ("rect", 35.0, 3.0, 37.5, 5.0)): ("rect", 35.1, 4.1, 36.6, 5.0),
+    ("urne", ("circle", 37.0, 10.0, 0.4)): ("circle", 37.0, 9.9, 0.32),
+    ("kuebelpflanze", ("rect", 34.3, 7.0, 34.9, 8.0)): ("rect", 34.3, 7.4, 35.1, 8.0),
+    ("kuebelpflanze", ("rect", 34.3, 22.0, 34.9, 23.0)): ("rect", 34.3, 22.4, 35.1, 23.0),
+    ("absperrung", ("rect", 13.0, 29.35, 15.0, 29.65)): ("rect", 13.45, 29.35, 14.55, 29.65),
+    ("catering", ("rect", 19.5, 28.8, 22.0, 29.6)): ("rect", 19.8, 28.8, 21.7, 29.6),
+    ("lichtstativ", ("circle", 22.5, 25.5, 0.3)): ("ellipse", 22.62, 25.55, 0.5, 0.25),
+    ("lichtstativ", ("circle", 16.5, 28.0, 0.3)): ("ellipse", 16.62, 28.05, 0.5, 0.25),
+    ("campingtisch", ("rect", 6.0, 26.2, 7.8, 27.0)): ("rect", 6.35, 26.3, 7.45, 27.0),
+    ("kabeltrommel", ("circle", 5.0, 34.6, 0.45)): ("ellipse", 5.35, 34.5, 0.52, 0.32),
+    ("riesenpflanze", ("rect", 47.2, 3.6, 49.0, 5.2)): ("rect", 47.65, 4.35, 48.9, 4.95),
+    ("schlauchtrommel", ("circle", 48.8, 10.8, 0.4)): ("ellipse", 48.95, 10.8, 0.55, 0.35),
+    ("giesskannen", ("rect", 40.4, 10.6, 41.2, 11.5)): ("rect", 40.5, 10.85, 41.25, 11.3),
+    ("kandelaber", ("circle", 19.55, 0.75, 0.25)): ("circle", 19.55, 1.05, 0.23),
+    ("kandelaber", ("circle", 22.0, 6.9, 0.25)): ("circle", 22.0, 7.2, 0.23),
+    ("kandelaber", ("circle", 2.4, 15.5, 0.25)): ("circle", 2.4, 15.8, 0.23),
+    ("kandelaber", ("circle", 6.55, 19.7, 0.25)): ("circle", 6.55, 20.0, 0.23),
+    ("kandelaber", ("circle", 9.85, 19.7, 0.25)): ("circle", 9.85, 20.0, 0.23),
+    ("kandelaber", ("circle", 43.0, 34.5, 0.25)): ("circle", 43.0, 34.8, 0.23),
+    ("laterne", ("circle", 10.4, 8.6, 0.2)): ("circle", 10.27, 8.85, 0.12),
+    ("laterne", ("circle", 37.0, 20.0, 0.2)): ("circle", 36.87, 20.25, 0.12),
+    ("laterne", ("circle", 34.5, 28.5, 0.2)): ("circle", 34.37, 28.75, 0.12),
+    ("laterne", ("circle", 27.5, 28.5, 0.2)): ("circle", 27.37, 28.75, 0.12),
 }
 
 

@@ -4,7 +4,7 @@
 /*
  * HalloweenCostumes - full-body costume hats (Freddy, Jason, Xenomorph, Ghostface, since
  *   2026-10-13 Thing, Predator, Sadako, since 2026-10-16 Spider, BVB Fan, Angel Ghost, since 2026-10-20
- *   Pumpkin Head, Reaper, Vampire, Medusa) with
+ *   Pumpkin Head, Reaper, Vampire, Medusa, since 2026-10-25 Weeping Angel) with
  *   - a 16-frame idle loop and a 12-frame walk loop at 10 fps,
  *   - a back layer (dark trouser openings / robe hem) and a ladder pose,
  *   - a frame-by-frame kill cutscene per costume in the vanilla kill-overlay slot.
@@ -86,6 +86,7 @@ namespace UnknownsHalloween {
             // WalkFps frames per second, as many frames as hw_<Key>_walk_N exist (painted on the idle pose).
             public bool StillWalk;
             public float WalkFps = HatFps;
+            public float IdleFps = HatFps;   // own idle clock (Weeping Angel: 16 GPT frames tell a little story, 10 fps was too hectic)
             // Live legs (spider, 2026-10-17): on a real player the hat shows hw_<Key>_body_N (no legs) and
             // SpiderLegs works out and draws the eight legs every frame. Shop, previews and anything without a
             // live player keep the classic frames with painted legs.
@@ -156,6 +157,16 @@ namespace UnknownsHalloween {
             // the scene ends on the grey statue; without a hold it would only stand for one frame (1/15 s)
             new Costume { Key = "medusa", KillKey = "medusa", Name = "Halloween Medusa", KillFrames = 56, Flashes = new[] { 20, 40 }, HasLegs = false, HasAccent = true,
                 KillHold = 1.2f },
+            // 2026-10-25 (User: Engelskin nach Vorbild der Karten-Engel, jedes Bild von GPT; villa_qwen/angel_costume.py): Weeping
+            // Angel. The image IS the figure (stone crewmate with wings), the visor glows in the wearer's colour (accent). Idle:
+            // weeps, peeks with a cracked visor, hides again (IdleFps 6). Walk: stalks with claws on its own clock (StillWalk).
+            // Kill: the four Weeping Angel scenes of Hollowmere Manor (hk_angel_a1..a4, "Blink" with three flashes). Option 1946.
+            new Costume { Key = "weepingangel", KillKey = "angel_a1", Name = "Halloween Weeping Angel", KillFrames = 48, Flashes = new[] { 13, 25, 37 }, KillHold = 0.4f,
+                HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 6f,
+                Alt = new[] {
+                    new KillScene { Key = "angel_a2", Frames = 48, Flashes = new[] { 13, 25, 37 }, Hold = 0.4f },
+                    new KillScene { Key = "angel_a3", Frames = 48, Flashes = new[] { 13, 25, 37 }, Hold = 0.4f },
+                    new KillScene { Key = "angel_a4", Frames = 48, Flashes = new[] { 13, 25, 37 }, Hold = 0.4f } } },
         };
 
         // ==================== host options (2026-10-07) ====================
@@ -632,7 +643,7 @@ namespace UnknownsHalloween {
                 if (!c.StillWalk) i += WalkPhaseOffset;
                 frame = c.Walk[(i % n + n) % n];
             } else {
-                frame = c.Idle[Mathf.FloorToInt(Time.time * HatFps) % IdleFrames];
+                frame = c.Idle[Mathf.FloorToInt(Time.time * c.IdleFps) % IdleFrames];
             }
             if (frame != null && front.sprite != frame) front.sprite = frame;
 

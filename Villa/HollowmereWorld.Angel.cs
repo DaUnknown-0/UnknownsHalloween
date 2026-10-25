@@ -44,6 +44,12 @@ internal sealed partial class HollowmereWorld
         public readonly List<PropVar> Props = new();
         public Vector2 Pos;                     // Mitte der Standlinie; Abstand und Blickrichtung messen dagegen
         public string Pose;                     // null = Haende vor den Augen
+        public Vector2 Home;                    // Platz laut Karte (Meeting: zurueck dorthin)
+        public bool Movable;                    // Friedhofsengel springen, die Brunnenfigur nicht (HollowmereWorld.AngelMove.cs)
+        public int Variant = 1;                 // a1..a4 (Kill-Szene)
+        public float NextJump;
+        public BoxCollider2D Collider;          // wandert mit (statt des Glass-Kolliders von Atlas)
+        public Vector2 ColliderSize, ColliderOffset;
     }
 
     private enum AngelSight { Hidden, Away, Watched }
@@ -53,7 +59,7 @@ internal sealed partial class HollowmereWorld
     private readonly Dictionary<(byte Player, int Slot), float> _aggro = new();   // alle Spieler, auf jedem Client
     private float _nextAngelTick;
     private bool[] _angelWatched = Array.Empty<bool>();   // je Engel: schaut gerade irgendein lebender Spieler hin
-    private bool _angelErrorLogged;
+    private bool _angelErrorLogged, _angelMeeting;
     private static readonly HashSet<byte> AngelVictims = new();
 
     // Brunnenfigur: Plan 31,0 / 31,05 = Brunnenmitte
@@ -78,11 +84,12 @@ internal sealed partial class HollowmereWorld
     private const float AngelSceneHold = 0.4f;
     private static readonly List<(Vector2 Pos, int Variant)> AngelVariantAt = new();
 
-    /// <summary>Kill-Szene des Engels, der dem Opfer am naechsten steht.</summary>
+    /// <summary>Kill-Szene des Engels, der dem Opfer am naechsten steht (aktuelle Position, die Engel wandern).</summary>
     private static string AngelSceneFor(Vector2 victim)
     {
         int v = 1; float best = float.MaxValue;
-        foreach (var (pos, variant) in AngelVariantAt)
+        var now = _current != null && _current._slots.Count > 0 ? _current._slots.Select(s => (s.Pos, s.Variant)).ToList() : AngelVariantAt;
+        foreach (var (pos, variant) in now)
         {
             float d = (pos - victim).sqrMagnitude;
             if (d < best) { best = d; v = variant; }
@@ -94,18 +101,20 @@ internal sealed partial class HollowmereWorld
 
     private void AngelReset()
     {
+        AngelMoveReset();
+        _angelMeeting = false;
         _slots.Clear();
         _aggro.Clear();
         AngelVictims.Clear();
         if (_angels.Count > 0)
         {
-            var s = new AngelSlot { Pos = FountainAngel };
+            var s = new AngelSlot { Pos = FountainAngel, Home = FountainAngel };
             s.Props.AddRange(_angels);
             _slots.Add(s);
         }
         foreach (var pv in _graveAngels)
         {
-            var s = new AngelSlot { Pos = pv.Pos };
+            var s = new AngelSlot { Pos = pv.Pos, Home = pv.Pos, Movable = true };
             s.Props.Add(pv);
             _slots.Add(s);
         }
@@ -115,6 +124,8 @@ internal sealed partial class HollowmereWorld
         int i = 0;
         foreach (var pv in _graveAngels.OrderBy(p => p.Pos.x).ThenBy(p => p.Pos.y))
             AngelVariantAt.Add((pv.Pos, i++ % AngelVariants + 1));
+        foreach (var s in _slots)
+            foreach (var (pos, variant) in AngelVariantAt) if ((pos - s.Home).sqrMagnitude < 0.01f) { s.Variant = variant; break; }
         if (_slots.Count > 0)
             HalloweenPlugin.Logger.LogInfo($"{LogPrefix} weeping angels: {_slots.Count} (attack {(AngelAttackOn ? "on" : "off")})");
     }
@@ -127,8 +138,10 @@ internal sealed partial class HollowmereWorld
         {
             foreach (var s in _slots) if (s.Pose != null) SetPose(s, null);
             _aggro.Clear();
+            if (!_angelMeeting) { _angelMeeting = true; BreakoutMeeting(); }   // Engel zurueck, Ausbruch vorbei (AngelMove.cs)
             return;
         }
+        _angelMeeting = false;
         if (now < _nextAngelTick) return;
         _nextAngelTick = now + AngelTickEvery;
         AngelAggroTick();
@@ -224,15 +237,20 @@ internal sealed partial class HollowmereWorld
     /// Host toetet.</summary>
     private void AngelAggroTick()
     {
+        EnsureMoveReady();
         // erst alle Blicke: schaut irgendein lebender Spieler einen Engel an, ist er fuer alle eingefroren (kein Kill)
         var players = PlayerControl.AllPlayerControls.ToArray().Where(p => p != null && p.Data != null && !p.Data.IsDead && !p.Data.Disconnected).ToList();
         if (_angelWatched.Length != _slots.Count) _angelWatched = new bool[_slots.Count];
         Array.Clear(_angelWatched, 0, _angelWatched.Length);
+        BlinkTick(players);
         var sights = new AngelSight[players.Count, _slots.Count];
+        var blinked = new bool[players.Count];
         for (int n = 0; n < players.Count; n++)
             for (int i = 0; i < _slots.Count; i++)
             {
                 sights[n, i] = SightOf(players[n], _slots[i]);
+                // Blinzeln (Host, AngelMove.cs): in diesem Tick zaehlt der Blick nicht
+                if (sights[n, i] == AngelSight.Watched && _blinking.Contains(players[n].PlayerId)) { sights[n, i] = AngelSight.Away; blinked[n] = true; }
                 if (sights[n, i] == AngelSight.Watched) _angelWatched[i] = true;
             }
         var present = new HashSet<byte>();
@@ -250,14 +268,39 @@ internal sealed partial class HollowmereWorld
                 // angeschaut (von irgendwem): zurueck auf 0 (User 25.10.), danach steigt er neu von unten
                 aggro = _angelWatched[i] ? 0f : NextAggro(aggro, sight, AngelTickEvery);
                 if (aggro <= 0f) _aggro.Remove(key); else _aggro[key] = aggro;
-                if (!AmHost || !AngelAttackOn || _angelWatched[i] || sight != AngelSight.Away || aggro < AngelKillAt) continue;
-                if (Vector2.Distance(p.GetTruePosition(), s.Pos) > AngelReach) continue;
+                if (!AmHost || !AngelAttackOn || _angelWatched[i]) continue;
+                if (_breakout == 2 && s.Movable)
+                {
+                    // Ausbruch: jeder in Reichweite, den der Engel sieht (niemand schaut ihn an), auch Impostor
+                    if (p.inVent || p.onLadder || Vector2.Distance(p.GetTruePosition(), s.Pos) > AngelReach) continue;
+                    if (!PointInSight(p.GetTruePosition(), s.Pos + new Vector2(0f, 0.3f), 99f, 99f, 99f)) continue;
+                }
+                else
+                {
+                    if (sight != AngelSight.Away || aggro < AngelKillAt) continue;
+                    if (Vector2.Distance(p.GetTruePosition(), s.Pos) > AngelReach) continue;
+                }
                 KillByAngel(p);
                 present.Remove(pid);
                 break;
             }
         }
         foreach (var k in _aggro.Keys.ToList()) if (!present.Contains(k.Player)) _aggro.Remove(k);
+        // Spruenge und Zornpegel mit denselben Blicken (Tote dieses Ticks zaehlen nicht mehr als Ziel)
+        var alive = new List<PlayerControl>();
+        var keep = new List<int>();
+        for (int n = 0; n < players.Count; n++)
+            if (players[n] != null && players[n].Data != null && !players[n].Data.IsDead) { alive.Add(players[n]); keep.Add(n); }
+        var s2 = new AngelSight[alive.Count, _slots.Count];
+        var b2 = new bool[alive.Count];
+        for (int n = 0; n < alive.Count; n++)
+        {
+            b2[n] = blinked[keep[n]];
+            for (int i = 0; i < _slots.Count; i++) s2[n, i] = sights[keep[n], i];
+        }
+        AngelMoveHost(alive, s2, b2);
+        WrathTick(alive, s2);
+        BreakoutHostTick();
     }
 
     // ------------------------------------------------------------------ Round Replay (UTS, RoundReplayMarkers.cs)

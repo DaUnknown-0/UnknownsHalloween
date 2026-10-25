@@ -364,7 +364,7 @@ def horror_floor(d, C, rnd, av):
         rx, ry = C.P(17.0, 2.05)
         C.img.paste(rug.convert("RGB"), (int(rx - rw / 2), int(ry - rh / 2)), rug.getchannel("A"))
     # Russ-Fussspuren aus dem Kamin ins Zimmer, werden schwaecher
-    pts = [(31.6, 14.2), (31.2, 15.2), (30.4, 16.0), (29.4, 16.8)]
+    pts = [(31.6, 14.8), (31.2, 15.5), (30.4, 16.2), (29.4, 16.9)]          # ab dem Kamin (25.10. vor die dicke Wand geruckt)
     ls = LineString(pts)
     k, side = 0.0, 1
     while k < ls.length:

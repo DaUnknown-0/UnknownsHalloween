@@ -124,6 +124,8 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             // 1961 war bis 24.10. "Hollowmere Intro"; als "Weeping Angels Attack" erbte sie den gespeicherten Wert der alten
             // Option (bei vielen aus), deshalb seit 25.10. 1951. 1961 bleibt frei, damit alte Presets nichts umschalten.
             AngelAttack = CustomOption.Create(1951, CustomOption.CustomOptionType.General, "Weeping Angels Attack", true, null, false, null, "Hollowmere Manor");
+            AngelMove = CustomOption.Create(1952, CustomOption.CustomOptionType.General, "Weeping Angels Move", true, AngelAttack);
+            AngelBreakout = CustomOption.Create(1953, CustomOption.CustomOptionType.General, "Angel Breakout Sabotage", true, AngelAttack);
             AngelReplayRegister();
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} options failed: {e}"); }
@@ -295,6 +297,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
     public void Tick(float dt)
     {
         try { AngelTick(); } catch (Exception e) { AngelError(e); }
+        try { BreakoutFrame(); } catch (Exception e) { AngelError(e); }
         try { RitualTick(); } catch (Exception e) { RitualError(e); }
         try { GraveTick(); } catch { }
         AnimTick();
@@ -419,6 +422,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         _sounds.Clear();
         _shut.Clear();
         RitualDestroy();
+        AngelMoveDestroy();
         if (_current == this) _current = null;
     }
 
@@ -583,6 +587,10 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         else if (sub == SubAngelVictim)
         {
             HandleAngelRpc(reader);
+        }
+        else if (sub == SubAngelMove || sub == SubBreakout || sub == SubSealHold)
+        {
+            HandleAngelMoveRpc(sub, reader);
         }
         else if (sub == SubCandle)
         {
@@ -838,6 +846,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             }
             else if (p == "clock") { _diagTasks.Add("clock"); _diagClock = true; }
             else if (p == "candle") _diagTasks.Add("candle");
+            else if (p == "angels") _diagTasks.Add("angels");
         }
         if (_diagTasks.Count == 0) return;
         // erst nach den Ansichtsfotos von Atlas (AtlasMapShot teleportiert den Spieler ~20 s lang herum und laesst
@@ -863,6 +872,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         string task = _diagTasks[_diagTask];
         if (task == "clock") { DiagClock(lp); return; }
         if (task == "candle") { DiagCandle(lp); return; }
+        if (task == "angels") { DiagAngels(lp); return; }
         int idx = Array.FindIndex(_secrets, s => s.Key == task.Substring(7));
         if (idx < 0)
         {
