@@ -155,8 +155,11 @@ namespace UnknownsHalloween {
             // 12-frame walk on the run cycle. Their options take 1944 and 1945 (1970-1979 is full).
             new Costume { Key = "vampire", KillKey = "vampire", Name = "Halloween Vampire", KillFrames = 56, Flashes = new[] { 24, 44 }, HasLegs = false, HasAccent = true },
             // the scene ends on the grey statue; without a hold it would only stand for one frame (1/15 s)
+            // 2026-10-25: costume frames redrawn by GPT (villa_qwen/gpt_costume.py medusa): the image IS the figure now
+            // (HidesBody), the sash is the accent in the wearer's colour; snakes sway, curl, strike and hiss (IdleFps 8),
+            // the walk loop lets them trail like ribbons on its own clock (StillWalk). The kill scene stays.
             new Costume { Key = "medusa", KillKey = "medusa", Name = "Halloween Medusa", KillFrames = 56, Flashes = new[] { 20, 40 }, HasLegs = false, HasAccent = true,
-                KillHold = 1.2f },
+                KillHold = 1.2f, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
             // 2026-10-25 (User: Engelskin nach Vorbild der Karten-Engel, jedes Bild von GPT; villa_qwen/angel_costume.py): Weeping
             // Angel. The image IS the figure (stone crewmate with wings), the visor glows in the wearer's colour (accent). Idle:
             // weeps, peeks with a cracked visor, hides again (IdleFps 6). Walk: stalks with claws on its own clock (StillWalk).
