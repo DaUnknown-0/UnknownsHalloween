@@ -121,8 +121,9 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             DarkVision = CustomOption.Create(1967, CustomOption.CustomOptionType.General, "Dark Room Vision", DarkChoices, null, false, null, "Hollowmere Manor");
             CandleBurn = CustomOption.Create(1968, CustomOption.CustomOptionType.General, "Candle Burn Time", 60f, 20f, 120f, 10f, DarkVision);
             BlowOut = CustomOption.Create(1969, CustomOption.CustomOptionType.General, "Impostor Blow-Out Cooldown", BlowChoices, DarkVision);
-            // 1961 war bis 24.10. "Hollowmere Intro" (entfernt); seitdem die Weeping Angels (HollowmereWorld.Angel.cs)
-            AngelAttack = CustomOption.Create(1961, CustomOption.CustomOptionType.General, "Weeping Angels Attack", true, null, false, null, "Hollowmere Manor");
+            // 1961 war bis 24.10. "Hollowmere Intro"; als "Weeping Angels Attack" erbte sie den gespeicherten Wert der alten
+            // Option (bei vielen aus), deshalb seit 25.10. 1951. 1961 bleibt frei, damit alte Presets nichts umschalten.
+            AngelAttack = CustomOption.Create(1951, CustomOption.CustomOptionType.General, "Weeping Angels Attack", true, null, false, null, "Hollowmere Manor");
             AngelReplayRegister();
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} options failed: {e}"); }

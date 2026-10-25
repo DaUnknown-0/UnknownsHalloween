@@ -9,13 +9,13 @@
 // - in Sichtweite (Bildausschnitt um den Spieler, Lichtradius, keine Wand dazwischen), aber der Spieler schaut weg
 //   (Blickrichtung des Crewmates links/rechts, der Engel steht hinter ihm): der Wert steigt, der Engel geht Stufe fuer
 //   Stufe von "Haende vor den Augen" ueber "starrt an" (turn) zu "greift an" (step);
-// - der Spieler schaut ihn an: die Pose bleibt stehen, der Wert steigt trotzdem langsamer weiter (beim Wegdrehen springt
-//   der Engel dann gleich weiter);
+// - der Spieler schaut ihn an: der Engel steht sofort wieder mit den Haenden vor den Augen da, der Wert steigt aber
+//   langsamer weiter; schaut er wieder weg, zeigt der Engel die Stufe seines aktuellen Werts (User 25.10.);
 // - gar nicht in Sichtweite (auch im Vent, auf der Leiter, tot): der Wert sinkt langsam, er regt sich wieder ab.
 // Der Host rechnet die Werte fuer alle Spieler, jeder Client dieselbe Formel fuer den eigenen Spieler und zeigt die Pose
 // danach (nichts wird gesendet; Tauschbilder "Prop/<art>/<x>/<y>/turn|step", gen_villa PROP_VARIANTS).
 //
-// Angriff (Host-autoritativ, Option 1961 "Weeping Angels Attack", Standard an): voller Wert, weggeschaut und hoechstens
+// Angriff (Host-autoritativ, Option 1951 "Weeping Angels Attack", Standard an): voller Wert, weggeschaut und hoechstens
 // 3 m entfernt -> "zurueck in die Zeit geschickt": Tod ueber TORs UncheckedMurderPlayer wie beim Pentagramm, ohne Schild,
 // ohne Erstkill-Schild, ohne Bait-Selbstbericht; die Rollenzeile sagt "sent back in time". Weiter weg bleibt der Engel in
 // der Angriffspose, bis man naeher kommt oder er sich abregt. Das Opfer sieht die Kill-Szene seines Engels
@@ -129,15 +129,13 @@ internal sealed partial class HollowmereWorld
         if (now < _nextAngelTick) return;
         _nextAngelTick = now + AngelTickEvery;
         AngelAggroTick();
-        // eigenes Bild aus dem eigenen Wert. Angeschaut bleibt die Pose stehen; der Tausch passiert, waehrend man wegschaut
-        // oder der Engel ausser Sicht ist.
+        // eigenes Bild aus dem eigenen Wert: angeschaut Haende vor den Augen, sonst die Stufe des aktuellen Werts
         var lp = PlayerControl.LocalPlayer;
         for (int i = 0; i < _slots.Count; i++)
         {
             var s = _slots[i];
-            if (SightOf(lp, s) == AngelSight.Watched) continue;
             float aggro = lp != null && _aggro.TryGetValue((lp.PlayerId, i), out float v) ? v : 0f;
-            string pose = PoseFor(aggro);
+            string pose = SightOf(lp, s) == AngelSight.Watched ? null : PoseFor(aggro);
             if (pose != s.Pose) SetPose(s, pose);
         }
     }
