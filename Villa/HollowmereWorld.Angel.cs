@@ -79,8 +79,8 @@ internal sealed partial class HollowmereWorld
     // engel bekommen reihum eine Variante, sortiert nach Position (x, dann y): rechnet jeder Client gleich, ohne RPC. Der
     // Brunnenengel ist a1. tools: villa_qwen/angel_scene.py (GPT-Schluesselbilder, "Blink"-Ablauf mit drei Blitzen).
     private const int AngelVariants = 4;
-    private const int AngelSceneFrames = 45;       // 25.10.: Szenen aus GPT-Blaettern (villa_qwen/kill_frames.py), Blinzeln = schwarze Bilder
-    private static readonly int[] AngelSceneFlashes = { 8, 17, 24 };
+    private const int AngelSceneFrames = 48;       // 26.10. nachts: wieder die ersten Szenen (User: "wirklich alle einfach zurueck")
+    private static readonly int[] AngelSceneFlashes = { 13, 25, 37 };
     private const float AngelSceneHold = 0.4f;
     private static readonly List<(Vector2 Pos, int Variant)> AngelVariantAt = new();
 
