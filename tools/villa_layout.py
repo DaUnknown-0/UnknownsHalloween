@@ -447,6 +447,14 @@ HITBOX = {
     ("laterne", ("circle", 37.0, 20.0, 0.2)): ("circle", 36.87, 20.25, 0.12),
     ("laterne", ("circle", 34.5, 28.5, 0.2)): ("circle", 34.37, 28.75, 0.12),
     ("laterne", ("circle", 27.5, 28.5, 0.2)): ("circle", 27.37, 28.75, 0.12),
+    ('kuebelpflanze', ('rect', 34.3, 7.0, 34.9, 8.0)): ('rect', 34.35, 6.9, 34.75, 8.0),   # Kollisionspruefung 26.10. VL-1
+    ('kuebelpflanze', ('rect', 34.3, 22.0, 34.9, 23.0)): ('rect', 34.35, 21.9, 34.75, 23.0),   # Kollisionspruefung 26.10. VL-1
+    ('zelt_aufgeschlitzt', ('rect', 1.0, 26.0, 4.0, 28.8)): ('rect', 1.15, 27.2, 3.85, 28.8),   # Kollisionspruefung 26.10. VL-2
+    ('zelt', ('rect', 6.5, 30.0, 10.0, 33.0)): ('rect', 6.7, 31.4, 9.8, 33.0),   # Kollisionspruefung 26.10. VL-2
+    ('bandregal', ('rect', 25.65, 4.3, 26.75, 5.9)): ('rect', 26.0, 5.0, 26.75, 5.9),   # Kollisionspruefung 26.10. VL-3
+    ('kristallkugel_tisch', ('circle', 13.0, 6.5, 0.35)): ('circle', 13.0, 6.26, 0.27),   # Kollisionspruefung 26.10. VL-6
+    ('orrery', ('circle', 31.5, 5.0, 0.35)): ('circle', 31.5, 4.9, 0.3),   # Kollisionspruefung 26.10. VL-6
+    ('globusbar', ('circle', 27.0, 11.8, 0.35)): ('circle', 27.0, 11.67, 0.32),   # Kollisionspruefung 26.10. VL-6
 }
 
 

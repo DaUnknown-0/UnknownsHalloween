@@ -180,7 +180,18 @@ PROPS = [
 
 # Kollision abweichend von der Zeichenform (User 24.10.): (Art, Form) -> Kollisionsform. Gezeichnet wird weiter aus
 # der Form in PROPS. Laternen/Kandelaber sperren nur den Fuss, der Brunnen ist oval.
-HITBOX = {("brunnen", ("circle", -8.0, 13.0, 0.78)): ("ellipse", -8.0, 12.75, 0.8, 0.5)}
+HITBOX = {("brunnen", ("circle", -8.0, 13.0, 0.78)): ("ellipse", -8.0, 12.75, 0.8, 0.5),
+    ('tisch', ('rect', 18.0, -16.45, 19.2, -15.65)): ('rect', 18.0, -16.45, 19.65, -15.65),   # Kollisionspruefung 26.10. GY-1
+    ('obduktionstisch', ('rect', 19.4, 0.5, 21.2, 1.3)): ('rect', 19.75, 0.65, 20.85, 1.3),   # Kollisionspruefung 26.10. GY-2
+    ('brunnen', ('circle', -8.0, 13.0, 0.78)): ('ellipse', -8.0, 13.0, 0.78, 0.42),   # Kollisionspruefung 26.10. GY-3
+    ('engel', ('circle', 4.25, 13.1, 0.42)): ('rect', 3.6, 12.65, 4.9, 13.3),   # Kollisionspruefung 26.10. GY-4
+    ('hobelbank', ('rect', -15.0, 1.5, -14.2, 2.8)): ('rect', -15.1, 1.25, -14.2, 2.8),   # Kollisionspruefung 26.10. GY-5
+    ('kanonenofen', ('circle', 21.45, -14.6, 0.32)): ('circle', 21.45, -14.35, 0.3),   # Kollisionspruefung 26.10. GY-6
+    ('bett', ('rect', 15.3, -17.75, 16.35, -16.0)): ('rect', 15.15, -17.75, 16.55, -16.0),   # Kollisionspruefung 26.10. GY-7
+    ('sarg_bock', ('rect', -19.1, -1.7, -17.3, -1.05)): ('rect', -18.9, -1.7, -17.25, -1.05),   # Kollisionspruefung 26.10. GY-8
+    ('taufbecken', ('circle', -4.3, -3.3, 0.38)): ('ellipse', -4.31, -3.1, 0.3, 0.33),   # Kollisionspruefung 26.10. GY-11
+    ('kanonenofen', ('circle', -5.65, -16.35, 0.3)): ('circle', -5.65, -16.1, 0.28),   # Kollisionspruefung 26.10. GY-11
+}
 
 
 def hit_shape(s, kind):
