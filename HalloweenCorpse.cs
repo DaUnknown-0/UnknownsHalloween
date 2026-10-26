@@ -180,7 +180,7 @@ namespace UnknownsHalloween {
             if (front == null || body == null || dead || away || co.CurrentBodyType != PlayerBodyTypes.Normal) {
                 // ghost, ladder, vent, platform, horse/long mode: the plain crewmate, no corpse
                 if (front != null && dead && !deadFront.ContainsKey(id))
-                    deadFront[id] = hidden.TryGetValue(id, out var hd) ? hd.FrontScale : front.transform.localScale;
+                    deadFront[id] = hidden.TryGetValue(id, out var hd) && hd.Front != null ? hd.FrontScale : front.transform.localScale;
                 Restore(id);
                 if (front != null && dead) Scale0(front.transform);
                 return true;
@@ -198,6 +198,15 @@ namespace UnknownsHalloween {
                 h.Lossy = Mathf.Abs((bp != null ? bp.lossyScale.x : 1f) * h.BodyScale.x);
                 if (hidden.Count > 256) hidden.Clear();
                 hidden[id] = h;
+            }
+            if (h.Front == null) {
+                // the record comes from a whole-figure costume worn just before (HideBodyOnly keeps no front layer and
+                // no scale): take them now, else the corpse is drawn at scale 0 and the zero stays on the next hat
+                // (User 2026-10-26: corpse, then Jason and Ghostface invisible)
+                h.Front = front.transform; h.FrontPos = front.transform.localPosition;
+                h.FrontScale = deadFront.Remove(id, out var fs1) ? fs1 : front.transform.localScale;
+                var bp1 = h.Body != null ? h.Body.parent : null;
+                h.Lossy = Mathf.Abs((bp1 != null ? bp1.lossyScale.x : 1f) * h.BodyScale.x);
             }
             Scale0(h.Body); Scale0(h.Skin); Scale0(h.Visor);
 
@@ -242,6 +251,11 @@ namespace UnknownsHalloween {
                 try { if (co.visor != null) { h.Visor = co.visor.transform; h.VisorScale = h.Visor.localScale; } } catch { }
                 if (hidden.Count > 256) hidden.Clear();
                 hidden[id] = h;
+            }
+            if (h.Front != null) {
+                // straight from the corpse: its front layer was moved and rescaled, give the costume its own back
+                try { h.Front.localScale = h.FrontScale; h.Front.localPosition = h.FrontPos; } catch { }
+                h.Front = null;
             }
             Scale0(h.Body); Scale0(h.Skin); Scale0(h.Visor);
         }
