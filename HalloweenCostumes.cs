@@ -120,6 +120,11 @@ namespace UnknownsHalloween {
         }
 
         private static readonly Costume[] Costumes = {
+            // 2026-10-26 evening (User: "packe die alten Skins wieder rein. Engelskin bleibt."): Freddy, Jason, Xenomorph,
+            // Ghostface, Predator, Sadako, Pumpkin Head, Reaper, Vampire and Medusa wear their first costumes again (frames
+            // and settings of 0.1.3.13: on the real body, walking on the crewmate's own run cycle). The GPT notes below
+            // describe the replaced frames. Kill scenes, Weeping Angel (flight), Spider (blinking eyes), Thing, Angel Ghost
+            // and BVB Fan stay as they are.
             // 2026-10-26 (User: legs barely moved, "nicht immer das gleiche Bein nach vorne"): the walk loops of Freddy, Jason,
             // Xenomorph, Ghostface, Predator, Sadako, Pumpkin Head, Vampire and Medusa were redrawn by GPT as a real walk cycle with
             // alternating steps (villa_qwen/walk2.py) and run at 12 fps (one stride pair per second). A cut-out puppet version
@@ -127,34 +132,31 @@ namespace UnknownsHalloween {
             // 2026-10-26 (user: kill scenes "very laggy" with 9 drawings): every GPT scene is a 4x4 sheet now (16 drawings,
             // 3 game frames each = 48 frames) with a soft cross-fade where a drawing barely moves; flashes = drawing index * 3.
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py freddy): whole figure, cyan sweater stripes = wearer's colour.
-            new Costume { Key = "freddy", KillKey = "freddy", Name = "Halloween Freddy", KillFrames = 48, Flashes = new[] { 27, 30 }, HasLegs = false,
-                HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f },
+            new Costume { Key = "freddy", KillKey = "freddy", Name = "Halloween Freddy", KillFrames = 48, Flashes = new[] { 27, 30 }, HasLegs = false },
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
             // 2026-10-26 (User: kill scenes hardly any frames per second, "wie bei Engel und Medusa"): Jason and Ghostface as a trial
             // with 45 GPT drawings each (5 sheets of 3x3 in one chat, the 16-drawing sheet as storyboard), one drawing per game frame.
-            new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 45, Flashes = new[] { 16, 40 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f,
+            new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 45, Flashes = new[] { 16, 40 }, HasLegs = false,
                 // diagonal slash (main) or the lift (2026-10-26: redrawn by GPT: grabbed by the head, lifted, thrown down)
                 Alt = new[] { new KillScene { Key = "jasonlift", Frames = 48, Flashes = new[] { 36 } } } },
             // 2026-10-26: costume frames redrawn by GPT (gpt_costume.py xenomorph): whole figure, cyan lattice/ribs/tail = wearer's
             // colour, light blue visor stays; idle shows no inner jaw (user), that belongs to the bite scene only.
             new Costume { Key = "xenomorph", KillKey = "xeno", Name = "Halloween Xenomorph", KillFrames = 48, Flashes = new[] { 30, 33 }, HasLegs = false, HasAccent = true,
-                HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f,
                 // tail stab (main) or the inner-jaw bite (2026-10-26: redrawn by GPT, impact flash at the visor hit)
                 Alt = new[] { new KillScene { Key = "xenobite", Frames = 48, Flashes = new[] { 30, 33 } } } },
             // 2026-10-07: rebuilt after the Dead-by-Daylight mori (yank down, three stabs, head hauled up, selfie, rip);
             // 2026-10-25 the same mori redrawn by GPT (kill_frames.py): flashes on the three stabs and the selfie
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
-            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 45, Flashes = new[] { 14, 20, 26, 41 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f },
+            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 45, Flashes = new[] { 14, 20, 26, 41 }, HasLegs = false, HasAccent = true },
             // 2026-10-13: three more (kill5_<key>.py): assimilation, wrist blades, out of the vent
             // costume: the first Thing (0.1.0.8, opened head on the real body) again; User 2026-10-26 after the GPT figure was too
             // wide and the cut-out head never sat right. The kill scene stays the GPT one from 0.1.3.17: the head opens,
             // tentacles hug the victim in, gulp (flash), burp
             new Costume { Key = "thing", KillKey = "thing", Name = "Halloween Thing", KillFrames = 48, Flashes = new[] { 39 }, HasLegs = false, HasAccent = true },
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
-            new Costume { Key = "predator", KillKey = "predator", Name = "Halloween Predator", KillFrames = 48, Flashes = new[] { 36, 39 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f },
+            new Costume { Key = "predator", KillKey = "predator", Name = "Halloween Predator", KillFrames = 48, Flashes = new[] { 36, 39 }, HasLegs = false, HasAccent = true },
             // 2026-10-26: costume frames redrawn by GPT (gpt_costume.py sadako): whole figure, cyan ribbon belt = wearer's colour.
-            new Costume { Key = "sadako", KillKey = "sadako", Name = "Halloween Sadako", KillFrames = 48, Flashes = new[] { 36, 42 }, HasLegs = false,
-                HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f },
+            new Costume { Key = "sadako", KillKey = "sadako", Name = "Halloween Sadako", KillFrames = 48, Flashes = new[] { 36, 42 }, HasLegs = false, HasAccent = true },
             // 2026-10-16: knitted spider costume (spider.py), BVB fan (bvb.py) and the angel ghost (angel.py,
             // the real body is hidden). Only costumes with a KillKey get a cutscene and a host option.
             // abseil behind the victim, cocoon from the feet up, bite, the cocoon tips over (kill5_spider.py).
@@ -174,16 +176,14 @@ namespace UnknownsHalloween {
             // and Reaper (reaper.py; floats on the idle pose like the spider, one scythe swing and the soul rises,
             // kill5_reaper.py). Appended at the end so their options take 1978 and 1979.
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py pumpkin): whole figure, cyan scarf = wearer's colour.
-            new Costume { Key = "pumpkin", KillKey = "pumpkin", Name = "Halloween Pumpkin Head", KillFrames = 48, Flashes = new[] { 24, 30 }, HasLegs = false, HasAccent = true,
-                HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f },
+            new Costume { Key = "pumpkin", KillKey = "pumpkin", Name = "Halloween Pumpkin Head", KillFrames = 48, Flashes = new[] { 24, 30 }, HasLegs = false, HasAccent = true },
             new Costume { Key = "reaper", KillKey = "reaper", Name = "Halloween Reaper", KillFrames = 48, Flashes = new[] { 24, 27 }, HasLegs = false, HasAccent = true,
-                StillWalk = true, WalkFps = 12f, HidesBody = true, IdleFps = 8f },   // 25.10.: GPT frames, cyan rope belt = wearer's colour
+                StillWalk = true, WalkFps = 12f },
             // 2026-10-20 (Grafik-Lieferung, vampire.py / medusa.py, kill5_vampire.py / kill5_medusa.py): Vampire (the cape
             // closes around the victim, bat swarm; player colour in the cape lining, collar and medallion band) and
             // Medusa (the gaze turns the victim to stone; player colour in the sash and the snakes' tongues). Normal
             // 12-frame walk on the run cycle. Their options take 1944 and 1945 (1970-1979 is full).
-            new Costume { Key = "vampire", KillKey = "vampire", Name = "Halloween Vampire", KillFrames = 48, Flashes = new[] { 30, 36 }, HasLegs = false, HasAccent = true,
-                HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f },   // 25.10.: GPT frames, cyan cape lining = wearer's colour
+            new Costume { Key = "vampire", KillKey = "vampire", Name = "Halloween Vampire", KillFrames = 48, Flashes = new[] { 30, 36 }, HasLegs = false, HasAccent = true },
             // the scene ends on the grey statue; without a hold it would only stand for one frame (1/15 s)
             // 2026-10-25: costume frames redrawn by GPT (villa_qwen/gpt_costume.py medusa): the image IS the figure now
             // (HidesBody), the sash is the accent in the wearer's colour; snakes sway, curl, strike and hiss (IdleFps 8),
@@ -192,7 +192,7 @@ namespace UnknownsHalloween {
             // the victim petrifying step by step in the stone GPT painted, then she sways beside the statue): 45 frames,
             // flashes when the gaze hits and when the statue is complete.
             new Costume { Key = "medusa", KillKey = "medusa", Name = "Halloween Medusa", KillFrames = 45, Flashes = new[] { 14, 33 }, HasLegs = false, HasAccent = true,
-                KillHold = 1.2f, HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f },
+                KillHold = 1.2f },
             // 2026-10-25 (User: Engelskin nach Vorbild der Karten-Engel, jedes Bild von GPT; villa_qwen/angel_costume.py): Weeping
             // Angel. The image IS the figure (stone crewmate with wings), the visor glows in the wearer's colour (accent). Idle:
             // weeps, peeks with a cracked visor, hides again (IdleFps 6). Walk: stalks with claws on its own clock (StillWalk).
