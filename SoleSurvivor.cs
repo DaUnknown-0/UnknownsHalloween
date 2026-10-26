@@ -330,7 +330,7 @@ namespace UnknownsHalloween {
             BuildPortal();
             var lp = PlayerControl.LocalPlayer;
             if (lp == null || lp.Data == null) return;
-            try { Helpers.showFlash(Pink, 1.2f); } catch { }
+            if (!HalloweenPlugin.Calm) { try { Helpers.showFlash(Pink, 1.2f); } catch { } }
             if (IsSurvivor(lp)) R.Chat(Tr("start_s"));
             else if (R.IsImpostor(lp) && !lp.Data.IsDead) {
                 R.Chat(Tr("start_i"));

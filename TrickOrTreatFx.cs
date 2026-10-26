@@ -1235,7 +1235,7 @@ namespace UnknownsHalloween {
             if (fakeSr == null) fakeSr = UiSr("TreatFakeAlarm", Pixel(), 150);
             Cover(fakeSr, -48f);
             float s = Mathf.Sin((Time.time - a.Started) * Mathf.PI);
-            fakeSr.color = new Color(1f, 0f, 0f, 0.28f * s * s);
+            fakeSr.color = new Color(1f, 0f, 0f, (HalloweenPlugin.Calm ? 0.1f : 0.28f) * s * s);
             fakeSr.enabled = true;
             if (Time.time >= fakeBeep) { fakeBeep = Time.time + 1f; Play(Alarm(), 0.55f, 0f); }
         }
@@ -1261,7 +1261,7 @@ namespace UnknownsHalloween {
             if (t > 0.9f) { if (flashSr != null) flashSr.enabled = false; return; }
             if (flashSr == null) flashSr = UiSr("TreatFlash", Pixel(), 160);
             Cover(flashSr, -49f);
-            flashSr.color = new Color(flashColor.r, flashColor.g, flashColor.b, 0.45f * (1f - t / 0.9f));
+            flashSr.color = new Color(flashColor.r, flashColor.g, flashColor.b, (HalloweenPlugin.Calm ? 0.12f : 0.45f) * (1f - t / 0.9f));
             flashSr.enabled = true;
         }
 

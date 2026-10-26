@@ -388,6 +388,7 @@ namespace UnknownsHalloween {
             else if (ft < 0.1f) a = 0.35f;                 // the flicker
             else if (ft < 0.2f) a = 0.65f;
             else a = 0.22f * (1f - (ft - 0.2f) / 1f);
+            if (HalloweenPlugin.Calm) a *= 0.2f;           // "Reduce Flashes"
             flashSr.color = new Color(0.93f, 0.96f, 1f, a);
             flashSr.enabled = true;
         }

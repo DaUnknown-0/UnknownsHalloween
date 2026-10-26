@@ -40,12 +40,37 @@ public class HalloweenPlugin : BasePlugin
 {
     public const string PluginGuid = "com.daunknown.unknownshalloween";
     public const string PluginName = "Unknown's Halloween";
-    public const string PluginVersion = "0.1.3.16";
+    public const string PluginVersion = "0.1.3.17";
     public static readonly System.Version Version = System.Version.Parse(PluginVersion);
     private const string AtlasGuid = "com.daunknown0.atlas";
 
     public static ManualLogSource Logger { get; private set; }
     public static ConfigEntry<bool> CfgEnabled;
+    // Accessibility (2026-10-26, user): local switch, damps every screen flash of this mod (kill-scene band, Omens thunder,
+    // candy shield flash, fake alarm, Sole Survivor start flash) for players sensitive to flashing light.
+    public static ConfigEntry<bool> ReduceFlashes;
+    /// <summary>true = flashes damped (local "Reduce Flashes" switch).</summary>
+    internal static bool Calm => ReduceFlashes != null && ReduceFlashes.Value;
+
+    // Same AppDomain contract as the angel blink switch: UC shows it on its settings page.
+    private static void RegisterFlashToggle()
+    {
+        try
+        {
+            var domain = System.AppDomain.CurrentDomain;
+            lock (domain)
+            {
+                if (domain.GetData("Unknowns.Options.Toggles") is not System.Collections.Generic.List<object> list)
+                {
+                    list = new System.Collections.Generic.List<object>();
+                    domain.SetData("Unknowns.Options.Toggles", list);
+                }
+                list.Add(new object[] { (System.Func<string>)(() => "Reduce Flashes"), (System.Func<bool>)(() => Calm),
+                                        (System.Action<bool>)(v => { if (ReduceFlashes != null) ReduceFlashes.Value = v; }) });
+            }
+        }
+        catch (System.Exception e) { Logger?.LogWarning($"[Halloween] flash toggle not registered: {e.Message}"); }
+    }
 
     public override void Load()
     {
@@ -54,6 +79,9 @@ public class HalloweenPlugin : BasePlugin
         HollowmereWorld.BlinkEffect = Config.Bind("Weeping Angels", "BlinkEffect", true,
             "Show the eyelid blink on your screen when the Weeping Angels make you blink. Off = no visual effect; you still blink (the host decides it).");
         HollowmereWorld.RegisterBlinkToggle();
+        ReduceFlashes = Config.Bind("Accessibility", "ReduceFlashes", false,
+            "Damp all screen flashes of Unknown's Halloween (kill-scene band, thunder, shield and alarm flashes) on your screen. Only affects you.");
+        RegisterFlashToggle();
         HwGuessSpell.LocalSwitch = Config.Bind("Sounds", "GuesserSpellSound", true,
             "Play \"Avada Kedavra ... Kurwa!\" at every Guesser shot (contains a swear word). The host can switch it off for everyone (option 2102).");
 

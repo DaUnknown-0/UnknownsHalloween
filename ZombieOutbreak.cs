@@ -330,7 +330,7 @@ namespace UnknownsHalloween {
             R.Log($"{t?.Data?.PlayerName ?? target.ToString()} bitten by {Helpers.playerById(zombie)?.Data?.PlayerName ?? zombie.ToString()}");
             var lp = PlayerControl.LocalPlayer;
             if (lp != null && lp.PlayerId == target) {
-                try { Helpers.showFlash(Green, delay, Tr("bitten")); } catch { }
+                try { Helpers.showFlash(HalloweenPlugin.Calm ? Green * 0.35f : Green, delay, Tr("bitten")); } catch { }   // "Reduce Flashes": darker tint, text stays
             }
             if (lp != null && lp.PlayerId == zombie && infectButton != null) infectButton.Timer = infectButton.MaxTimer;
         }

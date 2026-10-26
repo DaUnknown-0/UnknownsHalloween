@@ -117,30 +117,40 @@ namespace UnknownsHalloween {
         }
 
         private static readonly Costume[] Costumes = {
+            // 2026-10-26 (user: kill scenes "very laggy" with 9 drawings): every GPT scene is a 4x4 sheet now (16 drawings,
+            // 3 game frames each = 48 frames) with a soft cross-fade where a drawing barely moves; flashes = drawing index * 3.
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py freddy): whole figure, cyan sweater stripes = wearer's colour.
-            new Costume { Key = "freddy", KillKey = "freddy", Name = "Halloween Freddy", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false,
+            new Costume { Key = "freddy", KillKey = "freddy", Name = "Halloween Freddy", KillFrames = 48, Flashes = new[] { 27, 30 }, HasLegs = false,
                 HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
-            new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f,
-                // diagonal slash (main) or the one-armed lift with the machete run through (2026-10-07)
-                Alt = new[] { new KillScene { Key = "jasonlift", Frames = 60, Flashes = new[] { 25, 45 } } } },
-            new Costume { Key = "xenomorph", KillKey = "xeno", Name = "Halloween Xenomorph", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true,
-                // tail stab (main) or the inner-jaw bite
-                Alt = new[] { new KillScene { Key = "xenobite", Frames = 46, Flashes = new[] { 18, 31 } } } },
+            new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 48, Flashes = new[] { 24, 30 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f,
+                // diagonal slash (main) or the lift (2026-10-26: redrawn by GPT: grabbed by the head, lifted, thrown down)
+                Alt = new[] { new KillScene { Key = "jasonlift", Frames = 48, Flashes = new[] { 36 } } } },
+            // 2026-10-26: costume frames redrawn by GPT (gpt_costume.py xenomorph): whole figure, cyan lattice/ribs/tail = wearer's
+            // colour, light blue visor stays; idle shows no inner jaw (user), that belongs to the bite scene only.
+            new Costume { Key = "xenomorph", KillKey = "xeno", Name = "Halloween Xenomorph", KillFrames = 48, Flashes = new[] { 30, 33 }, HasLegs = false, HasAccent = true,
+                HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f,
+                // tail stab (main) or the inner-jaw bite (2026-10-26: redrawn by GPT, impact flash at the visor hit)
+                Alt = new[] { new KillScene { Key = "xenobite", Frames = 48, Flashes = new[] { 30, 33 } } } },
             // 2026-10-07: rebuilt after the Dead-by-Daylight mori (yank down, three stabs, head hauled up, selfie, rip);
             // 2026-10-25 the same mori redrawn by GPT (kill_frames.py): flashes on the three stabs and the selfie
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
-            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 45, Flashes = new[] { 10, 15, 20, 30 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
+            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 48, Flashes = new[] { 21, 27, 33, 42 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
             // 2026-10-13: three more (kill5_<key>.py): assimilation, wrist blades, out of the vent
-            new Costume { Key = "thing", KillKey = "thing", Name = "Halloween Thing", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true },
+            // 2026-10-26: costume frames redrawn by GPT (gpt_costume.py thing): whole figure, cyan body = wearer's colour, visor stays light blue.
+            // kill scene 2026-10-26 redrawn to match: the head opens, tentacles hug the victim in, gulp (flash), burp
+            new Costume { Key = "thing", KillKey = "thing", Name = "Halloween Thing", KillFrames = 48, Flashes = new[] { 39 }, HasLegs = false,
+                HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
-            new Costume { Key = "predator", KillKey = "predator", Name = "Halloween Predator", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
-            new Costume { Key = "sadako", KillKey = "sadako", Name = "Halloween Sadako", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true },
+            new Costume { Key = "predator", KillKey = "predator", Name = "Halloween Predator", KillFrames = 48, Flashes = new[] { 36, 39 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
+            // 2026-10-26: costume frames redrawn by GPT (gpt_costume.py sadako): whole figure, cyan ribbon belt = wearer's colour.
+            new Costume { Key = "sadako", KillKey = "sadako", Name = "Halloween Sadako", KillFrames = 48, Flashes = new[] { 36, 42 }, HasLegs = false,
+                HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
             // 2026-10-16: knitted spider costume (spider.py), BVB fan (bvb.py) and the angel ghost (angel.py,
             // the real body is hidden). Only costumes with a KillKey get a cutscene and a host option.
             // abseil behind the victim, cocoon from the feet up, bite, the cocoon tips over (kill5_spider.py).
             // 2026-10-17 spider v2: the killer's own crewmate under the costume, in the killer's colour
-            new Costume { Key = "spider", KillKey = "spider", Name = "Halloween Spider", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true,
+            new Costume { Key = "spider", KillKey = "spider", Name = "Halloween Spider", KillFrames = 48, Flashes = new[] { 21, 24 }, HasLegs = false, HasAccent = true,
                 // Spidertron: the body glides level, every leg steps on its own (SpiderLegs); the walk loop
                 // is only the fallback for players the live legs cannot run on. 2026-10-25 (User: new look, keep the
                 // per-leg concept): body frames and leg parts redrawn by GPT, cyan face patch = wearer's colour.
@@ -155,15 +165,15 @@ namespace UnknownsHalloween {
             // and Reaper (reaper.py; floats on the idle pose like the spider, one scythe swing and the soul rises,
             // kill5_reaper.py). Appended at the end so their options take 1978 and 1979.
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py pumpkin): whole figure, cyan scarf = wearer's colour.
-            new Costume { Key = "pumpkin", KillKey = "pumpkin", Name = "Halloween Pumpkin Head", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true,
+            new Costume { Key = "pumpkin", KillKey = "pumpkin", Name = "Halloween Pumpkin Head", KillFrames = 48, Flashes = new[] { 24, 30 }, HasLegs = false, HasAccent = true,
                 HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
-            new Costume { Key = "reaper", KillKey = "reaper", Name = "Halloween Reaper", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true,
+            new Costume { Key = "reaper", KillKey = "reaper", Name = "Halloween Reaper", KillFrames = 48, Flashes = new[] { 24, 27 }, HasLegs = false, HasAccent = true,
                 StillWalk = true, WalkFps = 12f, HidesBody = true, IdleFps = 8f },   // 25.10.: GPT frames, cyan rope belt = wearer's colour
             // 2026-10-20 (Grafik-Lieferung, vampire.py / medusa.py, kill5_vampire.py / kill5_medusa.py): Vampire (the cape
             // closes around the victim, bat swarm; player colour in the cape lining, collar and medallion band) and
             // Medusa (the gaze turns the victim to stone; player colour in the sash and the snakes' tongues). Normal
             // 12-frame walk on the run cycle. Their options take 1944 and 1945 (1970-1979 is full).
-            new Costume { Key = "vampire", KillKey = "vampire", Name = "Halloween Vampire", KillFrames = 45, Flashes = new[] { 25, 30 }, HasLegs = false, HasAccent = true,
+            new Costume { Key = "vampire", KillKey = "vampire", Name = "Halloween Vampire", KillFrames = 48, Flashes = new[] { 30, 36 }, HasLegs = false, HasAccent = true,
                 HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },   // 25.10.: GPT frames, cyan cape lining = wearer's colour
             // the scene ends on the grey statue; without a hold it would only stand for one frame (1/15 s)
             // 2026-10-25: costume frames redrawn by GPT (villa_qwen/gpt_costume.py medusa): the image IS the figure now
@@ -297,7 +307,10 @@ namespace UnknownsHalloween {
                 var byName = new Dictionary<string, Costume>();
                 foreach (var c in Costumes) {
                     string main = $"UC_HW_{c.Key}.png", back = $"UC_HW_{c.Key}_back.png", climb = $"UC_HW_{c.Key}_climb.png";
-                    if (!Extract($"hw_{c.Key}_1.png", main)) continue;
+                    // TOR draws the registered hat itself (cosmetics menu, meeting icons) with the 450-wide calibration:
+                    // costumes on a wider canvas ship a 450 cut-out as hw_<key>_main.png (2026-10-26)
+                    string mainRes = HalloweenAssets.Exists(Res + $"hw_{c.Key}_main.png") ? $"hw_{c.Key}_main.png" : $"hw_{c.Key}_1.png";
+                    if (!Extract(mainRes, main)) continue;
                     bool backOk = Extract($"hw_{c.Key}_back.png", back);
                     bool climbOk = Extract($"hw_{c.Key}_climb.png", climb);
                     OwnFiles.Add(main); OwnFiles.Add(back); OwnFiles.Add(climb);
@@ -379,6 +392,9 @@ namespace UnknownsHalloween {
 
         // Same calibration as UCHats.LoadHatSprite / TOR's CreateHatSprite: pivot (0.53, 0.575) and
         // pixelsPerUnit = texture.width * 0.375, DXT5 without a CPU copy (the hat-memory diet).
+        // 2026-10-26: frames may be WIDER than the 450x562 hat canvas (Xenomorph tail, Thing tentacles at real crewmate
+        // size): the scale then comes from the height (base width = height * 450/562) and the extra width is padding
+        // on both sides, so a 450x562 frame behaves exactly as before.
         private static Sprite LoadHatSprite(string logicalName) {
             try {
                 byte[] data = ReadResource(logicalName);
@@ -387,8 +403,10 @@ namespace UnknownsHalloween {
                 if (!ImageConversion.LoadImage(texture, data, false)) return null;
                 try { texture.Compress(true); } catch { }
                 texture.Apply(false, true);
+                float baseW = Mathf.Min(texture.width, texture.height * (450f / 562f));
+                float pivotX = ((texture.width - baseW) * 0.5f + 0.53f * baseW) / texture.width;
                 var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
-                    new Vector2(0.53f, 0.575f), texture.width * 0.375f);
+                    new Vector2(pivotX, 0.575f), baseW * 0.375f);
                 if (sprite == null) return null;
                 texture.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
                 sprite.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
@@ -1180,7 +1198,8 @@ namespace UnknownsHalloween {
                 if (layerSprite[i] != null) UnityEngine.Object.Destroy(layerSprite[i]);
                 layerSprite[i] = sprite;
             }
-            if (band != null) band.color = Array.IndexOf(activeScene.Flashes, frame) >= 0 ? BandFlash : BandDark;
+            if (band != null) band.color = Array.IndexOf(activeScene.Flashes, frame) >= 0
+                ? (HalloweenPlugin.Calm ? Color.Lerp(BandDark, BandFlash, 0.2f) : BandFlash) : BandDark;
         }
 
         /// <summary>The "hkcrop" text chunk of a cropped kill frame: stage width/height and the top-left corner of
@@ -1403,6 +1422,9 @@ namespace UnknownsHalloween {
                 var keys = DiagMode.Substring("costumes:".Length).Split(',').Select(k => k.Trim()).Where(k => k.Length > 0).ToList();
                 var pick = Costumes.Where(c => c.HatId != null && keys.Contains(c.Key)).ToList();
                 Add(0.5f, () => { try { lp.RpcSetColor(10); } catch { } });
+                // size reference: the plain crewmate without a costume (2026-10-26)
+                Add(0.6f, () => { try { lp.RpcSetHat("hat_NoHat"); } catch { } });
+                Add(1.0f, () => DiagShot("plain_idle"));
                 foreach (var c in pick) {
                     var cc = c;
                     Add(1.6f, () => lp.RpcSetHat(cc.HatId));
@@ -1417,20 +1439,24 @@ namespace UnknownsHalloween {
                     Add(0.6f, () => DiagShot(cc.Key + "_idle_color4"));
                     Add(0.2f, () => { try { lp.RpcSetColor(10); } catch { } });
                 }
-                foreach (var c in pick) {
-                    if (c.KillKey == null) continue;
-                    var cc = c;
-                    float len = cc.KillFrames / KillFps;
+                void SceneShots(string shotKey, string sceneKey, int frames, float hold) {
+                    float len = frames / KillFps;
                     // shots at 15/35/55/75/95 % of the scene, 0.5 s after its end (Medusa: statue still held) and after the hold
                     var shots = new List<(string tag, float t)>();
                     foreach (float f in new[] { 0.15f, 0.35f, 0.55f, 0.75f, 0.95f }) shots.Add(((shots.Count).ToString(), len * f));
                     shots.Add(("hold", len + 0.5f));
-                    shots.Add(("after", len + cc.KillHold + 1.0f));
-                    Add(shots[0].t + 0.05f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag preview: " + Preview(cc.KillKey)));
+                    shots.Add(("after", len + hold + 1.0f));
+                    Add(shots[0].t + 0.05f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag preview: " + Preview(sceneKey)));
                     for (int i = 0; i < shots.Count; i++) {
-                        string tag = cc.Key + "_kill_" + shots[i].tag;
+                        string tag = shotKey + "_kill_" + shots[i].tag;
                         Add(i + 1 < shots.Count ? shots[i + 1].t - shots[i].t : 0.5f, () => DiagShot(tag));
                     }
+                }
+                foreach (var c in pick) {
+                    if (c.KillKey == null) continue;
+                    SceneShots(c.Key, c.KillKey, c.KillFrames, c.KillHold);
+                    // alternative scenes too (2026-10-26: xenobite, jasonlift redrawn)
+                    if (c.Alt != null) foreach (var s in c.Alt) SceneShots(s.Key, s.Key, s.Frames, s.Hold);
                 }
                 Add(1.0f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag: all done"));
                 Add(0f, () => Application.Quit());
