@@ -76,7 +76,7 @@ namespace UnknownsHalloween {
             public Sprite[] Idle, Walk;
             public bool HasAccent;      // highlight masks (hw_<Key>_acc_N) that are tinted in the wearer's colour
             public Sprite[] IdleAcc, WalkAcc;
-            public bool FramesTried;
+            public bool FramesTried, MoveFramesTried;
             public KillScene[] Alt;     // further cutscenes of this costume; one of all is picked at random
             public bool HidesBody;      // the image IS the figure: body, skin and visor cosmetic are hidden (HalloweenCorpse.BodylessHats)
             public bool NoLiveBob;      // no walk bob at all: idle frames while walking, sync held while alive (User 2026-10-24)
@@ -406,13 +406,15 @@ namespace UnknownsHalloween {
         // 2026-10-26: frames may be WIDER than the 450x562 hat canvas (Xenomorph tail, Thing tentacles at real crewmate
         // size): the scale then comes from the height (base width = height * 450/562) and the extra width is padding
         // on both sides, so a 450x562 frame behaves exactly as before.
-        private static Sprite LoadHatSprite(string logicalName) {
+        private static Sprite LoadHatSprite(string logicalName) => LoadHatSprite(logicalName, true);
+
+        private static Sprite LoadHatSprite(string logicalName, bool highQuality) {
             try {
                 byte[] data = ReadResource(logicalName);
                 if (data == null) return null;
                 var texture = new Texture2D(2, 2, TextureFormat.ARGB32, true);
                 if (!ImageConversion.LoadImage(texture, data, false)) return null;
-                try { texture.Compress(true); } catch { }
+                try { texture.Compress(highQuality); } catch { }
                 texture.Apply(false, true);
                 float baseW = Mathf.Min(texture.width, texture.height * (450f / 562f));
                 float pivotX = ((texture.width - baseW) * 0.5f + 0.53f * baseW) / texture.width;
@@ -448,10 +450,13 @@ namespace UnknownsHalloween {
         // ==================== hat animation (idle / walk) ====================
 
         // 2026-10-26 (User: "sehr, sehr langer Freeze beim ersten Laden der Hüte" in the hats tab): the shop shows every
-        // costume at once and this used to load all their frames right there on the main thread (PNG decode, mipmaps, DXT
-        // compression for ~850 pictures). Now the arrays are set up empty and HatFrameLoader fills them: a worker thread
-        // decodes and builds the mip chain, the main thread uploads within a small budget per frame (idle frames of every
-        // costume first, then walk, then the accent masks). Until a picture is there the hat keeps the one it shows.
+        // costume at once and this used to load all their frames right there on the main thread (~850 pictures in one go).
+        // Now the arrays are set up empty and HatFrameLoader fills them, a few milliseconds per game frame (idle frames of
+        // every costume first, then the accent masks). Until a picture is there the hat keeps the one it shows.
+        // 0.1.3.23 (User: game crashed): 0.1.3.21 decoded the pictures on a worker thread into raw pixel arrays; the worker
+        // ran far ahead of the uploads and the managed heap grew from 90 to 900 MB (2.2 GB process, 32 bit). Now Unity
+        // decodes on the main thread again (native memory, one picture per frame), and walk frames, walk masks and body
+        // frames are only loaded once a real player wears the costume (the wardrobe only shows the idle loop).
         private static void EnsureFrames(Costume c) {
             if (c.FramesTried) return;
             c.FramesTried = true;
@@ -459,158 +464,80 @@ namespace UnknownsHalloween {
                 HalloweenPlugin.Logger?.LogWarning($"[Halloween] {c.Name}: idle frames missing - hat stays static.");
                 return;
             }
+            c.Idle = new Sprite[IdleFrames];
+            HatFrameLoader.Want(c.Idle, IdleFrames, i => Res + $"hw_{c.Key}_{i + 1}.png", 0);
+            // Optional: without the masks the costume simply shows no player colour.
+            if (c.HasAccent && HalloweenAssets.Exists(Res + $"hw_{c.Key}_acc_1.png")) {
+                c.IdleAcc = new Sprite[IdleFrames];
+                HatFrameLoader.Want(c.IdleAcc, IdleFrames, i => Res + $"hw_{c.Key}_acc_{i + 1}.png", 2);
+            }
+        }
+
+        /// <summary>Walk, walk accent and body frames: only for a costume a real player wears.</summary>
+        private static void EnsureMoveFrames(Costume c) {
+            if (c.MoveFramesTried || c.Idle == null) return;
+            c.MoveFramesTried = true;
             int walkCount = WalkFrames;
             if (c.StillWalk) {
                 // own loop: as many frames as the resources hold (up to 96)
                 walkCount = 0;
                 while (walkCount < 96 && HalloweenAssets.Exists(Res + $"hw_{c.Key}_walk_{walkCount + 1}.png")) walkCount++;
             }
-            c.Idle = new Sprite[IdleFrames];
-            HatFrameLoader.Want(c.Idle, IdleFrames, i => Res + $"hw_{c.Key}_{i + 1}.png", 0);
             if (walkCount > 0) {
-                c.Walk = new Sprite[walkCount];
-                HatFrameLoader.Want(c.Walk, walkCount, i => Res + $"hw_{c.Key}_walk_{i + 1}.png", 1);
+                var walk = new Sprite[walkCount];
+                HatFrameLoader.Want(walk, walkCount, i => Res + $"hw_{c.Key}_walk_{i + 1}.png", 1);
+                if (c.HasAccent && HalloweenAssets.Exists(Res + $"hw_{c.Key}_walk_acc_1.png")) {
+                    c.WalkAcc = new Sprite[walkCount];
+                    HatFrameLoader.Want(c.WalkAcc, walkCount, i => Res + $"hw_{c.Key}_walk_acc_{i + 1}.png", 3);
+                }
+                c.Walk = walk;
             }
             if (c.LiveLegs && HalloweenAssets.Exists(Res + $"hw_{c.Key}_body_1.png")) {
                 // body frames without legs (+ accent masks)
-                c.Body = new Sprite[IdleFrames];
-                HatFrameLoader.Want(c.Body, IdleFrames, i => Res + $"hw_{c.Key}_body_{i + 1}.png", 1);
+                var body = new Sprite[IdleFrames];
+                HatFrameLoader.Want(body, IdleFrames, i => Res + $"hw_{c.Key}_body_{i + 1}.png", 1);
                 if (HalloweenAssets.Exists(Res + $"hw_{c.Key}_body_acc_1.png")) {
                     c.BodyAcc = new Sprite[IdleFrames];
                     HatFrameLoader.Want(c.BodyAcc, IdleFrames, i => Res + $"hw_{c.Key}_body_acc_{i + 1}.png", 2);
                 }
-            }
-            if (!c.HasAccent) return;
-            // Optional: without the masks the costume simply shows no player colour.
-            if (HalloweenAssets.Exists(Res + $"hw_{c.Key}_acc_1.png")) {
-                c.IdleAcc = new Sprite[IdleFrames];
-                HatFrameLoader.Want(c.IdleAcc, IdleFrames, i => Res + $"hw_{c.Key}_acc_{i + 1}.png", 2);
-            }
-            if (c.Walk != null && HalloweenAssets.Exists(Res + $"hw_{c.Key}_walk_acc_1.png")) {
-                c.WalkAcc = new Sprite[walkCount];
-                HatFrameLoader.Want(c.WalkAcc, walkCount, i => Res + $"hw_{c.Key}_walk_acc_{i + 1}.png", 3);
+                c.Body = body;
             }
         }
 
-        /// <summary>Loads the costume frames without a freeze (see EnsureFrames).</summary>
+        /// <summary>Loads the costume frames without a freeze and without a memory spike (see EnsureFrames).</summary>
         private static class HatFrameLoader {
-            private sealed class Job {
-                public Sprite[] Arr; public int Index; public string Path; public int Stage; public long Order;
-                public byte[] Rgba; public int W, H; public bool Fallback;
-            }
-            private const float BudgetMs = 3f;
-            private static readonly object Gate = new();
+            private sealed class Job { public Sprite[] Arr; public int Index; public string Path; public int Stage; public long Order; }
+            private const float BudgetMs = 4f;
             private static readonly List<Job> todo = new();
-            private static readonly Queue<Job> done = new();
-            private static System.Threading.Thread worker;
-            private static readonly System.Threading.AutoResetEvent wake = new(false);
             private static long order;
             private static int uploaded;
             private static float mainMs;
             private static bool tickOn;
 
             internal static void Want(Sprite[] arr, int count, Func<int, string> path, int stage) {
-                lock (Gate)
-                    for (int i = 0; i < count; i++) todo.Add(new Job { Arr = arr, Index = i, Path = path(i), Stage = stage, Order = order++ });
+                for (int i = 0; i < count; i++) todo.Add(new Job { Arr = arr, Index = i, Path = path(i), Stage = stage, Order = order++ });
                 if (!tickOn) { tickOn = true; UCFx.RegisterTick(Tick); }
-                if (worker == null) {
-                    worker = new System.Threading.Thread(Work) { IsBackground = true, Name = "HalloweenHatFrames" };
-                    worker.Start();
-                }
-                wake.Set();
             }
 
-            private static void Work() {
-                while (true) {
-                    Job job = null;
-                    lock (Gate) {
-                        // the lowest stage first (idle frames of all costumes before any walk frames), in request order
-                        int best = -1;
-                        for (int i = 0; i < todo.Count; i++)
-                            if (best < 0 || todo[i].Stage < todo[best].Stage || (todo[i].Stage == todo[best].Stage && todo[i].Order < todo[best].Order)) best = i;
-                        if (best >= 0) { job = todo[best]; todo.RemoveAt(best); }
-                    }
-                    if (job == null) { wake.WaitOne(1000); continue; }
-                    try {
-                        byte[] png = HalloweenAssets.Read(job.Path);
-                        if (png == null) continue;
-                        byte[] rgba = KillFramePrefetch.Decode(png, out job.W, out job.H);
-                        if (rgba == null) { job.Fallback = true; }
-                        else job.Rgba = WithMips(rgba, job.W, job.H);
-                    } catch (Exception e) {
-                        HalloweenPlugin.Logger?.LogWarning($"[Halloween] hat frame {job.Path}: {e.Message}");
-                        continue;
-                    }
-                    lock (Gate) done.Enqueue(job);
-                }
-            }
-
-            // Unity's full mip chain behind level 0 (2x2 box filter), so LoadRawTextureData fills the texture in one go.
-            private static byte[] WithMips(byte[] lv0, int w, int h) {
-                int total = 0;
-                for (int lw = w, lh = h; ; lw = Math.Max(1, lw >> 1), lh = Math.Max(1, lh >> 1)) {
-                    total += lw * lh * 4;
-                    if (lw == 1 && lh == 1) break;
-                }
-                var all = new byte[total];
-                Buffer.BlockCopy(lv0, 0, all, 0, lv0.Length);
-                int src = 0, dst = lv0.Length, sw = w, sh = h;
-                while (sw > 1 || sh > 1) {
-                    int dw = Math.Max(1, sw >> 1), dh = Math.Max(1, sh >> 1);
-                    for (int y = 0; y < dh; y++) {
-                        int y0 = Math.Min(sh - 1, y * 2), y1 = Math.Min(sh - 1, y * 2 + 1);
-                        for (int x = 0; x < dw; x++) {
-                            int x0 = Math.Min(sw - 1, x * 2), x1 = Math.Min(sw - 1, x * 2 + 1);
-                            int a = src + (y0 * sw + x0) * 4, b = src + (y0 * sw + x1) * 4, c = src + (y1 * sw + x0) * 4, d = src + (y1 * sw + x1) * 4;
-                            int o = dst + (y * dw + x) * 4;
-                            for (int k = 0; k < 4; k++) all[o + k] = (byte)((all[a + k] + all[b + k] + all[c + k] + all[d + k] + 2) >> 2);
-                        }
-                    }
-                    src = dst; dst += dw * dh * 4; sw = dw; sh = dh;
-                }
-                return all;
-            }
-
+            // at least one picture per frame, more while the budget lasts; the lowest stage first, in request order
             private static void Tick() {
-                if (done.Count == 0) return;
+                if (todo.Count == 0) return;
                 float t0 = Time.realtimeSinceStartup;
-                while ((Time.realtimeSinceStartup - t0) * 1000f < BudgetMs) {
-                    Job job;
-                    lock (Gate) { if (done.Count == 0) break; job = done.Dequeue(); }
+                do {
+                    int best = 0;
+                    for (int i = 1; i < todo.Count; i++)
+                        if (todo[i].Stage < todo[best].Stage || (todo[i].Stage == todo[best].Stage && todo[i].Order < todo[best].Order)) best = i;
+                    var job = todo[best];
+                    todo.RemoveAt(best);
                     float t1 = Time.realtimeSinceStartup;
-                    var sp = job.Fallback ? LoadHatSprite(job.Path) : Upload(job);
+                    var sp = LoadHatSprite(job.Path, false);
                     if (sp != null && job.Index < job.Arr.Length) job.Arr[job.Index] = sp;
-                    job.Rgba = null;
                     mainMs += (Time.realtimeSinceStartup - t1) * 1000f;
                     uploaded++;
-                }
-                bool idle;
-                lock (Gate) idle = todo.Count == 0 && done.Count == 0;
-                if (idle && uploaded > 0) {
+                } while (todo.Count > 0 && (Time.realtimeSinceStartup - t0) * 1000f < BudgetMs);
+                if (todo.Count == 0) {
                     HalloweenPlugin.Logger?.LogInfo($"[Halloween] costume frames loaded: {uploaded} pictures, {mainMs:F0} ms on the main thread in total");
                     uploaded = 0; mainMs = 0f;
-                }
-            }
-
-            // Same calibration as LoadHatSprite: pivot (0.53 of the 450 base, 0.575), pixelsPerUnit from the height, DXT5.
-            private static Sprite Upload(Job job) {
-                try {
-                    var texture = new Texture2D(job.W, job.H, TextureFormat.RGBA32, true);
-                    var pin = System.Runtime.InteropServices.GCHandle.Alloc(job.Rgba, System.Runtime.InteropServices.GCHandleType.Pinned);
-                    try { texture.LoadRawTextureData(pin.AddrOfPinnedObject(), job.Rgba.Length); }
-                    finally { pin.Free(); }
-                    try { texture.Compress(false); } catch { }
-                    texture.Apply(false, true);
-                    float baseW = Mathf.Min(texture.width, texture.height * (450f / 562f));
-                    float pivotX = ((texture.width - baseW) * 0.5f + 0.53f * baseW) / texture.width;
-                    var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(pivotX, 0.575f), baseW * 0.375f);
-                    if (sprite == null) return null;
-                    texture.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
-                    sprite.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
-                    return sprite;
-                } catch (Exception ex) {
-                    HalloweenPlugin.Logger?.LogWarning($"[Halloween] hat frame upload failed ({job.Path}): {ex.Message}");
-                    return LoadHatSprite(job.Path);
                 }
             }
         }
@@ -752,6 +679,7 @@ namespace UnknownsHalloween {
 
             EnsureFrames(c);
             if (c.Idle == null) return false;
+            if (OwnerOf(__instance) != null) EnsureMoveFrames(c);
 
             if (c.LiveLegs && c.Body != null) {
                 var owner = OwnerOf(__instance);
@@ -1636,6 +1564,15 @@ namespace UnknownsHalloween {
                     Add(0.65f, () => { try { lp.RpcSetColor(4); } catch { } });
                     Add(0.6f, () => DiagShot(cc.Key + "_idle_color4"));
                     Add(0.2f, () => { try { lp.RpcSetColor(10); } catch { } });
+                }
+                if (keys.Contains("wardrobe")) {
+                    // 0.1.3.23: what opening the wardrobe loads (every costume's idle loop), with the memory before and after
+                    void Mem(string when) {
+                        long priv = 0; try { priv = System.Diagnostics.Process.GetCurrentProcess().PrivateMemorySize64; } catch { }
+                        HalloweenPlugin.Logger?.LogInfo($"[Halloween] diag wardrobe {when}: managed {GC.GetTotalMemory(false) / 1048576} MB, process {priv / 1048576} MB");
+                    }
+                    Add(0.5f, () => { Mem("before"); foreach (var c in Costumes) EnsureFrames(c); });
+                    for (int k = 0; k < 6; k++) { int kk = k; Add(5f, () => Mem($"after {5 * (kk + 1)} s")); }
                 }
                 if (keys.Contains("corpseswap")) {
                     // User 2026-10-26: a whole-figure costume, then the corpse, then another costume left the player invisible
