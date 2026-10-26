@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        <Version>0.1.3.29</Version>
+        <Version>0.1.3.30</Version>
         <Description>Unknown's Halloween - add-on for Unknown's Collection: four full-body Halloween costume hats (Freddy, Jason, Xenomorph, Ghostface) with idle/walk animation and kill cutscenes, plus the Xenomorph role (neutral killer). Built for AU 2024.11.26 / BepInEx 6.0.0-be.697 / Reactor 2.3.1.</Description>
         <Authors>DaUnknown-0</Authors>
         <LangVersion>latest</LangVersion>

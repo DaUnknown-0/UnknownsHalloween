@@ -8,7 +8,7 @@ namespace UnknownsHalloween;
 
 internal static class HalloweenAssetCatalog
 {
-    public const string Tag = "v27";
+    public const string Tag = "v28";
 
     public static readonly (string Name, long Size, string Sha256)[] Files =
     {
@@ -32,7 +32,7 @@ internal static class HalloweenAssetCatalog
         ("hats_hk_vampire.hwp", 1974351L, "29c7a281c3cabd4c9a1548efdde305fcba5b86f373175a4049635b1ed34db0cb"),
         ("hats_hk_xeno.hwp", 1933956L, "3131a64e445a8944b1e74fcc6c13df7f74eeb8fb47e3c730f775660764d9c3a0"),
         ("hats_hk_xenobite.hwp", 1714325L, "50e18081d1b1bdf4f1702bde7cad031a9c6c3b975090a61bbc6e5b71a3af3d88"),
-        ("hats_hl_spider.hwp", 258888L, "6252277f82e833d8efa634439bb83d0df833439567817fb374ec7a9997433fac"),
+        ("hats_hl_spider.hwp", 256128L, "c2e4b975e8327a9d8d647652d232c8acac1eeaa04a013dff5a5075eeaa782aad"),
         ("hats_hw_angel.hwp", 2512985L, "968563ad6ecd22ab83c713f4a99add7bdc6e7ca89e9a4a49478cff67f856209a"),
         ("hats_hw_bvb.hwp", 1193543L, "9bb75fd36c58fb4ffc0dee4b2b0ca7011f035da78fdaaf265b2c1182b270e1f0"),
         ("hats_hw_corpse.hwp", 116339L, "8b30994566ef86bf40aa2fee4e56f81b86e6ba08d89b4014ddc2413358cb1419"),
@@ -44,7 +44,7 @@ internal static class HalloweenAssetCatalog
         ("hats_hw_pumpkin.hwp", 1333712L, "48e7445f0f9bb8640e112cea252200d34ce61ae696df2ae24bbb53c55d73902e"),
         ("hats_hw_reaper.hwp", 1948243L, "f3d0128dec6b15a98f90e1668695324f42755b1e14a77644eca6d04ba5a32541"),
         ("hats_hw_sadako.hwp", 2054165L, "c87776c4c7ff59bb43629cecf3ee45f4e4eda9552822d0d621459e7785705e47"),
-        ("hats_hw_spider.hwp", 5902241L, "3c7c82bfac5d7eab995a510bf2bfe28690a577ba234a393279dcffc165be10aa"),
+        ("hats_hw_spider.hwp", 3936527L, "3cee79b4ece1f569f1d3e7d5d674c0d14e33a61b2e8e9dfafed276ddb6514d16"),
         ("hats_hw_thing.hwp", 1700447L, "0a9eaf223da516c0444d1453f2d3057a6d025202c80185b111d5b39aa0677f25"),
         ("hats_hw_vampire.hwp", 1287087L, "a0b43ae92cf854e035fc8e6d51f48eeccc33c48826d552b07e886bca55d50148"),
         ("hats_hw_weepingangel.hwp", 3150038L, "6f1e216c80bf61496093da11b6cfaebc3e8e7dcdb200b02d52ec39b28c10ba40"),
