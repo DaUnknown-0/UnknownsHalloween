@@ -40,7 +40,7 @@ public class HalloweenPlugin : BasePlugin
 {
     public const string PluginGuid = "com.daunknown.unknownshalloween";
     public const string PluginName = "Unknown's Halloween";
-    public const string PluginVersion = "0.1.3.25";
+    public const string PluginVersion = "0.1.3.26";
     public static readonly System.Version Version = System.Version.Parse(PluginVersion);
     private const string AtlasGuid = "com.daunknown0.atlas";
 

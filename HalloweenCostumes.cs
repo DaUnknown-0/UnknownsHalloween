@@ -125,6 +125,9 @@ namespace UnknownsHalloween {
             // and settings of 0.1.3.13: on the real body, walking on the crewmate's own run cycle). The GPT notes below
             // describe the replaced frames. Kill scenes, Weeping Angel (flight), Spider (blinking eyes), Thing, Angel Ghost
             // and BVB Fan stay as they are.
+            // Kill scenes (User's review the same evening): Freddy, Jason (both), Xenomorph tail stab, Ghostface, Predator and
+            // Sadako back to their first scenes (0.1.3.13 frames, lengths and flashes); Spider, Pumpkin Head, Reaper, Vampire,
+            // Medusa, the Xenomorph bite and the Weeping Angel scenes keep the GPT versions.
             // 2026-10-26 (User: legs barely moved, "nicht immer das gleiche Bein nach vorne"): the walk loops of Freddy, Jason,
             // Xenomorph, Ghostface, Predator, Sadako, Pumpkin Head, Vampire and Medusa were redrawn by GPT as a real walk cycle with
             // alternating steps (villa_qwen/walk2.py) and run at 12 fps (one stride pair per second). A cut-out puppet version
@@ -132,31 +135,31 @@ namespace UnknownsHalloween {
             // 2026-10-26 (user: kill scenes "very laggy" with 9 drawings): every GPT scene is a 4x4 sheet now (16 drawings,
             // 3 game frames each = 48 frames) with a soft cross-fade where a drawing barely moves; flashes = drawing index * 3.
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py freddy): whole figure, cyan sweater stripes = wearer's colour.
-            new Costume { Key = "freddy", KillKey = "freddy", Name = "Halloween Freddy", KillFrames = 48, Flashes = new[] { 27, 30 }, HasLegs = false },
+            new Costume { Key = "freddy", KillKey = "freddy", Name = "Halloween Freddy", KillFrames = 46, Flashes = new[] { 14, 20 }, HasLegs = false },
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
             // 2026-10-26 (User: kill scenes hardly any frames per second, "wie bei Engel und Medusa"): Jason and Ghostface as a trial
             // with 45 GPT drawings each (5 sheets of 3x3 in one chat, the 16-drawing sheet as storyboard), one drawing per game frame.
-            new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 45, Flashes = new[] { 16, 40 }, HasLegs = false,
+            new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 46, Flashes = new[] { 16, 30 }, HasLegs = false,
                 // diagonal slash (main) or the lift (2026-10-26: redrawn by GPT: grabbed by the head, lifted, thrown down)
-                Alt = new[] { new KillScene { Key = "jasonlift", Frames = 48, Flashes = new[] { 36 } } } },
+                Alt = new[] { new KillScene { Key = "jasonlift", Frames = 60, Flashes = new[] { 25, 45 } } } },
             // 2026-10-26: costume frames redrawn by GPT (gpt_costume.py xenomorph): whole figure, cyan lattice/ribs/tail = wearer's
             // colour, light blue visor stays; idle shows no inner jaw (user), that belongs to the bite scene only.
-            new Costume { Key = "xenomorph", KillKey = "xeno", Name = "Halloween Xenomorph", KillFrames = 48, Flashes = new[] { 30, 33 }, HasLegs = false, HasAccent = true,
+            new Costume { Key = "xenomorph", KillKey = "xeno", Name = "Halloween Xenomorph", KillFrames = 46, Flashes = new[] { 17, 22 }, HasLegs = false, HasAccent = true,
                 // tail stab (main) or the inner-jaw bite (2026-10-26: redrawn by GPT, impact flash at the visor hit)
                 Alt = new[] { new KillScene { Key = "xenobite", Frames = 48, Flashes = new[] { 30, 33 } } } },
             // 2026-10-07: rebuilt after the Dead-by-Daylight mori (yank down, three stabs, head hauled up, selfie, rip);
             // 2026-10-25 the same mori redrawn by GPT (kill_frames.py): flashes on the three stabs and the selfie
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
-            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 45, Flashes = new[] { 14, 20, 26, 41 }, HasLegs = false, HasAccent = true },
+            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 66, Flashes = new[] { 19, 23, 27, 44, 56 }, HasLegs = false, HasAccent = true },
             // 2026-10-13: three more (kill5_<key>.py): assimilation, wrist blades, out of the vent
             // costume: the first Thing (0.1.0.8, opened head on the real body) again; User 2026-10-26 after the GPT figure was too
             // wide and the cut-out head never sat right. The kill scene stays the GPT one from 0.1.3.17: the head opens,
             // tentacles hug the victim in, gulp (flash), burp
             new Costume { Key = "thing", KillKey = "thing", Name = "Halloween Thing", KillFrames = 48, Flashes = new[] { 39 }, HasLegs = false, HasAccent = true },
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
-            new Costume { Key = "predator", KillKey = "predator", Name = "Halloween Predator", KillFrames = 48, Flashes = new[] { 36, 39 }, HasLegs = false, HasAccent = true },
+            new Costume { Key = "predator", KillKey = "predator", Name = "Halloween Predator", KillFrames = 62, Flashes = new[] { 25, 33 }, HasLegs = false, HasAccent = true },
             // 2026-10-26: costume frames redrawn by GPT (gpt_costume.py sadako): whole figure, cyan ribbon belt = wearer's colour.
-            new Costume { Key = "sadako", KillKey = "sadako", Name = "Halloween Sadako", KillFrames = 48, Flashes = new[] { 36, 42 }, HasLegs = false, HasAccent = true },
+            new Costume { Key = "sadako", KillKey = "sadako", Name = "Halloween Sadako", KillFrames = 62, Flashes = new[] { 31, 56 }, HasLegs = false, HasAccent = true },
             // 2026-10-16: knitted spider costume (spider.py), BVB fan (bvb.py) and the angel ghost (angel.py,
             // the real body is hidden). Only costumes with a KillKey get a cutscene and a host option.
             // abseil behind the victim, cocoon from the feet up, bite, the cocoon tips over (kill5_spider.py).
@@ -1274,11 +1277,11 @@ namespace UnknownsHalloween {
                     tex.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
                     bool ok;
                     ok = false;
-                    if (pic.Rgba != null && pic.W > 1 && pic.H > 1 && pic.Rgba.Length == pic.W * pic.H * 4) {
+                    if (pic.Rgba != null && pic.W > 1 && pic.H > 1 && pic.Rgba.Length >= pic.W * pic.H * 4) {
                         // pinned managed array straight into the texture (no Il2Cpp array copy)
                         var pin = System.Runtime.InteropServices.GCHandle.Alloc(pic.Rgba, System.Runtime.InteropServices.GCHandleType.Pinned);
                         try {
-                            tex.LoadRawTextureData(pin.AddrOfPinnedObject(), pic.Rgba.Length);
+                            tex.LoadRawTextureData(pin.AddrOfPinnedObject(), pic.W * pic.H * 4);
                             tex.Apply(false, true);
                             ok = true;
                         } catch (Exception e) {
@@ -1308,10 +1311,13 @@ namespace UnknownsHalloween {
                     sprite.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
                     entry = (tex, sprite, StageWidth * 100f / Mathf.Max(1, stageW));
                     picSprites[pic] = entry;
-                    pic.Rgba = null;                                            // on the GPU now
+                    KillFramePrefetch.Release(pic);                             // on the GPU now: buffer back to the pool
                 }
                 if (layerSr[i] != null) {
-                    layerSr[i].transform.localScale = new Vector3(entry.fit, entry.fit, 1f);
+                    // a blink frame is a black stage: as big as the stage it stood as a black wall in the middle of the
+                    // picture (User 2026-10-26: "2 Bilder/Trennwand"), so it covers the whole screen instead
+                    float k = pic.Blackout ? 12f : 1f;
+                    layerSr[i].transform.localScale = new Vector3(entry.fit * k, entry.fit * k, 1f);
                     layerSr[i].sprite = entry.sprite;
                 }
                 shownPic[i] = pic;
