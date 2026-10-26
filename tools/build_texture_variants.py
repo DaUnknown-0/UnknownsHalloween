@@ -41,7 +41,7 @@ CS = ROOT / "Villa" / "TextureVariantCatalog.g.cs"
 sys.path.insert(0, str(ROOT.parent / "UnknownsAtlas" / "tools"))
 import pack_textures  # noqa: E402
 
-INSTALLED = ("Previous art (installed)", "Bisherige Grafik (installiert)")
+INSTALLED = ("Current art (installed)", "Aktuelle Grafik (installiert)")
 # id, Label en, Label de, Quelle: ("dir", Ordner) oder ("tag", Asset-Tag, Commit der Mod mit passender .g.cs)
 VERSIONS = [
     ("auswahl", "Claude's pick (GPT + previous)", "Claudes Auswahl (GPT + bisher)", ("dir", ROOT / "tools" / "_villa_auswahl", "0ff8d04")),

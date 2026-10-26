@@ -11,7 +11,7 @@ internal static class TextureVariantCatalog
 {
     public static readonly (string Map, string Id, string LabelEn, string LabelDe, string File, long Size, string Sha256)[] Variants =
     {
-        ("villa", "installed", "Previous art (installed)", "Bisherige Grafik (installiert)", null, 0L, null),
+        ("villa", "installed", "Current art (installed)", "Aktuelle Grafik (installiert)", null, 0L, null),
         ("villa", "auswahl", "Claude's pick (GPT + previous)", "Claudes Auswahl (GPT + bisher)", "villa_auswahl.hwp", 19721381L, "97a924888b4835a55ddfc3ded2f38a9c4e02ea1b595e8259b19dae868439f631"),
         ("villa", "gpt", "GPT (25.10.)", "GPT (25.10.)", "villa_gpt.hwp", 19699048L, "baa91a34d1bd9fb25cf510e12df040daed2a8c09dfc06729f79b290ec6219fb8"),
         ("villa", "qwen", "Qwen 2.1 (25.10., partial)", "Qwen 2.1 (25.10., teilweise)", "villa_qwen.hwp", 18919151L, "2bf491ee5703bad08b0590ca8d1afe3acaca2385f21561a54dfaa971544f1d83"),
