@@ -8,7 +8,7 @@ namespace UnknownsHalloween;
 
 internal static class HalloweenAssetCatalog
 {
-    public const string Tag = "v20";
+    public const string Tag = "v21";
 
     public static readonly (string Name, long Size, string Sha256)[] Files =
     {
@@ -36,19 +36,19 @@ internal static class HalloweenAssetCatalog
         ("hats_hw_angel.hwp", 2512985L, "968563ad6ecd22ab83c713f4a99add7bdc6e7ca89e9a4a49478cff67f856209a"),
         ("hats_hw_bvb.hwp", 1193543L, "9bb75fd36c58fb4ffc0dee4b2b0ca7011f035da78fdaaf265b2c1182b270e1f0"),
         ("hats_hw_corpse.hwp", 116339L, "8b30994566ef86bf40aa2fee4e56f81b86e6ba08d89b4014ddc2413358cb1419"),
-        ("hats_hw_freddy.hwp", 1324299L, "eb64bd717589a2999fe8e6038b452dac32efe5fd0a971fe711aa34523e707863"),
-        ("hats_hw_ghostface.hwp", 1592490L, "809aa72b5a1053e409c28538d145d15ea56448bdc1923fa9c60d8946531494b9"),
-        ("hats_hw_jason.hwp", 1344699L, "df78958c4015f16a84a0ca5505abcb876036d38e5019d7b5b17419bc75a6d206"),
-        ("hats_hw_medusa.hwp", 2204747L, "e61044478615f0f92769726bfd0616f1c792d02e6e298853f53db997591d6896"),
-        ("hats_hw_predator.hwp", 1899351L, "ced424157f27abd5f1237279b028f83baef3ae5832e6b15279c5abfe729da288"),
-        ("hats_hw_pumpkin.hwp", 1481735L, "468b5606f36befe276674faea2f2e24b4a90bf92eb02ffa1666459d67cfe35ae"),
+        ("hats_hw_freddy.hwp", 1326065L, "225c2a621c96b63d7946e96892cd784fb46c0820d52436d71f6d8ba8b7279484"),
+        ("hats_hw_ghostface.hwp", 1513517L, "5a1c5d369325b3cfe54b3b975850a5af7dd7c1a25ca3b4a56a824fa1cb4cc355"),
+        ("hats_hw_jason.hwp", 1359922L, "29989373f72e752ad4cbb185452ee90d39ed878d7d701028b475b8015a5d987b"),
+        ("hats_hw_medusa.hwp", 2462834L, "ac89762cf924dac556c727de15592327906df3afe63a7c15e1557367102c241b"),
+        ("hats_hw_predator.hwp", 1754853L, "c3ee15487630b335c89e5f6126347c541d408faca2cac4f4a510db1f149234e2"),
+        ("hats_hw_pumpkin.hwp", 1855270L, "3a077d7a9467872c3489a9659d00b3bdbb91d5c78c32d7529ff16c23fb7b911f"),
         ("hats_hw_reaper.hwp", 1635794L, "0e4c287ba974555aa289bc23ec05f026eee3e69eb94d48e4fba135873254fe96"),
-        ("hats_hw_sadako.hwp", 2000433L, "91b9576adf026f084813cf7feab96ed8ed0f8764381319ba2fe17d93975e5802"),
+        ("hats_hw_sadako.hwp", 2114762L, "03a06bf6746cb59734849b3e7646066f3423fc1b0cf8336bfcbf6bfddb1de77d"),
         ("hats_hw_spider.hwp", 5902241L, "3c7c82bfac5d7eab995a510bf2bfe28690a577ba234a393279dcffc165be10aa"),
         ("hats_hw_thing.hwp", 1700447L, "0a9eaf223da516c0444d1453f2d3057a6d025202c80185b111d5b39aa0677f25"),
-        ("hats_hw_vampire.hwp", 818020L, "13026de278b420c3f6a955e47d60ee0d063934b25dcff57044711dc8855ed593"),
+        ("hats_hw_vampire.hwp", 830152L, "3f119cb3ebfb34871f4c0e0decb2a9fabd8f7d40f9517c5a5865560b3989cc78"),
         ("hats_hw_weepingangel.hwp", 3150038L, "6f1e216c80bf61496093da11b6cfaebc3e8e7dcdb200b02d52ec39b28c10ba40"),
-        ("hats_hw_xenomorph.hwp", 3847643L, "26c644b2e9387900d4d6a29da6e0bfa1e9f644d7e768f2fe6d308fc4ee4faaed"),
+        ("hats_hw_xenomorph.hwp", 4247646L, "c5c3a15c872ff2d07f1e3992d2796c967fd297450a462ab727fad9241a8be4e0"),
         ("villa_eject.hwp", 2301157L, "a40bd92279a4dd27e16a2b0db68683a1d135f227a6d0c0caacbceae2c1d60fa6"),
         ("villa_map.hwp", 22175874L, "169df6b12e52020fa8d14d4e9b6fa928ed295204e61c8cff9ce367b1948df5a4"),
     };
