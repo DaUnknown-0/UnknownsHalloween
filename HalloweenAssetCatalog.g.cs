@@ -8,7 +8,7 @@ namespace UnknownsHalloween;
 
 internal static class HalloweenAssetCatalog
 {
-    public const string Tag = "v21";
+    public const string Tag = "v22";
 
     public static readonly (string Name, long Size, string Sha256)[] Files =
     {
@@ -19,8 +19,8 @@ internal static class HalloweenAssetCatalog
         ("hats_hk_angel.hwp", 13654903L, "d386acfe561f8b83d156ca0c8f79343ba4b17c028f75b5c5ff77bccf4a8e961c"),
         ("hats_hk_demon.hwp", 1845144L, "cc499e5f43afa1d73a08fac8775fa2058c0bd828c1f672988bc6c9021e893126"),
         ("hats_hk_freddy.hwp", 4771185L, "1270788c987261c15c24b2d50c03a28dc4f04cb6d9ef0ff672733d78ec2e4619"),
-        ("hats_hk_ghostface.hwp", 3226788L, "e3c036febbbb156a0ee9c14c39f4c9e8b397c587c200619f54556349c535830a"),
-        ("hats_hk_jason.hwp", 3916653L, "fa1215ed70673fe143f0cc8e66b2d6a9ce84430c450ce0b973dccbcf92890212"),
+        ("hats_hk_ghostface.hwp", 2392826L, "cb1a41fba5d32ce7e27ec7d8cb38bb1693539eca517469c1b2ca3bbb9a09f634"),
+        ("hats_hk_jason.hwp", 2905825L, "42b38fd7cf3553ecf6533960b5657037277f39fa192a8ee63b704b068c35f19d"),
         ("hats_hk_jasonlift.hwp", 2269333L, "bec576fb8a90653a0d61e2dd6e95d7fc48e162cd4941523bb8a20cc54a47d8fa"),
         ("hats_hk_medusa.hwp", 7366841L, "430d2f3f9ac16f6e06e8b4123de091ae4a848174a236abc2479c923f5b7c3901"),
         ("hats_hk_predator.hwp", 6588773L, "e91cd18d35375f996d4bfa0857ab6a2195e42ab0d41a9506230e5b9b8942f827"),

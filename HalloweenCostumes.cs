@@ -122,14 +122,17 @@ namespace UnknownsHalloween {
         private static readonly Costume[] Costumes = {
             // 2026-10-26 (User: legs barely moved, "nicht immer das gleiche Bein nach vorne"): the walk loops of Freddy, Jason,
             // Xenomorph, Ghostface, Predator, Sadako, Pumpkin Head, Vampire and Medusa were redrawn by GPT as a real walk cycle with
-            // alternating steps (villa_qwen/walk2.py) and run at 12 fps (one stride pair per second).
+            // alternating steps (villa_qwen/walk2.py) and run at 12 fps (one stride pair per second). A cut-out puppet version
+            // (villa_qwen/parts_rig.py) was tried on 2026-10-26 and dropped: the user found it much worse.
             // 2026-10-26 (user: kill scenes "very laggy" with 9 drawings): every GPT scene is a 4x4 sheet now (16 drawings,
             // 3 game frames each = 48 frames) with a soft cross-fade where a drawing barely moves; flashes = drawing index * 3.
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py freddy): whole figure, cyan sweater stripes = wearer's colour.
             new Costume { Key = "freddy", KillKey = "freddy", Name = "Halloween Freddy", KillFrames = 48, Flashes = new[] { 27, 30 }, HasLegs = false,
                 HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f },
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
-            new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 48, Flashes = new[] { 24, 30 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f,
+            // 2026-10-26 (User: kill scenes hardly any frames per second, "wie bei Engel und Medusa"): Jason and Ghostface as a trial
+            // with 45 GPT drawings each (5 sheets of 3x3 in one chat, the 16-drawing sheet as storyboard), one drawing per game frame.
+            new Costume { Key = "jason", KillKey = "jason", Name = "Halloween Jason", KillFrames = 45, Flashes = new[] { 16, 40 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f,
                 // diagonal slash (main) or the lift (2026-10-26: redrawn by GPT: grabbed by the head, lifted, thrown down)
                 Alt = new[] { new KillScene { Key = "jasonlift", Frames = 48, Flashes = new[] { 36 } } } },
             // 2026-10-26: costume frames redrawn by GPT (gpt_costume.py xenomorph): whole figure, cyan lattice/ribs/tail = wearer's
@@ -141,7 +144,7 @@ namespace UnknownsHalloween {
             // 2026-10-07: rebuilt after the Dead-by-Daylight mori (yank down, three stabs, head hauled up, selfie, rip);
             // 2026-10-25 the same mori redrawn by GPT (kill_frames.py): flashes on the three stabs and the selfie
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
-            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 48, Flashes = new[] { 21, 27, 33, 42 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f },
+            new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 45, Flashes = new[] { 14, 20, 26, 41 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 12f, IdleFps = 8f },
             // 2026-10-13: three more (kill5_<key>.py): assimilation, wrist blades, out of the vent
             // costume: the first Thing (0.1.0.8, opened head on the real body) again; User 2026-10-26 after the GPT figure was too
             // wide and the cut-out head never sat right. The kill scene stays the GPT one from 0.1.3.17: the head opens,
