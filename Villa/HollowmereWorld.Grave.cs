@@ -8,6 +8,8 @@
 // Spielinformation, Easter Eggs verraten nichts).
 // - Der Autor (Mo): darunter "still coding" und ein aufgeklappter Laptop mit laufendem Matrix-Code auf dem Grabhuegel.
 // - Da Fishbone (DrSuspect): sein Haustier huepft froehlich neben dem Grab (Bild seines Haustiers, solange er lebte gemerkt).
+//   Wer lebend daneben steht, kann es streicheln (User 2026-10-26): Use-Knopf "PET", das Tier huepft schneller, quetscht
+//   sich vor Freude und Herzen steigen auf. Nur bei dem, der streichelt (lokal, wie das ganze Grab).
 // Erkennung wie UTS EasterEggCoding: SHA-256 von PUID bzw. Friend-Code (kein Klartext im Repo). Rein kosmetisch, jeder
 // Client lokal, kein RPC. Grafik Resources/hw2026/villa_egg/ (GPT), Namen als Text (Bild-KIs schreiben keine Namen).
 
@@ -43,7 +45,12 @@ internal sealed partial class HollowmereWorld
     private bool _graveShown, _graveSawMeeting;
     private float _graveNoMeetingSince = -1f;
     private GameObject _graveText, _gravePet;
-    private Vector3 _gravePetBase;
+    private Vector3 _gravePetBase, _gravePetScale;
+    // Streicheln: Freude bis _petJoyUntil, aufsteigende Herzen
+    private const float PetReach = 1.3f, PetJoy = 1.8f;
+    private float _petJoyUntil = -1f;
+    private readonly System.Collections.Generic.List<(GameObject Go, float Born, float Dx)> _petHearts = new();
+    private static Sprite _heartSprite;
     // Matrix-Code auf dem Laptop
     private Texture2D _matrixTex;
     private Color32[] _matrixPx;
@@ -59,6 +66,8 @@ internal sealed partial class HollowmereWorld
         _graveShown = _graveSawMeeting = false;
         _graveNoMeetingSince = -1f;
         _graveText = _gravePet = null;
+        _petJoyUntil = -1f;
+        _petHearts.Clear();
         _graveSr = null;
         _matrixTex = null;
         _tasksTrimmed = false;
@@ -232,6 +241,7 @@ internal sealed partial class HollowmereWorld
                 if (_fishbonePetMat != null) pet.sharedMaterial = _fishbonePetMat;
                 _gravePet = pet.gameObject;
                 _gravePetBase = pet.transform.localPosition;
+                _gravePetScale = pet.transform.localScale;
             }
             HalloweenPlugin.Logger.LogInfo($"{LogPrefix} the open grave is taken now");
         }
@@ -273,12 +283,87 @@ internal sealed partial class HollowmereWorld
         if (_matrixTex != null && now >= _nextMatrix) { _nextMatrix = now + 0.07f; StepMatrix(); }
         if (_gravePet != null)
         {
-            // froehlich: kleine Huepfer, ab und zu umdrehen
-            float hop = Mathf.Abs(Mathf.Sin(now * 5f)) * 0.12f;
+            // froehlich: kleine Huepfer, ab und zu umdrehen; gestreichelt schneller und hoeher, mit Quetschen beim Landen
+            bool joy = now < _petJoyUntil;
+            float speed = joy ? 11f : 5f, s = Mathf.Sin(now * speed);
+            float hop = Mathf.Abs(s) * (joy ? 0.22f : 0.12f);
             _gravePet.transform.localPosition = _gravePetBase + new Vector3(0f, hop, 0f);
+            float squash = joy ? 1f - 0.18f * (1f - Mathf.Abs(s)) : 1f;
+            _gravePet.transform.localScale = new Vector3(_gravePetScale.x * (2f - squash), _gravePetScale.y * squash, _gravePetScale.z);
             var sr = _gravePet.GetComponent<SpriteRenderer>();
             if (sr != null) sr.flipX = Mathf.Repeat(now, 6f) > 3f;
+            PetHearts(now);
+            // lebend daneben: streicheln
+            var spot = (Vector2)_gravePet.transform.parent.TransformPoint(_gravePetBase);
+            if (AtlasMaps.CanReach(spot, PetReach)) AtlasMaps.OfferUse("PET", "task_villa_btn_pet.png", PetGravePet);
         }
+    }
+
+    private void PetGravePet()
+    {
+        if (_gravePet == null) return;
+        float now = Time.time;
+        _petJoyUntil = now + PetJoy;
+        for (int k = 0; k < 4; k++)
+        {
+            var go = new GameObject("GravePetHeart") { layer = _gravePet.layer };
+            go.transform.SetParent(_gravePet.transform.parent, false);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = HeartSprite();
+            var psr = _gravePet.GetComponent<SpriteRenderer>();
+            if (psr != null) { sr.sortingLayerID = psr.sortingLayerID; sr.sortingOrder = psr.sortingOrder + 1; }
+            _petHearts.Add((go, now + k * 0.25f, UnityEngine.Random.Range(-0.25f, 0.25f)));
+            go.SetActive(false);
+        }
+        try { AtlasMaps.Sfx("chime", 0.5f); } catch { }
+    }
+
+    private void PetHearts(float now)
+    {
+        for (int i = _petHearts.Count - 1; i >= 0; i--)
+        {
+            var (go, born, dx) = _petHearts[i];
+            if (go == null) { _petHearts.RemoveAt(i); continue; }
+            float t = (now - born) / 1.4f;
+            if (t < 0f) continue;
+            if (t >= 1f) { UnityEngine.Object.Destroy(go); _petHearts.RemoveAt(i); continue; }
+            if (!go.activeSelf) go.SetActive(true);
+            // ueber dem Tier aufsteigen, leicht pendeln, groesser werden und verblassen (Welt-Einheiten ueber den Elternmassstab)
+            var par = go.transform.parent;
+            float ps = par != null ? Mathf.Max(0.001f, Mathf.Abs(par.lossyScale.x)) : 1f;
+            var world = _gravePet.transform.parent.TransformPoint(_gravePetBase) + new Vector3(dx + Mathf.Sin(t * 9f + dx * 10f) * 0.08f, 0.45f + t * 0.9f, -0.01f);
+            go.transform.position = world;
+            float sc = (0.25f + 0.15f * t) / ps;
+            go.transform.localScale = new Vector3(sc, sc, 1f);
+            var sr = go.GetComponent<SpriteRenderer>();
+            if (sr != null) sr.color = new Color(1f, 1f, 1f, 1f - t * t);
+        }
+    }
+
+    // Herzkurve (u^2 + v^2 - 1)^3 - u^2 v^3 < 0 ist innen
+    private static bool InHeart(float u, float v) => Mathf.Pow(u * u + v * v - 1f, 3f) - u * u * v * v * v < 0f;
+
+    // kleines Herz, einmal gezeichnet (32 px, ein Welt-Meter bei Massstab 1)
+    private static Sprite HeartSprite()
+    {
+        if (_heartSprite != null) return _heartSprite;
+        const int N = 32;
+        var tex = new Texture2D(N, N, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
+        var px = new Color32[N * N];
+        for (int y = 0; y < N; y++)
+            for (int x = 0; x < N; x++)
+            {
+                float u = (x + 0.5f) / N * 2.6f - 1.3f, v = (y + 0.5f) / N * 2.6f - 1.15f;
+                px[y * N + x] = !InHeart(u, v) ? new Color32(0, 0, 0, 0)
+                    : !InHeart(u / 0.8f, (v - 0.04f) / 0.8f) ? new Color32(120, 24, 48, 255)   // dunkle Kontur
+                    : new Color32(240, 80, 115, 255);
+            }
+        tex.SetPixels32(px);
+        tex.Apply(false, true);
+        tex.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
+        _heartSprite = Sprite.Create(tex, new Rect(0, 0, N, N), new Vector2(0.5f, 0.5f), N);
+        _heartSprite.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
+        return _heartSprite;
     }
 
     private void StepMatrix()

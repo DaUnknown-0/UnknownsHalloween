@@ -8,6 +8,7 @@
 #   python tools/gen_villa_buttons.py   ->  Resources/villa/task_villa_btn_secret.png (Geheimgang)
 #                                           Resources/villa/task_villa_btn_candle.png (Kerze anzuenden)
 #                                           Resources/villa/task_villa_btn_blow.png   (Kerze ausblasen)
+#                                           Resources/villa/task_villa_btn_pet.png    (Haustier am Grab streicheln)
 
 import math
 from pathlib import Path
@@ -33,6 +34,9 @@ FLAME = (255, 196, 70, 255)
 FLAME_L = (255, 242, 180, 255)
 FLAME_D = (236, 120, 40, 255)
 SMOKE = (150, 150, 160, 255)
+PINK = (238, 88, 120, 255)
+PINK_D = (186, 52, 84, 255)
+PINK_L = (255, 170, 190, 255)
 
 
 def canvas():
@@ -123,8 +127,27 @@ def candle(lit=True):
     return img
 
 
+def pet():
+    """Grosses Herz mit weissem Pfotenabdruck (User 26.10.: das Haustier am Grab streicheln)."""
+    img, d = canvas()
+    heart = []
+    for i in range(64):
+        t = i / 64 * 2 * math.pi
+        x = 16 * math.sin(t) ** 3
+        y = 13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t)
+        heart.append((128 + x * 6.6, 122 - y * 6.6))
+    poly(d, heart, PINK)
+    poly(d, [(128 + (x - 128) * 0.78 - 8, 122 + (y - 122) * 0.78 - 8) for x, y in heart[40:60]] + [(128, 122)], PINK_L, lw=0)
+    # Pfote: Ballen und vier Zehen
+    ell(d, 128, 150, 30, 24, WHITE, lw=6 * S)
+    for cx, cy in ((92, 112), (114, 94), (142, 94), (164, 112)):
+        ell(d, cx, cy, 12, 15, WHITE, lw=6 * S)
+    return img
+
+
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     save(secret(), "task_villa_btn_secret.png")
     save(candle(True), "task_villa_btn_candle.png")
     save(candle(False), "task_villa_btn_blow.png")
+    save(pet(), "task_villa_btn_pet.png")
