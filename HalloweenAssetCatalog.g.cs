@@ -8,7 +8,7 @@ namespace UnknownsHalloween;
 
 internal static class HalloweenAssetCatalog
 {
-    public const string Tag = "v18";
+    public const string Tag = "v19";
 
     public static readonly (string Name, long Size, string Sha256)[] Files =
     {
@@ -45,7 +45,7 @@ internal static class HalloweenAssetCatalog
         ("hats_hw_reaper.hwp", 1635794L, "0e4c287ba974555aa289bc23ec05f026eee3e69eb94d48e4fba135873254fe96"),
         ("hats_hw_sadako.hwp", 2041586L, "bd2e686c819e11bca036007473c90b24e18003e91204d6fded22595bb08d5196"),
         ("hats_hw_spider.hwp", 5902241L, "3c7c82bfac5d7eab995a510bf2bfe28690a577ba234a393279dcffc165be10aa"),
-        ("hats_hw_thing.hwp", 4792817L, "e34d22e911e38fe0225184d35d5063671ce73bed38da74405125a83a53958e3c"),
+        ("hats_hw_thing.hwp", 1700447L, "0a9eaf223da516c0444d1453f2d3057a6d025202c80185b111d5b39aa0677f25"),
         ("hats_hw_vampire.hwp", 798776L, "5900fcc09e6e1d3f484fd97d4c418a0e5a59e525cb3c0b796c290a5e27e57a1b"),
         ("hats_hw_weepingangel.hwp", 2406479L, "01bb737df22773e34cb2e11da88bf3e9acf2b834b1ea23f8ac2e1ae8acce4679"),
         ("hats_hw_xenomorph.hwp", 3863348L, "fd4979ab4e22dc3b9ee0126120cda64f92e8f3a9666fdc9ad0c43dd18acee9aa"),

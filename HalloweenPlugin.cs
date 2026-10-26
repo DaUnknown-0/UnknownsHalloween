@@ -40,7 +40,7 @@ public class HalloweenPlugin : BasePlugin
 {
     public const string PluginGuid = "com.daunknown.unknownshalloween";
     public const string PluginName = "Unknown's Halloween";
-    public const string PluginVersion = "0.1.3.18";
+    public const string PluginVersion = "0.1.3.19";
     public static readonly System.Version Version = System.Version.Parse(PluginVersion);
     private const string AtlasGuid = "com.daunknown0.atlas";
 
@@ -124,6 +124,7 @@ public class HalloweenPlugin : BasePlugin
         // PatchAll runs the HarmonyPrepare hooks that set the costumes and the role up
         // (HalloweenCostumes.KillHook.Prepare, Xenomorph.ResetPatch.Prepare).
         new Harmony(PluginGuid).PatchAll();
+        HwDeathCause.Register();
 
         // Hollowmere Manor needs Unknown's Atlas; without it the map simply does not exist.
         bool atlas = false;

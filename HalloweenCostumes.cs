@@ -137,10 +137,10 @@ namespace UnknownsHalloween {
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
             new Costume { Key = "ghostface", KillKey = "ghostface", Name = "Halloween Ghostface", KillFrames = 48, Flashes = new[] { 21, 27, 33, 42 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
             // 2026-10-13: three more (kill5_<key>.py): assimilation, wrist blades, out of the vent
-            // 2026-10-26: costume frames redrawn by GPT (gpt_costume.py thing): whole figure, cyan body = wearer's colour, visor stays light blue.
-            // kill scene 2026-10-26 redrawn to match: the head opens, tentacles hug the victim in, gulp (flash), burp
-            new Costume { Key = "thing", KillKey = "thing", Name = "Halloween Thing", KillFrames = 48, Flashes = new[] { 39 }, HasLegs = false,
-                HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
+            // costume: the first Thing (0.1.0.8, opened head on the real body) again; User 2026-10-26 after the GPT figure was too
+            // wide and the cut-out head never sat right. The kill scene stays the GPT one from 0.1.3.17: the head opens,
+            // tentacles hug the victim in, gulp (flash), burp
+            new Costume { Key = "thing", KillKey = "thing", Name = "Halloween Thing", KillFrames = 48, Flashes = new[] { 39 }, HasLegs = false, HasAccent = true },
             // 2026-10-25: costume frames redrawn by GPT (gpt_costume.py), cyan parts = wearer's colour.
             new Costume { Key = "predator", KillKey = "predator", Name = "Halloween Predator", KillFrames = 48, Flashes = new[] { 36, 39 }, HasLegs = false, HasAccent = true, HidesBody = true, StillWalk = true, WalkFps = 10f, IdleFps = 8f },
             // 2026-10-26: costume frames redrawn by GPT (gpt_costume.py sadako): whole figure, cyan ribbon belt = wearer's colour.
@@ -1051,8 +1051,6 @@ namespace UnknownsHalloween {
         private static int shownFrame;
         private static SpriteRenderer band;
         private static readonly SpriteRenderer[] layerSr = new SpriteRenderer[Layers.Length];
-        private static readonly Texture2D[] layerTex = new Texture2D[Layers.Length];
-        private static readonly Sprite[] layerSprite = new Sprite[Layers.Length];
 
         private static void Tick() {
             try {
@@ -1069,7 +1067,13 @@ namespace UnknownsHalloween {
                         EndSequence();
                         return;
                     }
-                    if (frame != shownFrame) ShowFrame(frame);
+                    if (frame != shownFrame) {
+                        if (frame > shownFrame + 1) statSkipped += frame - shownFrame - 1;
+                        float t0 = Time.realtimeSinceStartup;
+                        ShowFrame(frame);
+                        statSlowest = Mathf.Max(statSlowest, Time.realtimeSinceStartup - t0);
+                        statShown++;
+                    }
                     return;
                 }
                 if (queue.Count == 0 || uiBlocked) return;
@@ -1147,6 +1151,8 @@ namespace UnknownsHalloween {
             // the killer's (u*, o*) colours.
             Tint(LayerBody, LayerShade, victimColor);
             foreach (int k in new[] { 0, 1 }) Tint(KillerBody[k], KillerShade[k], killerColor);
+            var sc = scene;
+            KillFramePrefetch.Start(scene.Frames, Layers.Length, (f, l) => FramePath(sc, f, l));
             ShowFrame(0);
             PlayVanillaStinger(hud);
         }
@@ -1163,40 +1169,69 @@ namespace UnknownsHalloween {
             layerSr[shadeLayer].color = new Color(shade.r, shade.g, shade.b, 1f);
         }
 
-        // Bytes of the frame each layer currently shows. An identical next file (the layer holds still, 14 % of all
-        // layer frames) keeps texture and sprite instead of decoding the same picture again.
-        private static readonly byte[][] layerData = new byte[Layers.Length][];
+        // The picture each layer currently shows, and one texture + sprite per decoded picture for the whole scene: a
+        // layer that holds still or comes back to an earlier picture costs nothing (KillFramePrefetch, 2026-10-26).
+        private static readonly KillFramePrefetch.Picture[] shownPic = new KillFramePrefetch.Picture[Layers.Length];
+        private static readonly Dictionary<KillFramePrefetch.Picture, (Texture2D tex, Sprite sprite, float fit)> picSprites = new();
+
+        private static string FramePath(KillScene scene, int frame, int layer) =>
+            !scene.Killer && IsKillerLayer(layer) ? null : Res + $"hk_{scene.Key}_{Layers[layer]}_{frame + 1:00}.png";
+
+        private static bool loggedRawError;
 
         private static void ShowFrame(int frame) {
             shownFrame = frame;
             for (int i = 0; i < Layers.Length; i++) {
-                if (!activeScene.Killer && IsKillerLayer(i)) continue;
-                byte[] data = ReadResource(Res + $"hk_{activeScene.Key}_{Layers[i]}_{frame + 1:00}.png");
-                if (data == null) continue;
-                if (layerData[i] != null && layerSprite[i] != null && data.AsSpan().SequenceEqual(layerData[i])) continue;
-                if (layerTex[i] == null) {
-                    layerTex[i] = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                    layerTex[i].hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
+                string path = FramePath(activeScene, frame, i);
+                if (path == null) continue;
+                var pic = KillFramePrefetch.Get(frame, i, path);
+                if (pic == null || pic == shownPic[i]) continue;
+                if (!picSprites.TryGetValue(pic, out var entry)) {
+                    var tex = new Texture2D(Math.Max(2, pic.W), Math.Max(2, pic.H), TextureFormat.RGBA32, false);
+                    tex.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
+                    bool ok;
+                    ok = false;
+                    if (pic.Rgba != null && pic.W > 1 && pic.H > 1 && pic.Rgba.Length == pic.W * pic.H * 4) {
+                        // pinned managed array straight into the texture (no Il2Cpp array copy)
+                        var pin = System.Runtime.InteropServices.GCHandle.Alloc(pic.Rgba, System.Runtime.InteropServices.GCHandleType.Pinned);
+                        try {
+                            tex.LoadRawTextureData(pin.AddrOfPinnedObject(), pic.Rgba.Length);
+                            tex.Apply(false, true);
+                            ok = true;
+                        } catch (Exception e) {
+                            if (!loggedRawError) {
+                                loggedRawError = true;
+                                HalloweenPlugin.Logger?.LogWarning($"[Halloween] raw kill frame upload failed ({pic.W}x{pic.H}, {pic.Rgba.Length} bytes, texture {tex.width}x{tex.height} {tex.format} mips {tex.mipmapCount}): {e.Message}");
+                            }
+                        } finally { pin.Free(); }
+                    }
+                    if (!ok) {
+                        UnityEngine.Object.Destroy(tex);
+                        tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                        tex.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
+                        ok = ImageConversion.LoadImage(tex, pic.Png, true);
+                    }
+                    if (!ok) { UnityEngine.Object.Destroy(tex); continue; }
+                    // Cropped frames (tmp/halloween_hats_v2/killcrop.py) carry their place on the stage; the
+                    // pivot puts the stage centre where the full frame's centre was, so nothing moves.
+                    int stageW = tex.width;
+                    var pivot = new Vector2(0.5f, 0.5f);
+                    if (TryReadCrop(pic.Png, out int cw, out int ch, out int cx, out int cy)) {
+                        stageW = cw;
+                        pivot = new Vector2((cw * 0.5f - cx) / Mathf.Max(1, tex.width),
+                                            (ch * 0.5f - (ch - cy - tex.height)) / Mathf.Max(1, tex.height));
+                    }
+                    var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), pivot, 100f);
+                    sprite.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
+                    entry = (tex, sprite, StageWidth * 100f / Mathf.Max(1, stageW));
+                    picSprites[pic] = entry;
+                    pic.Rgba = null;                                            // on the GPU now
                 }
-                if (!ImageConversion.LoadImage(layerTex[i], data, false)) continue;
-                layerData[i] = data;
-                var tex = layerTex[i];
-                // Cropped frames (tmp/halloween_hats_v2/killcrop.py) carry their place on the stage; the
-                // pivot puts the stage centre where the full frame's centre was, so nothing moves.
-                int stageW = tex.width, stageH = tex.height;
-                var pivot = new Vector2(0.5f, 0.5f);
-                if (TryReadCrop(data, out int cw, out int ch, out int cx, out int cy)) {
-                    stageW = cw; stageH = ch;
-                    pivot = new Vector2((cw * 0.5f - cx) / Mathf.Max(1, tex.width),
-                                        (ch * 0.5f - (ch - cy - tex.height)) / Mathf.Max(1, tex.height));
+                if (layerSr[i] != null) {
+                    layerSr[i].transform.localScale = new Vector3(entry.fit, entry.fit, 1f);
+                    layerSr[i].sprite = entry.sprite;
                 }
-                var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), pivot, 100f);
-                float fit = StageWidth * 100f / Mathf.Max(1, stageW);
-                if (layerSr[i] != null) layerSr[i].transform.localScale = new Vector3(fit, fit, 1f);
-                sprite.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
-                if (layerSr[i] != null) layerSr[i].sprite = sprite;
-                if (layerSprite[i] != null) UnityEngine.Object.Destroy(layerSprite[i]);
-                layerSprite[i] = sprite;
+                shownPic[i] = pic;
             }
             if (band != null) band.color = Array.IndexOf(activeScene.Flashes, frame) >= 0
                 ? (HalloweenPlugin.Calm ? Color.Lerp(BandDark, BandFlash, 0.2f) : BandFlash) : BandDark;
@@ -1228,20 +1263,27 @@ namespace UnknownsHalloween {
             return false;
         }
 
+        // playback statistics of the running scene (logged with UC_HALLOWEEN_DIAG, 2026-10-26)
+        private static int statShown, statSkipped;
+        private static float statSlowest;
+
         private static void EndSequence() {
-            for (int i = 0; i < layerData.Length; i++) layerData[i] = null;
+            if (DiagOn && activeScene != null)
+                HalloweenPlugin.Logger?.LogInfo($"[Halloween] diag playback {activeScene.Key}: {statShown + 1} frames shown, {statSkipped} skipped, slowest change {statSlowest * 1000f:F1} ms, {picSprites.Count} pictures");
+            statShown = statSkipped = 0; statSlowest = 0f;
+            KillFramePrefetch.Stop();
+            for (int i = 0; i < shownPic.Length; i++) shownPic[i] = null;
+            foreach (var e in picSprites.Values) {
+                if (e.sprite != null) UnityEngine.Object.Destroy(e.sprite);
+                if (e.tex != null) UnityEngine.Object.Destroy(e.tex);
+            }
+            picSprites.Clear();
             if (root != null) UnityEngine.Object.Destroy(root);
             root = null;
             active = null;
             activeScene = null;
             band = null;
-            for (int i = 0; i < Layers.Length; i++) {
-                layerSr[i] = null;
-                if (layerSprite[i] != null) UnityEngine.Object.Destroy(layerSprite[i]);
-                layerSprite[i] = null;
-                if (layerTex[i] != null) UnityEngine.Object.Destroy(layerTex[i]);
-                layerTex[i] = null;
-            }
+            for (int i = 0; i < Layers.Length; i++) layerSr[i] = null;
         }
 
         // ==================== self test (only with the environment variable UC_HALLOWEEN_DIAG=1) ====================

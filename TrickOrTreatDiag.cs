@@ -329,6 +329,34 @@ namespace UnknownsHalloween {
                 Log(FormattableString.Invariant($"poison test: dummy dead {victim.Data.IsDead}, body {(body != null ? $"at {body.transform.position.x:F1},{body.transform.position.y:F1} (ate at {victimAt.x:F1},{victimAt.y:F1})" : "missing")}, candy eaten {TrickOrTreat.candies.Count(k => k.Kind == TrickOrTreat.PoisonKind && k.Eaten)}"));
                 Shot("poison_body");
             });
+            // who names the cause (2026-10-26): Medium, the ghost kill feed (UTS) and the round export (TrackerExport)
+            Add(0.3f, () => {
+                if (victim == null) return;
+                Log($"death cause: '{HwDeathCause.Of(victim.PlayerId)}'");
+                var dp = ((AccessTools.Field(AccessTools.TypeByName("TheOtherRoles.GameHistory"), "deadPlayers")?.GetValue(null) as System.Collections.Generic.List<DeadPlayer>) ?? new List<DeadPlayer>()).LastOrDefault(d => d?.player != null && d.player.PlayerId == victim.PlayerId);
+                if (dp == null) { Log("death cause: no TOR death entry"); return; }
+                var keep = global::TheOtherRoles.Medium.target;
+                try {
+                    global::TheOtherRoles.Medium.target = dp;
+                    for (int i = 0; i < 3; i++)
+                        Log("medium: " + global::TheOtherRoles.Medium.getInfo(dp.player, dp.killerIfExisting, dp.deathReason).Replace("\n", " | "));
+                } catch (Exception e) { Log($"medium failed: {e.Message}"); }
+                finally { global::TheOtherRoles.Medium.target = keep; }
+                try {
+                    var describe = AccessTools.Method(AccessTools.TypeByName("UsefulTORStuff.GhostKillFeed"), "Describe");
+                    Log("kill feed: " + (describe?.Invoke(null, new object[] { dp, true }) ?? "(UTS missing)"));
+                } catch (Exception e) { Log($"kill feed failed: {e.InnerException?.Message ?? e.Message}"); }
+                try {
+                    var list = AccessTools.Field(AccessTools.TypeByName("TrackerExportPlugin.TrackerExportPluginMain"), "DeadPlayers")?.GetValue(null) as System.Collections.IEnumerable
+                               ?? AccessTools.Property(AccessTools.TypeByName("TrackerExportPlugin.TrackerExportPluginMain"), "DeadPlayers")?.GetValue(null) as System.Collections.IEnumerable;
+                    if (list == null) { Log("tracker export: (missing)"); return; }
+                    foreach (var d in list) {
+                        var t = d.GetType();
+                        if ((t.GetProperty("Player")?.GetValue(d) as string) != victim.Data.PlayerName) continue;
+                        Log($"tracker export: killer '{t.GetProperty("Killer")?.GetValue(d)}', reason '{t.GetProperty("DeathReason")?.GetValue(d)}'");
+                    }
+                } catch (Exception e) { Log($"tracker export failed: {e.Message}"); }
+            });
 
             // the effects with a picture
             void Visual(Treat fx, float wait, string shot, float shot2 = -1f) {
