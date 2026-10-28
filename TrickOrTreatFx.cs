@@ -1459,7 +1459,8 @@ namespace UnknownsHalloween {
                     hooked = ub.Pointer;
                 }
                 if (!ub.gameObject.activeSelf) ub.gameObject.SetActive(true);
-                if (hud.PetButton != null && hud.PetButton.gameObject.activeSelf) hud.PetButton.gameObject.SetActive(false);
+                if (hud.PetButton != null && hud.PetButton.gameObject.activeSelf
+                    && Vector3.Distance(hud.PetButton.transform.localPosition, ub.transform.localPosition) < 0.3f) hud.PetButton.gameObject.SetActive(false);
                 if (iconWidth < 0f && ub.graphic != null && ub.graphic.sprite != null) iconWidth = ub.graphic.sprite.bounds.size.x;
                 ub.SetEnabled();
                 owned = true;
@@ -1493,6 +1494,11 @@ namespace UnknownsHalloween {
                     if (!owned || (current == null && currentCab == null) || __instance.UseButton == null) return;
                     if (__instance.UseButton.currentTarget != null) { owned = false; current = null; currentCab = null; return; }
                     Paint(__instance.UseButton);
+                    // Use und Pet liegen in Vanilla auf demselben Platz; schaltet das Spiel den Pet-Knopf spaeter im Frame wieder
+                    // ein, lagen SEARCH und Pet uebereinander (Feedback DrSuspect 28.10., n7). Mit UTS' Knopfreihe stehen sie nebeneinander.
+                    var pet = __instance.PetButton;
+                    if (pet != null && pet.gameObject.activeSelf && Vector3.Distance(pet.transform.localPosition, __instance.UseButton.transform.localPosition) < 0.3f)
+                        pet.gameObject.SetActive(false);
                 } catch { }
             }
         }

@@ -122,7 +122,7 @@ internal sealed partial class HollowmereWorld
         ship.ShortTasks = WithoutAsteroids(ship.ShortTasks);
         ship.LongTasks = WithoutAsteroids(ship.LongTasks);
         int after = Count(ship.CommonTasks) + Count(ship.ShortTasks) + Count(ship.LongTasks);
-        if (after != before) HalloweenPlugin.Logger.LogInfo($"{LogPrefix} removed {before - after} task(s) without console (Clear Asteroids)");
+        if (after != before) HalloweenPlugin.Logger.LogInfo($"{LogPrefix} removed {before - after} task(s) without console (Clear Asteroids, large: Align Engine Output)");
     }
 
     private static int Count(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<NormalPlayerTask> a) => a?.Length ?? 0;
@@ -132,7 +132,10 @@ internal sealed partial class HollowmereWorld
     {
         if (a == null) return a;
         var keep = new System.Collections.Generic.List<NormalPlayerTask>();
-        foreach (var t in a) if (t == null || t.TaskType != TaskTypes.ClearAsteroids) keep.Add(t);
+        // 28.10.: auf der grossen Manor gibt es auch "Align Engine Output" nicht mehr (der Generator steht als eigene Aufgabe im
+        // Crew Camp, villa_layout.DROP_CONSOLES_LARGE)
+        bool large = HollowmereMap.Large;
+        foreach (var t in a) if (t == null || (t.TaskType != TaskTypes.ClearAsteroids && !(large && t.TaskType == TaskTypes.AlignEngineOutput))) keep.Add(t);
         return keep.Count == a.Length ? a : new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<NormalPlayerTask>(keep.ToArray());
     }
 
@@ -222,9 +225,10 @@ internal sealed partial class HollowmereWorld
             _graveText.transform.SetParent(_graveSr.transform, false);
             _graveText.transform.localPosition = At(GraveNameAt, -0.001f);
             var t = _graveText.AddComponent<TMPro.TextMeshPro>();
-            var f = HalloweenUI.Font();
+            // 28.10. (n58, DrSuspect): die Halloween-Schrift war auf dem Stein schwer zu lesen; die schlichte Spielschrift
+            var f = TMPro.TMP_Settings.defaultFontAsset ?? HalloweenUI.Font();
             if (f != null) t.font = f;
-            t.fontStyle = TMPro.FontStyles.Bold;
+            t.fontStyle = TMPro.FontStyles.Normal;
             t.alignment = TMPro.TextAlignmentOptions.Center;
             t.enableWordWrapping = false;
             t.enableAutoSizing = true; t.fontSizeMin = 0.3f; t.fontSizeMax = 0.9f;
@@ -237,7 +241,9 @@ internal sealed partial class HollowmereWorld
             if (owner) ShowLaptop(At(GraveMoundAt, -0.002f), ppu);
             if (GraveMatches(p, GraveFishboneHashes) && _fishbonePetSprite != null)
             {
-                var pet = GraveChild("GravePet", _fishbonePetSprite, At(new Vector2(0.86f, 0.1f), -0.003f), 3);
+                // 28.10. (n58): kleiner und oben rechts auf dem Grabstein statt unten daneben
+                var pet = GraveChild("GravePet", _fishbonePetSprite, At(new Vector2(0.86f, 0.74f), -0.003f), 3);
+                pet.transform.localScale *= 0.6f;
                 if (_fishbonePetMat != null) pet.sharedMaterial = _fishbonePetMat;
                 _gravePet = pet.gameObject;
                 _gravePetBase = pet.transform.localPosition;

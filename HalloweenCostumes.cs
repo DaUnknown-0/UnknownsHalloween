@@ -123,7 +123,7 @@ namespace UnknownsHalloween {
             // 2026-10-26 evening (User: "packe die alten Skins wieder rein. Engelskin bleibt."): Freddy, Jason, Xenomorph,
             // Ghostface, Predator, Sadako, Pumpkin Head, Reaper, Vampire and Medusa wear their first costumes again (frames
             // and settings of 0.1.3.13: on the real body, walking on the crewmate's own run cycle). The GPT notes below
-            // describe the replaced frames. Kill scenes, Weeping Angel (flight), Spider (original, with the blinking GPT eyes since 0.1.3.30), Thing, Angel Ghost
+            // describe the replaced frames. Kill scenes, Weeping Angel (flight), Spider (original, GPT eyes removed again 2026-10-28), Thing, Angel Ghost
             // and BVB Fan stay as they are.
             // Kill scenes (User the same night: "wirklich alle einfach zurück"): every costume scene, the Weeping Angel scenes
             // included, is back to its first version (0.1.3.13 frames, lengths, flashes and killer layers).
@@ -165,12 +165,16 @@ namespace UnknownsHalloween {
             // 2026-10-17 spider v2: the killer's own crewmate under the costume, in the killer's colour
             new Costume { Key = "spider", KillKey = "spider", Name = "Halloween Spider", KillFrames = 64, Flashes = new[] { 16, 42 }, HasLegs = false, HasAccent = true, KillerLayers = true,
                 // Spidertron: the body glides level, every leg steps on its own (SpiderLegs); the walk loop
-                // is only the fallback for players the live legs cannot run on. 2026-10-26 night (User: "Die Spinne soll die
-                // Augen uebernehmen. Der Rest soll aber auf die Originalversion zurueckgesetzt werden."): the original knitted
-                // hood on the real body and the original legs again, with the big blinking eyes of the GPT version pasted on
-                // the hood frame by frame (villa_qwen/spider_eyes.py).
+                // is only the fallback for players the live legs cannot run on. The original knitted hood on the real body
+                // with its own small eyes; the pasted GPT eyes of 0.1.3.30 were removed again on 2026-10-28 (User).
                 StillWalk = true, WalkFps = 12f, LiveLegs = true },
             new Costume { Key = "bvb", KillKey = null, Name = "Halloween BVB Fan", HasLegs = false, HasAccent = true },
+            // 2026-10-28 (User, Feedback-Runde Hollowmere): drei Jaeger-Kostueme fuer die Beschwoerung, von GPT gezeichnet (Ausnahme nur
+            // fuer neue Figuren). Wie der BVB-Fan nur Haare und Kleidung auf dem echten Koerper: Visor, Farbe und Gesicht des Spielers
+            // bleiben sichtbar (villa_qwen/spn_costume.py, ein Bild fuer alle Steh- und Laufbilder).
+            new Costume { Key = "sam", KillKey = null, Name = "Halloween Sam", HasLegs = false },
+            new Costume { Key = "dean", KillKey = null, Name = "Halloween Dean", HasLegs = false },
+            new Costume { Key = "castiel", KillKey = null, Name = "Halloween Castiel", HasLegs = false },
             new Costume { Key = "angel", KillKey = null, Name = "Halloween Angel Ghost", HasLegs = false, HasAccent = true, HidesBody = true, NoLiveBob = true,
                 // 2026-10-24: floats like the reaper - idle pose under it (StillWalk) and its own gentle idle float while
                 // walking; the 12 walk frames have a ~40 px bob painted in, so NoLiveBob skips them

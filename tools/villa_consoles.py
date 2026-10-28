@@ -327,6 +327,34 @@ def render_all(ppm, brief):
     return out
 
 
+# Konsolen aus einem fertigen Bild (28.10., GPT-Boegen 18-20): Name -> (Datei in tools/villa_assets, Hoehe in m).
+# Anker = Mitte der Unterkante. gpt_standard.py laesst diese Namen aus (sonst kaeme das alte GPT-Bild zurueck).
+IMAGE_CONSOLES = {
+    "EmergencyButton": ("villa_notfalltisch.png", 1.55),
+    "MakeBurger": ("villa_herd_gross.png", 1.9),          # der grosse Herd selbst ist die Burger-Konsole (n66)
+    "FuelEngineConsole@kitchen": ("villa_gasflasche.png", 1.15),   # statt Kohlenkasten (n70)
+    "UnlockSafe": ("villa_safe.png", 1.3),                # Airship-Tresor im Arbeitszimmer (n33)
+    "WaterBench": ("villa_pflanzbank.png", 1.25),         # Pflanzen giessen, Gewaechshaus (n24)
+    "Campfire": ("villa_lagerfeuer.png", 1.2),            # Marshmallows, Crew Camp (n62)
+    "Catering": ("villa_catering.png", 1.35),             # Essen und Trinken, Vorplatz (n56)
+    "PressureValve": ("villa_druckventil.png", 1.25),      # Kesseldruck ablassen, Heizungskeller (n64)
+    "CampGenerator": ("villa_generator.png", 1.2),        # Generator im Crew Camp statt in der Kueche (n67)
+}
+
+
+def image_console(name, ppm):
+    from PIL import Image
+    import os
+    file, h = IMAGE_CONSOLES[name]
+    src = Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "villa_assets", file)).convert("RGBA")
+    hh = int(round(h * ppm)); ww = int(round(src.width * hh / src.height))
+    im = src.resize((ww, hh), Image.LANCZOS)
+    pad = 4
+    out = Image.new("RGBA", (ww + 2 * pad, hh + 2 * pad), (0, 0, 0, 0))
+    out.alpha_composite(im, (pad, pad))
+    return out, out.width / 2, pad + 0.04 * ppm
+
+
 def _render_all(ppm, brief):
     WC.TINT.update(TINT)
     WC.CLEARINGS = OUTDOOR
@@ -343,7 +371,10 @@ def _render_all(ppm, brief):
             for k, fr in enumerate(frames[1:], 1):
                 out[(v, f"{key}/{k}")] = fr
             continue
-        if key == "EmergencyButton":
+        img_name = key if key in IMAGE_CONSOLES else (f"{name}@{room}" if f"{name}@{room}" in IMAGE_CONSOLES else name)
+        if img_name in IMAGE_CONSOLES:
+            spr = image_console(img_name, ppm)
+        elif key == "EmergencyButton":
             spr = slate_table(ppm)
         elif (name, room) in getattr(VCA, "BY_NAME_ROOM", {}):
             # raumabhaengige Villa-Motive (24.10.: Kohlenkasten in der Kueche)
@@ -362,7 +393,7 @@ def _render_all(ppm, brief):
         elif name == "MakeBurger":
             spr = burger_station(ppm)
         elif name == "MedScanner":
-            spr = WC.floor_scanner(ppm)
+            spr = WC.floor_scanner(ppm * 0.85)                # 28.10. n35: Schminkstuhl etwas kleiner
         elif name == "MedBayConsole":
             spr = WC.microscope_bench(ppm)
         elif name == "CleanFilterConsole":
@@ -374,7 +405,7 @@ def _render_all(ppm, brief):
         elif name == "gasCanConsole":
             spr = WC.jerrycan_rack(ppm)
         elif name == "StabilizeSteeringConsole":
-            spr = WC.theodolite(ppm)
+            spr = WC.theodolite(ppm * 2.0)                   # 28.10. n81: das Teleskop in der Raummitte, groesser
         elif name == "FixCommsConsole":
             spr = WC.radio_set(ppm)
         else:

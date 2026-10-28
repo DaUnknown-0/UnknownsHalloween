@@ -91,10 +91,12 @@ internal sealed partial class HollowmereWorld
         }
         _ritualStart = -1f;
         _demonSr = _ritualFloorGlow = null;
+        SummonReset();                                             // HollowmereWorld.Summon.cs
     }
 
     private void RitualDestroy()
     {
+        CloseBook();
         if (_ritualRoot != null) Object.Destroy(_ritualRoot.gameObject);
         _ritualRoot = null;
         _demonSr = _ritualFloorGlow = null;
@@ -111,8 +113,12 @@ internal sealed partial class HollowmereWorld
         {
             for (int k = 0; k < 5; k++) SetRitualLit(k, false);
             EndRitual();
+            _litOrder.Clear();
         }
         _ritualMeeting = meeting;
+        SummonMeetingTick();
+        SummonTick();
+        if (SummonRunning) return;
 
         var on = GraveyardWorld._candleOn;
         int fi = (int)(now * GraveyardWorld.Fps);
@@ -153,8 +159,9 @@ internal sealed partial class HollowmereWorld
 
     private void LightRitualLocal(int idx)
     {
-        if (_ritualLit[idx] || _ritualStart >= 0f) return;
+        if (_ritualLit[idx] || _ritualStart >= 0f || SummonRunning) return;
         SetRitualLit(idx, true);
+        if (AmHost && PlayerControl.LocalPlayer != null) SummonCandleLit(idx, PlayerControl.LocalPlayer.PlayerId);
         SendRitual(SubRitualCandle, w => w.Write((byte)idx));
         HostCheckRitual();
     }
@@ -176,7 +183,8 @@ internal sealed partial class HollowmereWorld
 
     private void HostCheckRitual()
     {
-        if (!AmHost || _ritualStart >= 0f || _ritualMeeting || _ritualLit.Any(x => !x)) return;
+        if (!AmHost || _ritualStart >= 0f || _ritualMeeting || SummonRunning || _ritualLit.Any(x => !x)) return;
+        if (SummonMode != 2) { HostStartSummon(); return; }        // Beschwoerung (Summon.cs) statt des alten Daemons
         SendRitual(SubRitualStart, null);
         StartRitual();
     }
@@ -288,6 +296,9 @@ internal sealed partial class HollowmereWorld
 
     internal static void HandleRitualRpc(byte sub, MessageReader reader)
     {
+        if (HandleSummonRpc(sub, reader)) return;                  // Sub 33-38
+        if (HandleDixiRpc(sub, reader)) return;                    // Sub 40
+        if (HandleCurioRpc(sub, reader)) return;                   // Sub 41
         var w = _current;
         if (sub == SubRitualCandle)
         {
@@ -295,7 +306,9 @@ internal sealed partial class HollowmereWorld
             if (w == null || idx >= 5) return;
             var sender = UCRpc.Sender;
             if (sender == null || sender.Data == null || sender.Data.IsDead) return;     // Geister zuenden nichts an
+            if (w.SummonRunning) return;
             w.SetRitualLit(idx, true);
+            if (AmHost) w.SummonCandleLit(idx, sender.PlayerId);
             w.HostCheckRitual();
         }
         else if (sub == SubRitualStart)

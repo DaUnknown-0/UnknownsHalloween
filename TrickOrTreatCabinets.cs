@@ -207,7 +207,11 @@ namespace UnknownsHalloween {
                 var bb = new Bounds(new Vector3(b.center.x, b.center.y, 0f), new Vector3(b.size.x, b.size.y, 100f));
                 if (bb.Intersects(box)) { tier = 1; break; }
             }
-            if (tier == 1) rejProp++;
+            if (tier == 1) {
+                rejProp++;
+                // Hollowmere (Feedback 28.10., n25): keine Kiste vor oder hinter einem Moebel, dann lieber weniger Kisten
+                if (MapKey() == HollowmereMap.Key) return false;
+            }
             c = new Cand { Foot = foot, Front = front, Room = room, Tier = tier };
             return true;
         }

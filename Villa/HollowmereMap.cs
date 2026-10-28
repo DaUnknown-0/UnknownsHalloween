@@ -69,8 +69,25 @@ internal static class HollowmereMap
          (Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("villalarge"));
 
     // "Make Burger" aus Airship am Herd der Kueche (Kueche = LowerEngine); Atlas laedt dafuer Airship mit.
-    private static readonly (TaskTypes, int, string, SystemTypes)[] BurgerTask =
-        { (TaskTypes.MakeBurger, 4, "LowerEngine/MakeBurger/0", SystemTypes.LowerEngine) };
+    // 28.10. (Feedback DrSuspect): weitere Airship-Aufgaben als Reiter. Airship ist ohnehin geladen, die Reiter kosten also keine
+    // Ladezeit; bis auf den Tresor (Airship-Original, n33) zeigen sie Atlas-Minispiele mit Villa-Grafik (CustomTasks unten).
+    // Reihenfolge nie umstellen: jeder Eintrag reserviert einen Task-Index, alle Clients muessen dieselbe Liste bauen.
+    private static readonly (TaskTypes, int, string, SystemTypes)[] BorrowedSmall =
+    {
+        (TaskTypes.MakeBurger, 4, "LowerEngine/MakeBurger/0", SystemTypes.LowerEngine),
+        (TaskTypes.UnlockSafe, 4, "Admin/UnlockSafe/0", SystemTypes.Admin),                   // Tresor im Arbeitszimmer
+        (TaskTypes.ResetBreakers, 4, "Electrical/PressureValve/0", SystemTypes.Electrical),   // Kesseldruck ablassen (n64)
+    };
+    private static readonly (TaskTypes, int, string, SystemTypes)[] BorrowedLarge =
+    {
+        (TaskTypes.MakeBurger, 4, "LowerEngine/MakeBurger/0", SystemTypes.LowerEngine),
+        (TaskTypes.UnlockSafe, 4, "Admin/UnlockSafe/0", SystemTypes.Admin),
+        (TaskTypes.ResetBreakers, 4, "Electrical/PressureValve/0", SystemTypes.Electrical),
+        (TaskTypes.FixShower, 4, "Storage/WaterBench/0", SystemTypes.Storage),                // Pflanzen giessen (n24)
+        (TaskTypes.CleanToilet, 4, "UpperEngine/Campfire/0", SystemTypes.UpperEngine),        // Marshmallows (n62)
+        (TaskTypes.PutAwayPistols, 4, "UpperEngine/CampGenerator/0", SystemTypes.UpperEngine),// Generator im Crew Camp (n67)
+        (TaskTypes.PolishRuby, 4, "MainHall/Catering/0", SystemTypes.MainHall),               // Essen und Trinken (n56)
+    };
 
     private static AtlasMapDef Make()
     {
@@ -82,6 +99,10 @@ internal static class HollowmereMap
         d.ResourceNamespace = ResourceNamespace;
         d.BuiltInEffects = false;
         d.CameraColor = new Color(0x16 / 255f, 0x10 / 255f, 0x14 / 255f);
+        // Kameras etwas weiter herausgezoomt (User 28.10.); Feld gibt es erst ab dem Atlas mit CameraZoom, daher per Reflection
+        typeof(AtlasMapDef).GetField("CameraZoom")?.SetValue(d, 1.35f);
+        // Oberteile hoher Moebel an Innenwaenden ueber dem Sichtschatten (28.10.; Feld gibt es erst ab dem Atlas mit PropTops)
+        typeof(AtlasMapDef).GetField("PropTops")?.SetValue(d, Large ? VillaLarge.PropTops : VillaSmall.PropTops);
         d.TaskNames = TaskNames();
         d.CustomTasks = CustomTasks();
         d.TaskArt = TaskArt();
@@ -104,7 +125,7 @@ internal static class HollowmereMap
         PropPixelsPerMeter = VillaSmall.PropPixelsPerMeter, Props = VillaSmall.Props,
         ConsoleSprites = VillaSmall.ConsoleSprites,
         Consoles = VillaSmall.Consoles,
-        ForeignTasks = BurgerTask,
+        ForeignTasks = BorrowedSmall,
         EmergencyButton = VillaSmall.EmergencyButton, SurveillanceConsole = VillaSmall.SurveillanceConsole,
         AdminTable = VillaSmall.AdminTable, FreeplayLaptop = VillaSmall.FreeplayLaptop,
         Spawn = VillaSmall.Spawn, SpawnRadius = VillaSmall.SpawnRadius,
@@ -126,7 +147,7 @@ internal static class HollowmereMap
         PropPixelsPerMeter = VillaLarge.PropPixelsPerMeter, Props = VillaLarge.Props,
         ConsoleSprites = VillaLarge.ConsoleSprites,
         Consoles = VillaLarge.Consoles,
-        ForeignTasks = BurgerTask,
+        ForeignTasks = BorrowedLarge,
         EmergencyButton = VillaLarge.EmergencyButton, SurveillanceConsole = VillaLarge.SurveillanceConsole,
         AdminTable = VillaLarge.AdminTable, FreeplayLaptop = VillaLarge.FreeplayLaptop,
         Spawn = VillaLarge.Spawn, SpawnRadius = VillaLarge.SpawnRadius,
@@ -150,6 +171,9 @@ internal static class HollowmereMap
         { TaskTypes.EmptyGarbage, "bins" }, { TaskTypes.FuelEngines, "refuel" }, { TaskTypes.InspectSample, "pigment" },
         { TaskTypes.StartReactor, "spirit" },
         { TaskTypes.RestoreOxy, "waterworks" }, { TaskTypes.FixLights, "fusebox" },
+        // Airship-Reiter (28.10.)
+        { TaskTypes.ResetBreakers, "valves" }, { TaskTypes.FixShower, "watering" }, { TaskTypes.CleanToilet, "roast" },
+        { TaskTypes.PutAwayPistols, "generator" }, { TaskTypes.PolishRuby, "lunch" },
     };
 
     private static Dictionary<string, string> TaskArt() => new()
@@ -206,6 +230,16 @@ internal static class HollowmereMap
         // Smoke in the Chimney
         { "waterworks:task_pipes.png", "task_villa_pipes.png" }, { "waterworks:task_valve.png", "task_villa_wheel.png" },
         { "waterworks:task_card.png", "task_villa_plan.png" },
+        // Water the Plants, Roast Marshmallows, Grab Lunch (28.10., GPT-Bogen 21)
+        { "watering:task_hold_center.png", "task_villa_water_bench.png" }, { "watering:task_hold_off.png", "task_villa_plant_dry.png" },
+        { "watering:task_hold_on.png", "task_villa_plant_wet.png" }, { "watering:task_hold_tool.png", "task_villa_wateringcan.png" },
+        { "roast:task_hold_center.png", "task_villa_campfire.png" }, { "roast:task_hold_off.png", "task_villa_marsh_raw.png" },
+        { "roast:task_hold_on.png", "task_villa_marsh_gold.png" },
+        { "lunch:task_bin_paper.png", "task_villa_plate.png" }, { "lunch:task_bin_glass.png", "task_villa_tray.png" },
+        { "lunch:task_bin_rest.png", "task_villa_trashbag.png" },
+        { "lunch:task_trash_brochure.png", "task_villa_sandwich.png" }, { "lunch:task_trash_ticket.png", "task_villa_cookie.png" },
+        { "lunch:task_trash_bottle.png", "task_villa_soda.png" }, { "lunch:task_trash_jar.png", "task_villa_coffee.png" },
+        { "lunch:task_trash_wrapper.png", "task_villa_napkin.png" }, { "lunch:task_trash_apple.png", "task_villa_peel.png" },
     };
 
     private static Dictionary<string, string> TaskText() => new()
@@ -215,6 +249,9 @@ internal static class HollowmereMap
         { "bins:PAPER", "SCRIPTS" }, { "bins:GLASS", "BOTTLES" }, { "bins:OTHER", "PROPS" },
         { "climate:TEMP", "KEY" }, { "climate:HUMIDITY", "FILL" }, { "climate:LIGHT", "BACK" },
         { "waterworks:PLAN", "FLUE" },
+        { "watering:HOLD ON EACH ONE", "WATER EACH PLANT" }, { "watering:DONE", "ALL WATERED" },
+        { "roast:HOLD ON EACH ONE", "TOAST EACH ONE" }, { "roast:DONE", "PERFECTLY GOLDEN" },
+        { "lunch:PAPER", "FOOD" }, { "lunch:GLASS", "DRINKS" }, { "lunch:OTHER", "TRASH" },
     };
 
     private static Dictionary<TaskTypes, string> TaskNames() => new()
@@ -240,5 +277,12 @@ internal static class HollowmereMap
         { TaskTypes.RestoreOxy, "Smoke in the Chimney" },
         { TaskTypes.FixLights, "Set Lights Down" },
         { TaskTypes.FixComms, "Radio Silence" },
+        { TaskTypes.MakeBurger, "Make Burger" },
+        { TaskTypes.UnlockSafe, "Unlock the Safe" },
+        { TaskTypes.ResetBreakers, "Release the Boiler Pressure" },
+        { TaskTypes.FixShower, "Water the Plants" },
+        { TaskTypes.CleanToilet, "Roast Marshmallows" },
+        { TaskTypes.PutAwayPistols, "Tune the Generator" },
+        { TaskTypes.PolishRuby, "Grab Lunch" },
     };
 }

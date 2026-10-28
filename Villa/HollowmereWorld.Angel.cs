@@ -36,7 +36,17 @@ namespace UnknownsHalloween;
 
 internal sealed partial class HollowmereWorld
 {
-    public static CustomOption AngelAttack;
+    public static CustomOption AngelAttack, AngelBehaviour;
+
+    // 28.10. (Feedback DrSuspect n26/n27): Verhalten 1 "Awaken" = jeder Engel hat einen Aufwach-Timer (5 s, solange ihn jemand
+    // sieht und niemand ihn anschaut), dann im Sekundentakt Stufe 1 -> 3 und bleibt wach bis zum Meeting; Verhalten 2 "Stages" =
+    // Stufen im 2-s-Takt, angeschaut geht es im selben Takt zurueck (3 -> 2 -> 1). In beiden toetet Stufe 3 im kleinen Radius
+    // (1 m) jeden, der den Engel gerade nicht ansieht. Bobby (Beschwoerung) laesst alle Engel bis zum naechsten Meeting schlafen.
+    private const float AngelWakeSecs = 5f, AngelSmallReach = 1.0f;
+    private float[] _slotLevel = Array.Empty<float>();   // Awaken: Sekunden seit dem Wecken (-x = Timer laeuft), Stages: Stufe 0..2
+    private bool[] _slotAwake = Array.Empty<bool>();
+    internal bool AngelsAsleep;                           // Bobby
+    private static int AngelMode { get { try { return AngelBehaviour == null ? 0 : AngelBehaviour.getSelection(); } catch { return 0; } } }
     internal const byte SubAngelVictim = 10;     // [spieler]  Host -> alle, vor dem Kill
 
     private sealed class AngelSlot
@@ -138,6 +148,9 @@ internal sealed partial class HollowmereWorld
         {
             foreach (var s in _slots) if (s.Pose != null) SetPose(s, null);
             _aggro.Clear();
+            Array.Clear(_slotLevel, 0, _slotLevel.Length);
+            Array.Clear(_slotAwake, 0, _slotAwake.Length);
+            AngelsAsleep = false;                                          // Bobby wirkt bis zum Meeting
             if (!_angelMeeting) { _angelMeeting = true; BreakoutMeeting(); }   // Engel zurueck, Ausbruch vorbei (AngelMove.cs)
             return;
         }
@@ -145,6 +158,15 @@ internal sealed partial class HollowmereWorld
         if (now < _nextAngelTick) return;
         _nextAngelTick = now + AngelTickEvery;
         AngelAggroTick();
+        if (AngelsAsleep || AngelMode != 0)
+        {
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                string pose = AngelsAsleep ? null : SlotPose(i);
+                if (pose != _slots[i].Pose) SetPose(_slots[i], pose);
+            }
+            return;
+        }
         // Bild, fuer alle gleich (User 25.10. "Engel global"): schaut irgendein lebender Spieler hin, Haende vor den Augen;
         // sonst die Stufe des hoechsten Werts, den ein Spieler mit diesem Engel hat
         for (int i = 0; i < _slots.Count; i++)
@@ -155,6 +177,54 @@ internal sealed partial class HollowmereWorld
             string pose = i < _angelWatched.Length && _angelWatched[i] ? null : PoseFor(top);
             if (pose != s.Pose) SetPose(s, pose);
         }
+    }
+
+    /// <summary>Verhalten Awaken/Stages: Stufe je Engel (fuer alle gleich), jeder Client rechnet selbst, nur der Host toetet.</summary>
+    private void SlotModeTick(List<PlayerControl> players, AngelSight[,] sights)
+    {
+        int mode = AngelMode;
+        float dt = AngelTickEvery;
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            bool seenBy = false;
+            for (int n = 0; n < players.Count; n++) if (sights[n, i] != AngelSight.Hidden) { seenBy = true; break; }
+            if (mode == 1)
+            {
+                if (!_slotAwake[i])
+                {
+                    if (seenBy && !_angelWatched[i]) _slotLevel[i] += dt; else _slotLevel[i] = Mathf.Max(0f, _slotLevel[i] - dt * 0.5f);
+                    if (_slotLevel[i] >= AngelWakeSecs) { _slotAwake[i] = true; _slotLevel[i] = 0f; }
+                }
+                else _slotLevel[i] += dt;                                  // Sekunden seit dem Aufwachen: 1 s Stufe 2, 2 s Stufe 3
+            }
+            else
+            {
+                if (_angelWatched[i]) _slotLevel[i] = Mathf.Max(0f, _slotLevel[i] - dt / 2f);
+                else if (seenBy) _slotLevel[i] = Mathf.Min(2f, _slotLevel[i] + dt / 2f);
+            }
+            if (!AmHost || !AngelAttackOn || SlotPose(i) != "step") continue;
+            var s = _slots[i];
+            for (int n = 0; n < players.Count; n++)
+            {
+                var p = players[n];
+                if (p == null || p.Data == null || p.Data.IsDead || p.inVent || p.onLadder) continue;
+                if (sights[n, i] == AngelSight.Watched) continue;
+                if (Vector2.Distance(p.GetTruePosition(), s.Pos) > AngelSmallReach) continue;
+                KillByAngel(p);
+                break;
+            }
+        }
+    }
+
+    private string SlotPose(int i)
+    {
+        if (i >= _slotLevel.Length) return null;
+        if (AngelMode == 1)
+        {
+            if (!_slotAwake[i]) return null;
+            return _slotLevel[i] >= 2f ? "step" : _slotLevel[i] >= 1f ? "turn" : null;
+        }
+        return _slotLevel[i] >= 2f - 1e-3f ? "step" : _slotLevel[i] >= 1f ? "turn" : null;
     }
 
     private static void SetPose(AngelSlot s, string pose)
@@ -241,6 +311,8 @@ internal sealed partial class HollowmereWorld
         // erst alle Blicke: schaut irgendein lebender Spieler einen Engel an, ist er fuer alle eingefroren (kein Kill)
         var players = PlayerControl.AllPlayerControls.ToArray().Where(p => p != null && p.Data != null && !p.Data.IsDead && !p.Data.Disconnected).ToList();
         if (_angelWatched.Length != _slots.Count) _angelWatched = new bool[_slots.Count];
+        if (_slotLevel.Length != _slots.Count) { _slotLevel = new float[_slots.Count]; _slotAwake = new bool[_slots.Count]; }
+        if (AngelsAsleep) { _aggro.Clear(); return; }
         Array.Clear(_angelWatched, 0, _angelWatched.Length);
         var sights = new AngelSight[players.Count, _slots.Count];
         var blinked = new bool[players.Count];
@@ -255,6 +327,7 @@ internal sealed partial class HollowmereWorld
                 if (sights[n, i] == AngelSight.Watched && _blinking.Contains(players[n].PlayerId)) { sights[n, i] = AngelSight.Away; blinked[n] = true; }
                 if (sights[n, i] == AngelSight.Watched) _angelWatched[i] = true;
             }
+        if (AngelMode != 0) { SlotModeTick(players, sights); goto move; }
         var present = new HashSet<byte>();
         for (int n = 0; n < players.Count; n++)
         {
@@ -288,6 +361,7 @@ internal sealed partial class HollowmereWorld
             }
         }
         foreach (var k in _aggro.Keys.ToList()) if (!present.Contains(k.Player)) _aggro.Remove(k);
+        move:
         // Spruenge und Zornpegel mit denselben Blicken (Tote dieses Ticks zaehlen nicht mehr als Ziel)
         var alive = new List<PlayerControl>();
         var keep = new List<int>();

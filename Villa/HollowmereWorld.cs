@@ -87,7 +87,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         public SpriteRenderer Sr; public Sprite Orig; public readonly Dictionary<string, Sprite> Vars = new();
         public Vector2 Pos; public string Shown;
     }
-    private readonly List<PropVar> _clockProps = new(), _portraits = new(), _spots = new(), _candles = new();
+    private readonly List<PropVar> _clockProps = new(), _portraits = new(), _spots = new(), _candles = new(), _armors = new();
 
     // Kerzen: Brennende bis, dunkle Raumflaechen, weiche Uebergaenge, eigene Ausblas-Abklingzeit
     private float[] _burnUntil = Array.Empty<float>();
@@ -126,6 +126,14 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             AngelAttack = CustomOption.Create(1951, CustomOption.CustomOptionType.General, "Weeping Angels Attack", true, null, false, null, "Hollowmere Manor");
             AngelMove = CustomOption.Create(1952, CustomOption.CustomOptionType.General, "Weeping Angels Move", true, AngelAttack);
             AngelBreakout = CustomOption.Create(1953, CustomOption.CustomOptionType.General, "Angel Breakout Sabotage", true, AngelAttack);
+            // 28.10. (Feedback DrSuspect, n26/n27): zwei weitere Verhaltensweisen der Engel zur Wahl
+            AngelBehaviour = CustomOption.Create(1955, CustomOption.CustomOptionType.General, "Weeping Angels Behaviour",
+                new[] { "Gaze", "Awaken", "Stages" }, AngelAttack);
+            // 28.10. (n40-n43): Beschwoerung am Pentagramm, Buch in der Bibliothek (HollowmereWorld.Summon.cs)
+            Summoning = CustomOption.Create(1954, CustomOption.CustomOptionType.General, "Summoning Circle",
+                new[] { "Easy", "Hard", "Off" }, null, false, null, "Hollowmere Manor");
+            // 28.10. (n52): im Dixi-Klo des Crew Camps verstecken (HollowmereWorld.Dixi.cs)
+            DixiHide = CustomOption.Create(1956, CustomOption.CustomOptionType.General, "Hide In The Portable Toilet", true, null, false, null, "Hollowmere Manor");
             AngelReplayRegister();
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} options failed: {e}"); }
@@ -242,6 +250,14 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         }
         Collect("standuhr", _clockProps, "p1", "p2");
         Collect("portrait", _portraits, "l", "r");
+        // 28.10. (n13): weitere Bilder in der Galerie schauen beim Hinweis genauso; Ruestungen drehen den Kopf zum Spieler (n14)
+        foreach (var k in new[] { "portrait_dame", "portrait_offizier", "portrait_katze", "portrait_maedchen" })
+        {
+            var more = new List<PropVar>();
+            Collect(k, more, "l", "r");
+            _portraits.AddRange(more);
+        }
+        Collect("ruestung", _armors, "l", "r");
         Collect("scheinwerfer", _spots, "off");
         Collect("kandelaber", _candles, "off");
         Collect("brunnen_blut", _angels, "turn", "step");             // Weeping Angels (HollowmereWorld.Angel.cs)
@@ -286,6 +302,28 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         }
     }
 
+    private float _nextArmor;
+
+    /// <summary>Ruestungen drehen den Helm zum naechsten lebenden Spieler in 3,5 m (nur lokal, rein kosmetisch).</summary>
+    private void ArmorTick()
+    {
+        if (_armors.Count == 0 || Time.time < _nextArmor) return;
+        _nextArmor = Time.time + 0.2f;
+        var all = PlayerControl.AllPlayerControls;
+        foreach (var pv in _armors)
+        {
+            if (pv.Sr == null) continue;
+            float best = 3.5f * 3.5f; Vector2 at = default; bool any = false;
+            foreach (var pc in all)
+            {
+                if (pc == null || pc.Data == null || pc.Data.IsDead || !pc.Visible) continue;
+                Vector2 d = pc.GetTruePosition() - pv.Pos;
+                if (d.sqrMagnitude < best) { best = d.sqrMagnitude; at = d; any = true; }
+            }
+            Show(pv, !any || Mathf.Abs(at.x) < 0.45f ? null : at.x < 0f ? "l" : "r");
+        }
+    }
+
     private static void Show(PropVar pv, string var)
     {
         if (pv.Sr == null || pv.Shown == var) return;
@@ -300,7 +338,10 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         try { BreakoutFrame(); } catch (Exception e) { AngelError(e); }
         try { RitualTick(); } catch (Exception e) { RitualError(e); }
         try { GraveTick(); } catch { }
+        try { DixiTick(); } catch (Exception e) { RitualError(e); }
+        try { CurioTick(); } catch (Exception e) { RitualError(e); }
         AnimTick();
+        ArmorTick();
         ClockTick(dt);
         CandleTick(dt);
         if (_passing) { PassTick(dt); return; }

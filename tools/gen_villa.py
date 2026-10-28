@@ -334,7 +334,10 @@ def draw_block(kind, ws):
 # Konsolen-Atlas unter "Prop/<Art>/<welt_x>/<welt_y>/<Variante>" (3 Dezimalen wie in der g.cs), Anker unten links
 # wie das Prop selbst, damit der Renderer nur das Sprite tauscht.
 PROP_VARIANTS = {"portrait": ("l", "r"), "standuhr": ("p1", "p2"), "scheinwerfer": ("off",), "kandelaber": ("off",),
-                 "brunnen_blut": ("turn", "step"), "weeping_angel": ("turn", "step")}   # Weeping Angels (HollowmereWorld.Angel.cs)
+                 "brunnen_blut": ("turn", "step"), "weeping_angel": ("turn", "step"),   # Weeping Angels (HollowmereWorld.Angel.cs)
+                 # 28.10.: Ruestungen drehen den Kopf zum Spieler, die neuen Bilder schauen wie der Hausherr (l/r)
+                 "ruestung": ("l", "r"), "portrait_dame": ("l", "r"), "portrait_offizier": ("l", "r"),
+                 "portrait_katze": ("l", "r"), "portrait_maedchen": ("l", "r")}
 PROP_VARIANT_SPRITES = {}
 
 
@@ -394,7 +397,8 @@ def place_consoles(v, walk_w, rooms_w, door_pts, obstacles_w):
             taken += [Point(wp(ent)), Point(wp(ext))]
     taken.append(Point(wp(L.CLOCK)))
     for key, (name, sysname, g) in rooms_w.items():
-        keys = [k for k in SKELD_CONSOLES.get(sysname, []) if k not in fixed and k not in getattr(L, "DROP_CONSOLES", ())]
+        drop = set(getattr(L, "DROP_CONSOLES", ())) | set(getattr(L, "DROP_CONSOLES_" + v.upper(), ()))
+        keys = [k for k in SKELD_CONSOLES.get(sysname, []) if k not in fixed and k not in drop]
         if not keys:
             continue
         ring = g.buffer(-0.55)
@@ -545,17 +549,24 @@ def render_doors_cams(ppm):
                 out[(v, f"Door/{label}/{k}")] = fr
         if "cam" not in cache:
             cache["cam"] = (VD.camera(ppm, False), VD.camera(ppm, True))
+            # gespiegelt: Blick nach Suedosten (28.10., Kameras, die in die andere Richtung schauen sollen)
+            cache["camf"] = tuple((im.transpose(Image.FLIP_LEFT_RIGHT), im.width - ax, ay) for im, ax, ay in cache["cam"])
+        flip = getattr(L, "CAMERA_FLIP", {}).get(v, set())
         for i in range(len(L.CAMERAS[v])):
-            out[(v, f"Camera/{i}")] = cache["cam"][0]
-            out[(v, f"Camera/{i}/on")] = cache["cam"][1]
+            cam = cache["camf"] if i in flip else cache["cam"]
+            out[(v, f"Camera/{i}")] = cam[0]
+            out[(v, f"Camera/{i}/on")] = cam[1]
     return out
 
 
 # ------------------------------------------------------------------ Minimap (je Variante)
 
-def label_point(g, name, obst):
+def label_point(g, name, obst, wrapped=False):
     free = g.buffer(-0.3).difference(obst)
-    half_w, half_h = max(1.0, len(name) * 0.26), 0.55
+    if wrapped:   # zweizeilig: laengstes Wort, doppelte Hoehe (28.10., Raumnamen weichen den Vents aus)
+        half_w, half_h = max(1.0, max(len(w) for w in name.split()) * 0.26), 1.0
+    else:
+        half_w, half_h = max(1.0, len(name) * 0.26), 0.55
     c = g.centroid
     best, best_d = None, 1e9
     x0, y0, x1, y1 = g.bounds
@@ -568,6 +579,8 @@ def label_point(g, name, obst):
             dd = (px - c.x) ** 2 + (py - c.y) ** 2
             if dd < best_d:
                 best, best_d = Point(px, py), dd
+    if best is None and not wrapped and " " in name:
+        return label_point(g, name, obst, wrapped=True)
     return best if best is not None else g.representative_point()
 
 
@@ -589,7 +602,7 @@ def minimap(v, walk_w, rooms_w, obst_w, vents_w):
         font = ImageFont.truetype("arialbd.ttf", 20)
     except OSError:
         font = ImageFont.load_default()
-    obst = unary_union(obst_w + [box(x - 1.1, y - 0.7, x + 1.1, y + 0.7) for x, y in vents_w]).buffer(0.3) \
+    obst = unary_union(obst_w + [box(x - 1.3, y - 0.9, x + 1.3, y + 0.9) for x, y in vents_w]).buffer(0.3) \
         if obst_w else Point(1e6, 1e6).buffer(0.1)
     labels = []
     by_name = {}
@@ -597,8 +610,15 @@ def minimap(v, walk_w, rooms_w, obst_w, vents_w):
         by_name.setdefault(name, []).append(g)
     area = walk_w.buffer(0.15)
     for name, gs in by_name.items():
-        c = label_point(max(gs, key=lambda g: g.area), name, obst)
-        map_labels.place(d, font, name, c.x, c.y, area, s, P, (34, 20, 30, 255), labels)
+        g0 = max(gs, key=lambda g: g.area)
+        c = label_point(g0, name, obst)
+        text = name
+        hw = max(1.0, len(name) * 0.26)
+        if " " in name and not g0.buffer(-0.3).difference(obst).contains(box(c.x - hw, c.y - 0.55, c.x + hw, c.y + 0.55)):
+            ws = name.split(" ")
+            text = min((" ".join(ws[:i]) + chr(10) + " ".join(ws[i:]) for i in range(1, len(ws))),
+                       key=lambda t: max(len(x) for x in t.split(chr(10))))
+        map_labels.place(d, font, text, c.x, c.y, area, s, P, (34, 20, 30, 255), labels)
     img.save(ASSETS / f"villa_minimap_{v}.png", optimize=True)
     return labels
 
@@ -619,6 +639,60 @@ def rings_of(g):
         out.append(list(p.exterior.coords)[:-1])
         for h in p.interiors:
             out.append(list(h.coords)[:-1])
+    return out
+
+
+PROP_TOPS = {}
+
+
+def lit_tops(v, shadow, walk_w, items, props):
+    """Obere Teile von Objekt-Sprites, die ueber den Wandstreifen hinaus ins Leere (ausserhalb aller Bereiche) ragen, kommen mit
+    in die Sichtflaeche: dahinter ist nichts zu sehen, das Moebel wird aber nicht mehr vom Wandschatten abgeschnitten (28.10.,
+    Feedback "Schatten oben weg"). Ragt ein Sprite in einen anderen Raum, bleibt es beim Schatten (Sicht durch die Wand);
+    das meldet der Generator, dort hilft nur ein niedrigeres Bild."""
+    others = walk_w.buffer(0.35)
+    add = []
+    for s, k, _o in items:
+        kind, page, x, y, ww, hh, pwx, pwy, base, fx0, fx1 = props[(k, wshape(s))]
+        top = box(pwx, base + 0.05, pwx + ww / PROP_PPM, pwy + hh / PROP_PPM)
+        if top.is_empty or top.area < 1e-4:
+            continue
+        cut = top.difference(shadow)
+        if cut.area < 0.02:
+            continue
+        void = cut.difference(others)
+        if void.area > 0.02:
+            add.append(void.buffer(0.01))
+        inner = cut.intersection(walk_w)
+        if inner.area > 0.05:
+            print(f"NOTE [{v}] {kind} at {fx0 + OX:.1f}/{OY - base:.1f}: {inner.area:.2f} m2 of the sprite lie over another room (stays in shadow)")
+    out = unary_union([shadow] + add).buffer(0) if add else shadow
+    # Sichtpruefung: vom Boden 1,5 m vor dem Objekt zur Oberkante; schneidet der Strahl eine Sichtkante, ist der obere Teil
+    # im Spiel abgeschattet (Innenwand). Gemeldet wird, wie hoch das Bild sichtbar bleibt.
+    edges = out.boundary
+    PROP_TOPS[v] = {}
+    for idx, (s, k, _o) in enumerate(items):
+        kind, page, x, y, ww, hh, pwx, pwy, base, fx0, fx1 = props[(k, wshape(s))]
+        cx = (fx0 + fx1) / 2
+        eye = Point(cx, base - 0.35)
+        if not out.contains(eye):
+            continue
+        top = pwy + hh / PROP_PPM - 0.15
+        if top - base < 0.6:
+            continue
+        lo, hi = base, top
+        if not LineString([eye, (cx, hi)]).crosses(edges) and not LineString([eye, (cx, hi)]).intersects(edges):
+            continue
+        for _ in range(12):
+            mid = (lo + hi) / 2
+            if LineString([eye, (cx, mid)]).intersects(edges): hi = mid
+            else: lo = mid
+        if top - lo > 0.25:
+            # oberes Stueck ueber den Schatten (Atlas PropTops); nicht bei Tauschbild-Arten (das Tauschbild ersetzt das ganze Sprite)
+            if lo - base >= 0.5 and kind not in PROP_VARIANTS:
+                PROP_TOPS[v][idx] = lo - 0.05
+            else:
+                print(f"SHADE [{v}] {kind} at {cx + OX:.1f}/{OY - base:.1f}: visible up to {lo - base:.2f} m of {top - base:.2f} m")
     return out
 
 
@@ -644,6 +718,7 @@ def emit(v, walk_w, rooms_w, opens, tiles, props, consoles, labels, console_spri
         strips.append(st)
     shadow = unary_union([walk_w] + strips + thick_w).buffer(0)
     items = props_of(v)
+    shadow = lit_tops(v, shadow, walk_w, items, props)
     opaque = [W(shape(L.hit_shape(s, k))) for s, k, o in items if o is True]
     glass = [W(shape(L.hit_shape(s, k))) for s, k, o in items if o is False]
     edges = unary_union([LineString(r + [r[0]]) for r in rings_of(walk_w)])
@@ -705,6 +780,11 @@ def emit(v, walk_w, rooms_w, opens, tiles, props, consoles, labels, console_spri
     a("    public static readonly (string Kind, int Atlas, int X, int Y, int W, int H, float WorldX, float WorldY, float BaseY, float FootX0, float FootX1)[] Props =\n    {")
     for kind, page, x, y, ww, hh, pwx, pwy, base, fx0, fx1 in my_props:
         a(f"        (\"{kind}\", {page}, {x}, {y}, {ww}, {hh}, {pwx:.3f}f, {pwy:.3f}f, {base:.3f}f, {fx0:.3f}f, {fx1:.3f}f),")
+    a("    };")
+    a("    /// <summary>Prop-Index -> Welt-y, ab der das Bild ueber dem Sichtschatten liegt (Atlas AtlasMapDef.PropTops).</summary>")
+    a("    public static readonly Dictionary<int, float> PropTops = new()\n    {")
+    for i, y in sorted(PROP_TOPS.get(v, {}).items()):
+        a(f"        [{i}] = {y:.3f}f,")
     a("    };")
     a("    public static readonly (string Key, int Atlas, int X, int Y, int W, int H, float PivotX, float PivotY)[] ConsoleSprites =\n    {")
     for key, page, x, y, ww, hh, px, py in console_sprites:

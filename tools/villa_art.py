@@ -2376,14 +2376,49 @@ _KIND_FN = {"standuhr": _standuhr, "seance_tisch": _seance_tisch, "buecherregal"
 IMAGE_PROPS = {"baer": ("villa_baer.png", 3.0),
                "kamin_gross": ("villa_kamin_gross.png", 2.6),      # 25.10.: GPT, Vorderansicht, Seance Parlour
                "requisiten": ("villa_requisiten.png", 1.35),       # 25.10.: GPT, Requisitentisch in der Box Room
-               "engelsstatue_tuch": ("villa_engel_betend.png", 2.5)}   # 25.10.: GPT, betender Engel statt Tuchstatue (Kapelle)
+               "engelsstatue_tuch": ("villa_engel_betend.png", 2.5),   # 25.10.: GPT, betender Engel statt Tuchstatue (Kapelle)
+               # 28.10.: GPT-Boegen 18-20 (Feedback DrSuspect), Tauschbilder "<datei>_l.png"/"_r.png" fuer die Varianten l/r
+               "kamerawagen": ("villa_kamerawagen.png", 1.9),
+               "kronleuchter_boden": ("villa_kronleuchter_boden.png", 1.4),
+               "ruestung": ("villa_ruestung.png", 2.3),
+               # Wandbilder: dritter Wert = Abstand der Bildunterkante ueber der Standlinie (haengt an der Wand)
+               "portrait_dame": ("villa_portrait_dame.png", 1.3, 0.85), "portrait_offizier": ("villa_portrait_offizier.png", 1.3, 0.85),
+               "portrait_katze": ("villa_portrait_katze.png", 1.25, 0.85), "portrait_maedchen": ("villa_portrait_maedchen.png", 1.3, 0.85),
+               "statue_schleier": ("villa_statue_schleier.png", 2.4),
+               "kronleuchter": ("villa_kronleuchter.png", 1.25, 5.3),        # haengt: Standlinie an der Suedwand der Gruft
+               "laternenpfahl": ("villa_laternenpfahl.png", 2.5),
+               "sternkarte": ("villa_sternkarte.png", 0.55, 0.05),
+               "herd": ("villa_herd_gross.png", 1.9),
+               "kuechentisch": ("villa_kuechentisch.png", 1.15),
+               "hackblock": ("villa_hackblock.png", 1.05),
+               "topfregal": ("villa_topfregal.png", 1.45),
+               "craftservice": ("villa_craftservice.png", 1.35),
+               "speiseaufzug": ("villa_speiseaufzug.png", 1.35),
+               "umgestuerzter_stuhl": ("villa_stuhl_umgekippt.png", 0.7),
+               "tonband_boden": ("villa_tonband.png", 0.45),
+               "lesetisch": ("villa_lesetisch.png", 1.05),
+               "maskenregal": ("villa_maskenregal.png", 2.0),
+               "kisten": ("villa_kisten.png", 1.5),
+               "catering": ("villa_catering.png", 1.35), "getraenketisch": ("villa_getraenke.png", 1.35),
+               "dixi": ("villa_dixi.png", 2.4)}
+# Arten ohne eigenen Zeichner, die nur aus dem Bild kommen (Hoehe fuer KINDS/PROP_H)
+for _k, _v in list(IMAGE_PROPS.items()):
+    PROP_H.setdefault(_k, _v[1])
+KINDS.update(IMAGE_PROPS)
+# Unsichtbares Hindernis (28.10.: Herd-Fussflaeche, der Herd selbst ist das Bild der Burger-Konsole)
+PROP_H["unsichtbar"] = 0.1
+KINDS.add("unsichtbar")
 _IMG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "villa_assets")
 
 
-def _image_prop(kind, shape, ppm):
+def _image_prop(kind, shape, ppm, variant=None):
     """Sprite aus IMAGE_PROPS: Unterkante des Bilds (Sockel) auf der Standlinie, waagerecht mittig ueber der Fussflaeche,
-    weicher Schatten darunter. None, wenn die Datei fehlt (dann zeichnet die Art wie bisher)."""
-    file, height = IMAGE_PROPS[kind]
+    weicher Schatten darunter. None, wenn die Datei fehlt (dann zeichnet die Art wie bisher). variant: Datei mit
+    Endung _<variant> (gleiche Groesse, damit das Tauschbild an derselben Stelle sitzt)."""
+    file, height = IMAGE_PROPS[kind][:2]
+    lift = IMAGE_PROPS[kind][2] if len(IMAGE_PROPS[kind]) > 2 else 0.0
+    if variant:
+        file = file[:-4] + "_" + variant + ".png"
     path = os.path.join(_IMG_DIR, file)
     if not os.path.exists(path):
         return None
@@ -2393,10 +2428,12 @@ def _image_prop(kind, shape, ppm):
     w = int(round(src.width * h / src.height))
     im = src.resize((w, h), Image.LANCZOS)
     pad = int(0.12 * ppm)
-    canvas = Image.new("RGBA", (w + 2 * pad, h + pad), (0, 0, 0, 0))
-    sh = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    ImageDraw.Draw(sh).ellipse([pad + w * 0.06, h - 0.16 * ppm, pad + w * 0.97, h + 0.07 * ppm], fill=(0, 0, 0, 105))
-    canvas.alpha_composite(sh.filter(ImageFilter.GaussianBlur(0.06 * ppm)))
+    lp = int(round(lift * ppm))
+    canvas = Image.new("RGBA", (w + 2 * pad, h + pad + lp), (0, 0, 0, 0))
+    if lift <= 0 and kind not in NO_SHADOW:
+        sh = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        ImageDraw.Draw(sh).ellipse([pad + w * 0.06, h - 0.16 * ppm, pad + w * 0.97, h + 0.07 * ppm], fill=(0, 0, 0, 105))
+        canvas.alpha_composite(sh.filter(ImageFilter.GaussianBlur(0.06 * ppm)))
     canvas.alpha_composite(im, (pad, 0))
     cx = (x0 + x1) / 2
     return canvas, cx - canvas.width / 2 / ppm, y0 - pad / ppm, y0
@@ -2406,10 +2443,15 @@ def draw(kind, shape, idx, ppm, variant=None):
     """Ein Objekt als Sprite: (RGBA-Bild, welt_x_links, welt_y_unten, standlinie_y). Vertrag wie park_art.draw.
     variant: Tauschbild derselben Art und Groesse (Mechaniken: Pendel, Blick, Licht aus), nur Arten mit
     variant-Parameter; gen_villa legt sie unter "Prop/<Art>/<x>/<y>/<Variante>" in den Konsolen-Atlas."""
-    if kind in IMAGE_PROPS and variant is None:
-        got = _image_prop(kind, shape, ppm)
+    if kind == "unsichtbar":
+        x0, y0, x1, y1 = A.shape_bounds(shape)
+        return Image.new("RGBA", (4, 4), (0, 0, 0, 0)), x0, y0, y0
+    if kind in IMAGE_PROPS:
+        got = _image_prop(kind, shape, ppm, variant)
         if got is not None:
             return got
+        if kind not in _KIND_FN:
+            raise FileNotFoundError(f"{IMAGE_PROPS[kind][0]} (variant {variant}) missing in villa_assets")
     x0, y0, x1, y1 = A.shape_bounds(shape)
     h = PROP_H[kind]
     p = Prop(x0, y0, x1, y1, h, ppm, pad=PROP_PAD.get(kind, 0.3))
