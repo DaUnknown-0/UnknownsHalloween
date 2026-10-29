@@ -228,13 +228,18 @@ internal sealed partial class HollowmereWorld
             // 28.10. (n58, DrSuspect): die Halloween-Schrift war auf dem Stein schwer zu lesen; die schlichte Spielschrift
             var f = TMPro.TMP_Settings.defaultFontAsset ?? HalloweenUI.Font();
             if (f != null) t.font = f;
-            t.fontStyle = TMPro.FontStyles.Normal;
+            // 29.10. (User: "text deutlich deutlicher"): fett, fast schwarz, groesseres Feld und eine helle Kante wie
+            // eingemeisselter Stein, damit die Schrift sich vom grauen Stein abhebt
+            t.fontStyle = TMPro.FontStyles.Bold;
             t.alignment = TMPro.TextAlignmentOptions.Center;
             t.enableWordWrapping = false;
-            t.enableAutoSizing = true; t.fontSizeMin = 0.3f; t.fontSizeMax = 0.9f;
-            t.color = new Color32(58, 58, 64, 255);
-            t.rectTransform.sizeDelta = new Vector2(size.x * 0.24f / ppu, size.y * (owner ? 0.2f : 0.16f) / ppu);
-            t.text = owner ? $"R.I.P.\n{name}\n<size=70%>still coding</size>" : $"R.I.P.\n{name}";
+            t.enableAutoSizing = true; t.fontSizeMin = 0.3f; t.fontSizeMax = 1.3f;
+            t.lineSpacing = -12f;
+            t.color = new Color32(22, 22, 28, 255);
+            t.outlineWidth = 0.12f;
+            t.outlineColor = new Color32(215, 215, 222, 200);
+            t.rectTransform.sizeDelta = new Vector2(size.x * 0.29f / ppu, size.y * (owner ? 0.26f : 0.2f) / ppu);
+            t.text = owner ? $"R.I.P.\n{name}\n<size=78%>still coding</size>" : $"R.I.P.\n{name}";
             var mr = t.GetComponent<MeshRenderer>();
             if (mr != null) { mr.sortingLayerID = _graveSr.sortingLayerID; mr.sortingOrder = _graveSr.sortingOrder + 1; }
 
