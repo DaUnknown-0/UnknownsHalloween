@@ -383,6 +383,9 @@ GLASS += [
     (("circle", 46.2, 32.5, 0.25), "kandelaber", L),
 ]
 DECOR = [
+    # 29.10. (User: Speiseaufzug behalten, erkennbar zeichnen): Seitenansicht nach Westen an der Ostwand (GPT, villa_speiseaufzug.png)
+    (("rect", 6.75, 5.0, 7.0, 6.0), "speiseaufzug", B),              # Kitchen, Ostwand (Geheimgang)
+    (("rect", 26.75, 6.3, 27.0, 7.3), "speiseaufzug", B),            # Radio Room, Ostwand: das andere Ende des Aufzugs
     (("rect", 0.6, 2.6, 1.6, 2.9), "fleischerhaken", B),             # Kitchen, haengt von der Decke
     (("rect", 7.4, 6.2, 10.6, 6.5), "waescheleine", B),              # Laundry, Laken wie Gestalten
     (("rect", 20.0, 7.5, 22.0, 7.75), "wandteppich", B),             # Seance, Suedwand (Geheimgang zur Halle)
