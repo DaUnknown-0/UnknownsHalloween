@@ -106,6 +106,7 @@ internal sealed partial class HollowmereWorld
         _graceArmed = false;
         CloseBook();
         DixiReset();                                                       // HollowmereWorld.Dixi.cs
+        if (_toastRoot != null) { Object.Destroy(_toastRoot); _toastRoot = null; }
     }
 
     // ------------------------------------------------------------------ Kerzen (aus Ritual.cs)
@@ -189,6 +190,7 @@ internal sealed partial class HollowmereWorld
         float now = Time.time;
         BodyTick(now);
         FxTick(now);
+        ToastTick();
         BookTick();
         SecretTaskTick();
         if (_poisoned.Count > 0 && AmHost)
@@ -702,21 +704,24 @@ internal sealed partial class HollowmereWorld
         catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} secret task failed: {e.Message}"); }
     }
 
-    // ---- Buch-Oberflaeche (HUD): zwei Seiten, blaettern mit Klick links/rechts oder Pfeiltasten, schliessen mit Esc oder X
+    // ---- Buch-Oberflaeche: eigene Bildschirm-Canvas ueber dem HUD (HalloweenUI, wie die anderen Halloween-Menues; 28.10. abends:
+    // die erste Fassung hing an der HUD-Ebene, lag unter den Knoepfen und die Abdunkelung war winzig). Zwei Seiten: links Bild
+    // und Name, rechts die Folge und eine Notiz. Blaettern mit den Knoepfen oder Pfeiltasten, schliessen mit X, Esc oder Klick daneben.
 
     private GameObject _bookRoot;
     private int _bookPage;
     private byte _book;
     private readonly List<(string Title, Being[] Pics, string Line, string Note)> _pages = new();
-    private SpriteRenderer[] _pagePics = Array.Empty<SpriteRenderer>();
-    private TextMeshPro _tTitle, _tLine, _tNote, _tNav;
-    private static Sprite _bookSprite, _dimSprite;
+    private UnityEngine.UI.Image[] _pagePics = Array.Empty<UnityEngine.UI.Image>();
+    private TextMeshProUGUI[] _picNames = Array.Empty<TextMeshProUGUI>();
+    private TextMeshProUGUI _tTitle, _tLine, _tNote, _tNav;
+    private GameObject _bPrev, _bNext;
+    private static Sprite _bookSprite;
 
     private void OpenBook(byte book)
     {
         CloseBook();
-        var hud = HudManager.InstanceExists ? HudManager.Instance : null;
-        if (hud == null) return;
+        if (!HudManager.InstanceExists) return;
         _book = book;
         _pages.Clear();
         if (book == 255)
@@ -742,101 +747,98 @@ internal sealed partial class HollowmereWorld
             foreach (var b in list) _pages.Add((BeingName[(int)b], new[] { b }, string.Join(" - ", HardCodes[(int)b]), notes[(int)b]));
             _pages.Add(("A warning", Array.Empty<Being>(), "Any other order wakes a demon", "Whoever lights the last candle without having read a book calls a restless ghost. It will tear them apart."));
         }
-        _bookRoot = new GameObject("HollowmereBook") { layer = 5 };
-        _bookRoot.transform.SetParent(hud.transform, false);
-        _bookRoot.transform.localPosition = new Vector3(0f, 0f, -60f);
-        var dim = new GameObject("Dim") { layer = 5 };
-        dim.transform.SetParent(_bookRoot.transform, false);
-        dim.transform.localScale = new Vector3(40f, 25f, 1f);
-        var dsr = dim.AddComponent<SpriteRenderer>();
-        dsr.sprite = _dimSprite ??= GraveyardWorld.Painted(4, 4, new Vector2(0.5f, 0.5f), (x, y) => new Color32(255, 255, 255, 255));
-        dsr.color = new Color(0f, 0f, 0f, 0.72f);
-        var bk = new GameObject("Book") { layer = 5 };
-        bk.transform.SetParent(_bookRoot.transform, false);
-        bk.transform.localPosition = new Vector3(0f, 0f, -0.1f);
-        var bsr = bk.AddComponent<SpriteRenderer>();
-        bsr.sprite = _bookSprite ??= PaintBook();
-        _pagePics = new SpriteRenderer[3];
+
+        const float W = 1500f, H = 860f;
+        _bookRoot = HalloweenUI.Canvas("HollowmereBook", 9400, true);
+        HalloweenUI.Backdrop(_bookRoot, CloseBook);
+        var panel = HalloweenUI.CenterPanel(_bookRoot, new Vector2(W, H));
+        // Pergament mit Falz in der Mitte
+        var paper = new GameObject("Paper");
+        paper.transform.SetParent(panel.transform, false);
+        var prt = paper.AddComponent<RectTransform>();
+        prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one;
+        prt.offsetMin = new Vector2(HalloweenUI.FrameW + 14f, HalloweenUI.FrameW + 90f);
+        prt.offsetMax = new Vector2(-HalloweenUI.FrameW - 14f, -HalloweenUI.FrameW - 14f);
+        var pimg = paper.AddComponent<UnityEngine.UI.Image>();
+        pimg.sprite = _bookSprite ??= PaintBook();
+        pimg.raycastTarget = false;
+
+        // linke Seite: bis zu drei Bilder nebeneinander, Titel darueber
+        _tTitle = HalloweenUI.Label(paper, "", 54f, new Color32(80, 34, 22, 255), new Vector2(0f, 1f), new Vector2(0.5f, 1f),
+                                    new Vector2(0.5f, 1f), new Vector2(0f, -30f), new Vector2(-60f, 80f), TMPro.TextAlignmentOptions.Center);
+        HalloweenUI.Heading(_tTitle);
+        _pagePics = new UnityEngine.UI.Image[3];
+        _picNames = new TextMeshProUGUI[3];
         for (int i = 0; i < 3; i++)
         {
-            var g = new GameObject($"Pic{i}") { layer = 5 };
-            g.transform.SetParent(_bookRoot.transform, false);
-            _pagePics[i] = g.AddComponent<SpriteRenderer>();
-            _pagePics[i].sortingOrder = 5;
+            var g = new GameObject($"Pic{i}");
+            g.transform.SetParent(paper.transform, false);
+            var rt = g.AddComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.25f, 0.45f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            _pagePics[i] = g.AddComponent<UnityEngine.UI.Image>();
+            _pagePics[i].preserveAspect = true;
+            _pagePics[i].raycastTarget = false;
+            // Name unter dem Bild (User 28.10.)
+            _picNames[i] = HalloweenUI.Label(g, "", 30f, new Color32(80, 34, 22, 255), new Vector2(0f, 0f), new Vector2(1f, 0f),
+                                             new Vector2(0.5f, 1f), new Vector2(0f, -4f), new Vector2(40f, 44f), TMPro.TextAlignmentOptions.Center);
+            HalloweenUI.Heading(_picNames[i]);
         }
-        _tTitle = BookText(new Vector2(-2.0f, 1.95f), 3.2f, new Color32(70, 30, 20, 255));
-        _tLine = BookText(new Vector2(2.0f, 0.75f), 3.6f, new Color32(120, 15, 15, 255));
-        _tNote = BookText(new Vector2(2.0f, -0.75f), 2.0f, new Color32(60, 45, 35, 255));
-        _tNav = BookText(new Vector2(0f, -2.45f), 1.8f, new Color32(230, 220, 200, 255));
-        var x = BookText(new Vector2(3.95f, 2.45f), 3f, new Color32(230, 220, 200, 255));
-        x.text = "X";
+        // rechte Seite: Folge gross, Notiz darunter
+        _tLine = HalloweenUI.Label(paper, "", 64f, new Color32(140, 18, 18, 255), new Vector2(0.5f, 0.5f), new Vector2(1f, 0.5f),
+                                   new Vector2(0.5f, 0.5f), new Vector2(0f, 110f), new Vector2(-80f, 120f), TMPro.TextAlignmentOptions.Center);
+        HalloweenUI.Heading(_tLine);
+        _tNote = HalloweenUI.Label(paper, "", 34f, new Color32(60, 45, 35, 255), new Vector2(0.5f, 0.5f), new Vector2(1f, 0.5f),
+                                   new Vector2(0.5f, 0.5f), new Vector2(0f, -90f), new Vector2(-110f, 260f), TMPro.TextAlignmentOptions.Center);
+        // unten: blaettern, Seitenzahl, schliessen
+        float by = HalloweenUI.FrameW + 18f;
+        _bPrev = HalloweenUI.Button(panel, "<", new Vector2(-170f, by), new Vector2(110f, 56f), HalloweenUI.Grey, () => Flip(-1));
+        _bNext = HalloweenUI.Button(panel, ">", new Vector2(170f, by), new Vector2(110f, 56f), HalloweenUI.Grey, () => Flip(1));
+        _tNav = HalloweenUI.Label(panel, "", 30f, HalloweenUI.Muted, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+                                  new Vector2(0f, by + 8f), new Vector2(200f, 44f), TMPro.TextAlignmentOptions.Center);
+        HalloweenUI.CloseButton(panel, "", CloseBook);
         _bookPage = 0;
         ShowPage();
         try { PlayerControl.LocalPlayer.moveable = false; } catch { }
         AtlasMaps.Sfx("whoosh", 0.35f);
     }
 
-    private TextMeshPro BookText(Vector2 at, float size, Color32 c)
-    {
-        var g = new GameObject("Text") { layer = 5 };
-        g.transform.SetParent(_bookRoot.transform, false);
-        g.transform.localPosition = new Vector3(at.x, at.y, -0.3f);
-        var t = g.AddComponent<TextMeshPro>();
-        var f = HalloweenUI.Font();
-        if (f != null) t.font = f;
-        t.fontSize = size;
-        t.color = c;
-        t.alignment = TextAlignmentOptions.Center;
-        t.enableWordWrapping = true;
-        t.rectTransform.sizeDelta = new Vector2(3.4f, 1.6f);
-        var mr = t.GetComponent<MeshRenderer>();
-        if (mr != null) mr.sortingOrder = 6;
-        return t;
-    }
-
     private void ShowPage()
     {
         var p = _pages[_bookPage];
-        _tTitle.text = p.Title;
-        _tLine.text = p.Line;
-        _tNote.text = p.Note;
-        _tNav.text = _pages.Count > 1 ? $"<   {_bookPage + 1} / {_pages.Count}   >" : "";
+        HalloweenUI.SetText(_tTitle, p.Title);
+        HalloweenUI.SetText(_tLine, p.Line);
+        HalloweenUI.SetText(_tNote, p.Note);
+        HalloweenUI.SetText(_tNav, _pages.Count > 1 ? $"{_bookPage + 1} / {_pages.Count}" : "");
+        if (_bPrev != null) _bPrev.SetActive(_bookPage > 0);
+        if (_bNext != null) _bNext.SetActive(_bookPage < _pages.Count - 1);
+        int n = p.Pics.Length;
         for (int i = 0; i < _pagePics.Length; i++)
         {
-            var sr = _pagePics[i];
-            if (i >= p.Pics.Length) { sr.sprite = null; continue; }
-            sr.sprite = BeingSprite(p.Pics[i]);
-            float h = p.Pics.Length == 1 ? 3.0f : 1.9f;
-            float scale = sr.sprite != null ? h / sr.sprite.bounds.size.y : 1f;
-            sr.transform.localScale = new Vector3(scale, scale, 1f);
-            float x = p.Pics.Length == 1 ? -2.0f : -3.2f + i * 1.2f;
-            float y = p.Pics.Length == 1 ? -1.75f : -0.95f - (i % 2) * 0.25f;
-            sr.transform.localPosition = new Vector3(x, y, -0.2f - i * 0.01f);
+            var img = _pagePics[i];
+            if (i >= n) { img.enabled = false; HalloweenUI.SetText(_picNames[i], ""); continue; }
+            img.enabled = true;
+            img.sprite = BeingSprite(p.Pics[i]);
+            HalloweenUI.SetText(_picNames[i], BeingName[(int)p.Pics[i]]);
+            var rt = img.rectTransform;
+            float h = n == 1 ? 520f : 380f, w = n == 1 ? 500f : 220f;
+            rt.sizeDelta = new Vector2(w, h);
+            rt.anchoredPosition = new Vector2(n == 1 ? 0f : (i - 1) * 225f, n == 1 ? -10f : 0f);
         }
     }
 
     private void BookTick()
     {
         if (_bookRoot == null) { OfferBooks(); return; }
-        bool close = Input.GetKeyDown(KeyCode.Escape) || (PlayerControl.LocalPlayer?.Data?.IsDead ?? true);
+        bool dead = PlayerControl.LocalPlayer?.Data?.IsDead ?? true;
+        if (Input.GetKeyDown(KeyCode.Escape) || dead) { CloseBook(); return; }
         if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D)) Flip(1);
         if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A)) Flip(-1);
-        if (Input.GetMouseButtonDown(0))
-        {
-            var cam = TreatFx.UiCam();
-            if (cam != null)
-            {
-                var wp = (Vector2)_bookRoot.transform.InverseTransformPoint(cam.ScreenToWorldPoint(Input.mousePosition));
-                if (wp.x > 3.6f && wp.y > 2.1f) close = true;
-                else if (Mathf.Abs(wp.x) > 4.4f || Mathf.Abs(wp.y) > 2.8f) close = true;
-                else Flip(wp.x < 0f ? -1 : 1);
-            }
-        }
-        if (close) CloseBook();
     }
 
     private void Flip(int d)
     {
+        if (_bookRoot == null) return;
         int n = Mathf.Clamp(_bookPage + d, 0, _pages.Count - 1);
         if (n == _bookPage) return;
         _bookPage = n;
@@ -852,28 +854,110 @@ internal sealed partial class HollowmereWorld
         try { if (PlayerControl.LocalPlayer != null) PlayerControl.LocalPlayer.moveable = true; } catch { }
     }
 
-    /// <summary>Aufgeschlagenes Buch: Ledereinband, zwei Pergamentseiten mit Falz, 9 x 5,8 Einheiten.</summary>
+    /// <summary>Aufgeschlagenes Buch als Bild: zwei Pergamentseiten mit Falz und gealterten Raendern (900 x 520).</summary>
     private static Sprite PaintBook()
     {
-        const int W = 900, H = 580;
-        var s = GraveyardWorld.Painted(W, H, new Vector2(0.5f, 0.5f), (x, y) =>
-        {
-            bool cover = x < 14 || x > W - 15 || y < 14 || y > H - 15;
-            if (cover) return new Color32(70, 30, 22, 255);
-            float fold = Mathf.Abs(x - W / 2f);
-            float n = Mathf.PerlinNoise(x * 0.02f, y * 0.02f);
-            float shade = Mathf.Clamp01(fold / 60f) * 0.25f + 0.75f;
-            float edge = Mathf.Min(Mathf.Min(x - 14, W - 15 - x), Mathf.Min(y - 14, H - 15 - y));
-            float age = Mathf.Clamp01(1f - edge / 40f) * 0.25f;
-            float r = (236 - 30 * n) * shade * (1f - age), g = (222 - 34 * n) * shade * (1f - age * 1.2f), b = (180 - 40 * n) * shade * (1f - age * 1.5f);
-            return new Color32((byte)r, (byte)g, (byte)b, 255);
-        });
-        return Sprite.Create(s.texture, s.rect, new Vector2(0.5f, 0.5f), 100f);
+        const int W = 900, H = 520;
+        var tex = new Texture2D(W, H, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+        var px = new Color32[W * H];
+        for (int y = 0; y < H; y++)
+            for (int x = 0; x < W; x++)
+            {
+                float fold = Mathf.Abs(x - W / 2f);
+                float n = Mathf.PerlinNoise(x * 0.02f, y * 0.02f);
+                float shade = Mathf.Clamp01(fold / 60f) * 0.25f + 0.75f;
+                float edge = Mathf.Min(Mathf.Min(x, W - 1 - x), Mathf.Min(y, H - 1 - y));
+                float age = Mathf.Clamp01(1f - edge / 40f) * 0.25f;
+                px[y * W + x] = new Color32((byte)((236 - 30 * n) * shade * (1f - age)), (byte)((222 - 34 * n) * shade * (1f - age * 1.2f)),
+                                            (byte)((180 - 40 * n) * shade * (1f - age * 1.5f)), 255);
+            }
+        tex.SetPixels32(px);
+        tex.Apply(false, false);
+        tex.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
+        var s = Sprite.Create(tex, new Rect(0, 0, W, H), new Vector2(0.5f, 0.5f), 100f);
+        s.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
+        return s;
     }
+
+    // ------------------------------------------------------------------ Autotest (UC_HALLOWEEN_DIAG=villalarge,summon)
+
+    private void DiagSummon(PlayerControl lp)
+    {
+        int[] order = EasyGood;
+        switch (_diagStep)
+        {
+            case 0:
+                try { lp.NetTransform.RpcSnapTo(BookMain); } catch { }
+                _diagStep = 1; _diagAt = Time.time + 1f; return;
+            case 1:
+                RequestRead(0);
+                _diagStep = 2; _diagAt = Time.time + 1.2f; return;
+            case 2:
+                AtlasMaps.Shot("summon", "book1");
+                _diagStep = 3; _diagAt = Time.time + 0.6f; return;
+            case 3:
+                Flip(1);
+                _diagStep = 4; _diagAt = Time.time + 0.8f; return;
+            case 4:
+                AtlasMaps.Shot("summon", "book2");
+                _diagStep = 5; _diagAt = Time.time + 0.6f; return;
+            case 5:
+                CloseBook();
+                try { lp.NetTransform.RpcSnapTo(RitualCenter + new Vector2(0f, -2.4f)); } catch { }
+                _diagStep = 6; _diagAt = Time.time + 1f; return;
+            default:
+            {
+                int k = _diagStep - 6;
+                if (k < order.Length)
+                {
+                    LightRitualLocal(NumberToTip[order[k]]);
+                    _diagStep++; _diagAt = Time.time + 0.5f; return;
+                }
+                if (k == order.Length) { _diagStep++; _diagAt = Time.time + 2.5f; return; }
+                if (k == order.Length + 1)
+                {
+                    AtlasMaps.Shot("summon", "being_" + BeingKey[(int)_being]);
+                    HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag summon: {BeingName[(int)_being]}, armour {ArmorBlessed.Count}, grace {Graced.Count}, readers {Readers.Count}");
+                    _diagStep++; _diagAt = Time.time + 4f; return;
+                }
+                AtlasMaps.Shot("summon", "later");
+                _diagTask++; _diagStep = 0; _diagAt = Time.time + 1f; return;
+            }
+        }
+    }
+
+    // Hinweis-Banner oben in der Mitte (28.10. abends, User: "nicht als Leave/Error-Meldung"): eigene, nicht blockierende
+    // Canvas, 4 s sichtbar, die letzte halbe Sekunde ausgeblendet
+    private GameObject _toastRoot;
+    private TextMeshProUGUI _toastText;
+    private float _toastUntil = -1f;
 
     private void Toast(string text)
     {
-        try { HudManager.Instance?.Notifier?.AddDisconnectMessage(text); } catch { }
+        try
+        {
+            if (_toastRoot == null)
+            {
+                _toastRoot = HalloweenUI.Canvas("HollowmereToast", 8800, false);
+                var box = HalloweenUI.Panel(_toastRoot, new Vector2(900f, 96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -120f));
+                _toastText = HalloweenUI.Label(box, "", 32f, Color.white, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f),
+                                               Vector2.zero, new Vector2(-40f, -10f), TMPro.TextAlignmentOptions.Center);
+            }
+            HalloweenUI.SetText(_toastText, text);
+            _toastRoot.SetActive(true);
+            _toastUntil = Time.time + 4f;
+        }
+        catch { }
+    }
+
+    private void ToastTick()
+    {
+        if (_toastRoot == null || !_toastRoot.activeSelf) return;
+        float left = _toastUntil - Time.time;
+        if (left <= 0f || MeetingHud.Instance != null) { _toastRoot.SetActive(false); return; }
+        var cg = _toastRoot.GetComponent<CanvasGroup>() ?? _toastRoot.AddComponent<CanvasGroup>();
+        cg.alpha = Mathf.Clamp01(left / 0.5f);
+        cg.blocksRaycasts = false;
     }
 
     // ------------------------------------------------------------------ Netz (aus HandleRitualRpc)

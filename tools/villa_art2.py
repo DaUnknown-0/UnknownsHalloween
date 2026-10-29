@@ -1357,7 +1357,7 @@ def _nop_shape(*a, **k):
 HOUSE_H = {
     "kupferkessel": 1.8, "mangel": 1.2, "seifenkisten": 0.9, "hackblock": 1.0, "craftservice": 1.4, "topfregal": 2.2,
     "speiseaufzug": 1.8, "fleischerhaken": 2.6, "waescheleine": 2.4, "seance_wand": 2.5, "wandteppich": 2.3,
-    "umgestuerzter_stuhl": 0.3, "kristallkugel_tisch": 1.0, "phonograph": 1.4, "bandregal": 2.2, "walkie_station": 1.1,
+    "umgestuerzter_stuhl": 0.3, "kristallkugel_tisch": 1.6, "phonograph": 1.4, "bandregal": 2.2, "walkie_station": 1.1,
     "drehstuhl": 1.2, "tonband_boden": 0.2, "kleiderstange": 2.0, "maskenregal": 2.3, "schneiderpuppe": 1.8,
     "sarg_angelehnt": 2.2, "nebelmaschine": 0.6, "orrery": 1.5, "buecherstapel": 0.8, "sternkarte_datum": 2.1,
     "rohre": 2.1, "handabdruck_russ": 1.6, "garderobe": 2.1, "klingelbrett": 1.9, "rauchendes_buch": 0.5, "leiter": 2.5,

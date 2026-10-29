@@ -330,9 +330,9 @@ def render_all(ppm, brief):
 # Konsolen aus einem fertigen Bild (28.10., GPT-Boegen 18-20): Name -> (Datei in tools/villa_assets, Hoehe in m).
 # Anker = Mitte der Unterkante. gpt_standard.py laesst diese Namen aus (sonst kaeme das alte GPT-Bild zurueck).
 IMAGE_CONSOLES = {
-    "EmergencyButton": ("villa_notfalltisch.png", 1.55),
+    "EmergencyButton": ("villa_notfalltisch.png", 1.15),
     "MakeBurger": ("villa_herd_gross.png", 1.9),          # der grosse Herd selbst ist die Burger-Konsole (n66)
-    "FuelEngineConsole@kitchen": ("villa_gasflasche.png", 1.15),   # statt Kohlenkasten (n70)
+    "FuelEngineConsole@kitchen": ("villa_gasflasche.png", 0.9),   # statt Kohlenkasten (n70)
     "UnlockSafe": ("villa_safe.png", 1.3),                # Airship-Tresor im Arbeitszimmer (n33)
     "WaterBench": ("villa_pflanzbank.png", 1.25),         # Pflanzen giessen, Gewaechshaus (n24)
     "Campfire": ("villa_lagerfeuer.png", 1.2),            # Marshmallows, Crew Camp (n62)
@@ -380,8 +380,10 @@ def _render_all(ppm, brief):
             # raumabhaengige Villa-Motive (24.10.: Kohlenkasten in der Kueche)
             spr = VCA.BY_NAME_ROOM[(name, room)](ppm, sum(ord(ch) for ch in key) % 7)
         elif name in VCA.BY_NAME:
-            # Villa-eigene Motive (Audit 15.10.); idx variiert Details je Konsole
-            spr = VCA.BY_NAME[name](ppm, sum(ord(ch) for ch in key) % 7)
+            # Villa-eigene Motive (Audit 15.10.); idx variiert Details je Konsole. 28.10. abends: der Seance-Tisch mit dem
+            # Ouija-Brett ("Set the Seance Table") groesser
+            scale = 1.9 if name == "StartReactorConsole" else 1.0
+            spr = VCA.BY_NAME[name](ppm * scale, sum(ord(ch) for ch in key) % 7)
         elif key == "SurveillanceConsole":
             spr = WC.ranger_desk(ppm)
         elif key == "AdminTable":
@@ -405,7 +407,7 @@ def _render_all(ppm, brief):
         elif name == "gasCanConsole":
             spr = WC.jerrycan_rack(ppm)
         elif name == "StabilizeSteeringConsole":
-            spr = WC.theodolite(ppm * 2.0)                   # 28.10. n81: das Teleskop in der Raummitte, groesser
+            spr = WC.theodolite(ppm * 2.8)                   # 28.10. n81: das Teleskop in der Raummitte, groesser
         elif name == "FixCommsConsole":
             spr = WC.radio_set(ppm)
         else:

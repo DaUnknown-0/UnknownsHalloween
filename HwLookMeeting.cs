@@ -58,6 +58,11 @@ namespace UnknownsHalloween {
 
         private sealed class Flame { public SpriteRenderer R; public float Phase, Speed; public Vector3 Scale; }
 
+        /// <summary>A decoration held at a fixed spot of the screen (viewport point, width as a share of the view height).
+        /// Placed again every frame at first: the tablet can still move after Start, and a one-off placement then drifted
+        /// (28.10.: the candles stood top left between the name plates).</summary>
+        private sealed class Pin { public Transform T; public Vector2 View; public float ViewW, SpriteW, Z; public bool Candles; }
+
         private static void Decorate(MeetingHud hud) {
             var cam = Camera.main;
             if (cam == null) return;
@@ -80,8 +85,9 @@ namespace UnknownsHalloween {
 
             var tl = HwArt.Get(Folder, "meeting_web_tl.png", webW, new Vector2(0f, 1f), null);
             var tr = HwArt.Get(Folder, "meeting_web_tr.png", webW, new Vector2(1f, 1f), null);
-            if (tl != null) { var r = HwLook.NewRenderer("Web_TL", root.transform, tl, Local(0f, 1f), layer); r.color = new Color(1f, 1f, 1f, 0.9f); }
-            if (tr != null) { var r = HwLook.NewRenderer("Web_TR", root.transform, tr, Local(1f, 1f), layer); r.color = new Color(1f, 1f, 1f, 0.9f); }
+            var pins = new List<Pin>();
+            if (tl != null) { var r = HwLook.NewRenderer("Web_TL", root.transform, tl, Local(0f, 1f), layer); r.color = new Color(1f, 1f, 1f, 0.9f); pins.Add(new Pin { T = r.transform, View = new Vector2(0f, 1f), ViewW = 0.22f, SpriteW = tl.bounds.size.x, Z = z }); }
+            if (tr != null) { var r = HwLook.NewRenderer("Web_TR", root.transform, tr, Local(1f, 1f), layer); r.color = new Color(1f, 1f, 1f, 0.9f); pins.Add(new Pin { T = r.transform, View = new Vector2(1f, 1f), ViewW = 0.22f, SpriteW = tr.bounds.size.x, Z = z }); }
 
             // candles bottom left, flames on the wicks (wick pixels from the artwork report, image 512 x 256)
             var flames = new List<Flame>();
@@ -92,6 +98,7 @@ namespace UnknownsHalloween {
             for (int i = 0; i < 4; i++) flameFrames[i] = HwArt.Get(Folder, $"meeting_flame_{i + 1}.png", 48f / ppu, new Vector2(0.5f, 0.04f), null);
             if (candles != null) {
                 var c = HwLook.NewRenderer("Candles", root.transform, candles, CandlePos(hud, root.transform, Local(0.5f, 0.02f)), layer);
+                pins.Add(new Pin { T = c.transform, View = new Vector2(0.5f, 0.078f), ViewW = 0.25f, SpriteW = candles.bounds.size.x, Z = -0.5f, Candles = true });
                 if (flameFrames[0] != null) {
                     int[,] wicks = { { 110, 102 }, { 176, 58 }, { 256, 32 }, { 336, 72 }, { 402, 118 } };
                     for (int k = 0; k < 5; k++) {
@@ -109,7 +116,7 @@ namespace UnknownsHalloween {
 
             DiagDecorations = (tl != null ? 1 : 0) + (tr != null ? 1 : 0) + (candles != null ? 1 : 0) + flames.Count + (skipBat != null ? 1 : 0);
             HwLook.Log($"meeting dressed: {DiagDecorations} part(s), z {z:F2}, view {viewH:F2}");
-            Reactor.Utilities.Coroutines.Start(Animate(hud, root, flames, flameFrames, skipBat, bat));
+            Reactor.Utilities.Coroutines.Start(Animate(hud, root, flames, flameFrames, skipBat, bat, pins));
         }
 
         /// <summary>Candles: bottom middle of the tablet, behind the name plates (in front of the tablet itself).</summary>
@@ -123,6 +130,38 @@ namespace UnknownsHalloween {
                 var l = root.InverseTransformPoint(w);
                 return new Vector3(l.x, l.y, -0.5f);
             } catch { return fallback; }
+        }
+
+        /// <summary>Puts a pinned decoration back on its screen spot at its screen size. The candles make room for TOR's
+        /// meeting button (Mayor "Double Vote", Swapper "Confirm Swap"), which sits at the bottom middle: they move right
+        /// and get a little smaller.</summary>
+        private static void Place(MeetingHud hud, Pin p, bool torButton) {
+            var cam = Camera.main;
+            if (cam == null || p.T == null || p.T.parent == null || p.SpriteW <= 0f) return;
+            float viewH = cam.orthographicSize * 2f;
+            float worldW = viewH * (p.Candles && torButton ? 0.2f : p.ViewW);
+            var w = cam.ViewportToWorldPoint(new Vector3(p.View.x, p.View.y, 0f));
+            if (p.Candles && torButton) w.x += viewH * 0.24f;
+            var parent = p.T.parent;
+            var l = parent.InverseTransformPoint(w);
+            p.T.localPosition = new Vector3(l.x, l.y, p.Z);
+            float ps = Mathf.Max(0.0001f, parent.lossyScale.y);
+            p.T.localScale = new Vector3(worldW / (p.SpriteW * ps), worldW / (p.SpriteW * ps), 1f);
+        }
+
+        /// <summary>TOR's extra meeting button: a child of PhoneUI at (0, -2.225), see TOR MeetingPatch populateButtonsPostfix.</summary>
+        private static bool TorButton(MeetingHud hud) {
+            try {
+                var phone = hud.transform.Find("PhoneUI");
+                if (phone == null) return false;
+                for (int i = 0; i < phone.childCount; i++) {
+                    var ch = phone.GetChild(i);
+                    if (ch == null || !ch.gameObject.activeSelf) continue;
+                    var lp = ch.localPosition;
+                    if (Mathf.Abs(lp.x) < 0.01f && Mathf.Abs(lp.y + 2.225f) < 0.01f) return true;
+                }
+            } catch { }
+            return false;
         }
 
         /// <summary>Local z for the corner decoration: just in front of the meeting's glass/background.</summary>
@@ -151,12 +190,25 @@ namespace UnknownsHalloween {
             return sr;
         }
 
-        private static IEnumerator Animate(MeetingHud hud, GameObject root, List<Flame> flames, Sprite[] frames, SpriteRenderer skipBat, Sprite bat) {
+        private static IEnumerator Animate(MeetingHud hud, GameObject root, List<Flame> flames, Sprite[] frames, SpriteRenderer skipBat, Sprite bat, List<Pin> pins) {
             var swapped = new HashSet<int>();
-            float nextScan = 0f;
+            float nextScan = 0f, nextPlace = 0f, placeUntil = Time.time + 2f;
+            bool loggedPlace = false;
             DiagVoteGhosts = 0;
             while (hud != null && root != null) {
                 float t = Time.time;
+                // screen spots: every frame while the meeting opens, then twice a second (aspect changes, TOR's late button)
+                if (t < placeUntil || t >= nextPlace) {
+                    nextPlace = t + 0.5f;
+                    bool tor = TorButton(hud);
+                    foreach (var p in pins) Place(hud, p, tor);
+                    if (!loggedPlace && t >= placeUntil) {
+                        loggedPlace = true;
+                        var cp = pins.Find(p => p.Candles);
+                        if (cp != null && cp.T != null && Camera.main != null)
+                            HwLook.Log($"meeting candles at {Camera.main.WorldToViewportPoint(cp.T.position)} (TOR button {tor})");
+                    }
+                }
                 // flames: four frames as a loop, each flame on its own clock, a little flicker in size and light
                 for (int i = 0; i < flames.Count; i++) {
                     var f = flames[i];

@@ -46,10 +46,16 @@ namespace UnknownsHalloween {
                 for (int i = modals.Count - 1; i >= 0; i--) {
                     var go = modals[i];
                     bool alive = false;
-                    try { alive = go != null && go.activeInHierarchy; } catch { }
+                    try {
+                        // 28.10. (DrSuspect: "nur E geht, Mausklicks auf Use usw. nicht"): ein Menue zaehlt nur, solange
+                        // seine Canvas aktiv UND eingeschaltet ist; eine ausgeblendete Canvas blockierte sonst unsichtbar
+                        var cv = go != null ? go.GetComponent<Canvas>() : null;
+                        alive = go != null && go.activeInHierarchy && (cv == null || cv.enabled);
+                    } catch { }
                     if (go == null) { modals.RemoveAt(i); continue; }
                     if (alive) open = true;
                 }
+                if (open && !openCache) LogBlock();
                 openCache = open;
                 return open;
             }
@@ -62,6 +68,15 @@ namespace UnknownsHalloween {
         static class ModalResetEnd { public static void Postfix() => ModalReset(); }
         [HarmonyLib.HarmonyPatch(typeof(MainMenuManager), nameof(MainMenuManager.Start))]
         static class ModalResetMenu { public static void Postfix() => ModalReset(); }
+
+        private static float lastBlockLog = -100f;
+
+        /// <summary>Welches Menue gerade sperrt (hoechstens alle 30 s eine Zeile): zeigt bei "Klicks gehen nicht" den Schuldigen.</summary>
+        private static void LogBlock() {
+            if (Time.realtimeSinceStartup - lastBlockLog < 30f) return;
+            lastBlockLog = Time.realtimeSinceStartup;
+            try { HalloweenPlugin.Logger?.LogInfo("[Halloween/UI] menu lock on: " + ModalDebug() + " owners: " + string.Join(",", lockOwners)); } catch { }
+        }
 
         internal static void ModalReset() {
             lockOwners.Clear();

@@ -130,7 +130,7 @@ FIXED = {
     "Comms/FixCommsConsole/0": (26.3, 1.6),               # Funkraum, Ostwand
     "MedBay/MedScanner/0": (21.4, 21.4),                  # Schminkstuhl
     "Security/FixWiringConsole/5": (11.45, 22.4),         # Regie, Westwand (zu eng fuer die Automatik)
-    "Nav/FixWiringConsole/3": (32.6, 4.75),               # Sternwarte, oben rechts am Eingang (n78)
+    "Nav/FixWiringConsole/3": (33.4, 4.65),               # Sternwarte, Nordostecke an der Wand (n78, 28.10. abends)
     # Aufgabe aus Airship (Atlas ForeignTasks): Burger braten am Herd der Kueche (User 15.10.)
     "LowerEngine/MakeBurger/0": (1.6, 1.35),             # 28.10.: der grosse Herd ist jetzt die Konsole selbst (n66)
     # 28.10. Feedback DrSuspect (Atlas-Reiter aus Airship, HollowmereMap.ForeignTasks)
@@ -185,6 +185,8 @@ CAMERAS = {
 
 # Kameras, die in die andere Richtung schauen (28.10., n02/n25/n37): Index in CAMERAS je Variante
 CAMERA_FLIP = {"small": {0, 2}, "large": {0, 1, 3}}
+# Objekte, deren Bild gespiegelt wird (28.10. abends: Licht zeigt in die andere Richtung), (Art, Form) wie in OPAQUE/GLASS
+FLIP = {("scheinwerfer", ("circle", 21.8, 9.4, 0.35)), ("lichtstativ", ("circle", 22.5, 25.5, 0.3))}
 
 # Geheimgaenge (Mechanik, Schritt 4 des Audits 15.10.): Schluessel, Moebel-Art am Eingang (bewegt sich beim
 # Durchgang; der Speiseaufzug hat an beiden Enden eine Klappe), Eingang, Ausgang (Plan-Meter, jeweils einen
@@ -274,8 +276,8 @@ GLASS = [
     (("rect", 45.05, 24.25, 45.75, 24.70), "weeping_angel", L),
     (("rect", 41.25, 30.85, 41.95, 31.30), "engelsstatue_tuch", L),   # 28.10. (User): unter dem Grab ein netter, betender Engel statt Weeping Angel
     (("circle", 43.0, 34.5, 0.25), "kandelaber", L),
-    (("rect", 45.2, 30.9, 47.2, 31.6), "sarg", L),
-    (("rect", 45.2, 33.4, 47.2, 34.1), "sarg", L),
+    (("rect", 44.9, 30.9, 46.9, 31.6), "sarg", L),                   # 28.10. abends 0,3 m nach links
+    (("rect", 44.9, 33.4, 46.9, 34.1), "sarg", L),
 ]
 
 
@@ -291,7 +293,7 @@ GLASS += [
     (("rect", 5.6, 1.0, 6.4, 1.8), "hackblock", B),                  # Kitchen
     (("rect", 7.3, 0.3, 8.35, 1.05), "mangel", B),                   # Laundry, Nordwestecke (stand bis 24.10. vor der Kuechentuer)
     (("rect", 7.3, 7.0, 8.0, 7.75), "seifenkisten", B),              # Laundry, Suedwestecke
-    (("circle", 13.0, 6.5, 0.35), "kristallkugel_tisch", B),         # Seance Parlour
+    (("circle", 13.0, 6.45, 0.5), "kristallkugel_tisch", B),         # Seance Parlour (28.10. abends groesser)
     (("rect", 21.85, 5.75, 22.6, 6.4), "phonograph", B),             # Seance Parlour, Ostwand suedlich der Radio-Oeffnung (25.10.)
     (("rect", 26.3, 3.2, 26.75, 4.0), "walkie_station", B),          # Radio Room, Ostwand
     (("circle", 24.4, 2.2, 0.3), "drehstuhl", B),                    # Radio Room
@@ -318,7 +320,7 @@ GLASS += [
     (("rect", 34.3, 7.0, 34.9, 8.0), "kuebelpflanze", L),            # Terrace, Hauswand
     (("rect", 34.3, 22.0, 34.9, 23.0), "kuebelpflanze", L),          # Terrace, Hauswand
     (("circle", 22.5, 25.5, 0.3), "lichtstativ", L),                 # Driveway
-    (("circle", 16.5, 28.0, 0.3), "lichtstativ", L),                 # Driveway
+    (("circle", 15.8, 28.6, 0.3), "lichtstativ", L),                 # Driveway (28.10. abends nach Suedwesten)
     (("rect", 6.0, 26.2, 7.8, 27.0), "campingtisch", L),             # Crew Camp
     (("rect", 0.9, 30.2, 4.3, 31.9), "jeep", L),                     # Crew Camp, Westseite (User 24.10.)
     (("circle", 5.0, 34.6, 0.45), "kabeltrommel", L),                # Crew Camp
@@ -360,8 +362,8 @@ GLASS += [
     (("rect", 23.25, 13.4, 23.85, 14.0), "ruestung", B),           # n14: zwei Ruestungen statt zwei Bildern
     (("rect", 25.15, 12.4, 25.75, 13.0), "ruestung", B),
     (("rect", 23.25, 18.65, 23.85, 19.25), "ruestung", B),         # n11
-    (("rect", 0.3, 6.4, 1.7, 7.6), "craftservice", B),             # n71: Snacks sichtbar, Kollision kleiner (HITBOX)
-    (("rect", 33.25, 19.15, 33.75, 19.75), "unsichtbar", B),       # Fussflaeche des Tresors (Konsole)
+    (("rect", 0.3, 5.9, 1.7, 7.1), "craftservice", B),             # n71: Snacks sichtbar, Kollision kleiner (HITBOX); 28.10. abends nach Norden
+    (("rect", 32.75, 19.2, 33.75, 19.75), "unsichtbar", B),        # Fussflaeche des Tresors (Konsole, ganze Breite)
     (("rect", 2.15, 10.3, 2.95, 10.75), "unsichtbar", B),          # Fussflaeche des Druckventils
     (("rect", 43.3, 6.65, 44.7, 7.0), "unsichtbar", L),            # Pflanzbank
     (("circle", 5.2, 28.85, 0.45), "unsichtbar", L),               # Lagerfeuer
@@ -381,8 +383,6 @@ GLASS += [
     (("circle", 46.2, 32.5, 0.25), "kandelaber", L),
 ]
 DECOR = [
-    (("rect", 6.75, 5.0, 7.0, 6.0), "speiseaufzug", B),              # Kitchen, Ostwand (Geheimgang)
-    (("rect", 26.75, 6.3, 27.0, 7.3), "speiseaufzug", B),            # Radio Room, Ostwand: das andere Ende des Aufzugs
     (("rect", 0.6, 2.6, 1.6, 2.9), "fleischerhaken", B),             # Kitchen, haengt von der Decke
     (("rect", 7.4, 6.2, 10.6, 6.5), "waescheleine", B),              # Laundry, Laken wie Gestalten
     (("rect", 20.0, 7.5, 22.0, 7.75), "wandteppich", B),             # Seance, Suedwand (Geheimgang zur Halle)
@@ -403,14 +403,13 @@ DECOR = [
     (("rect", 30.6, 32.25, 31.4, 32.45), "brunnen_blut", L),
     # 28.10. (Feedback DrSuspect)
     (("rect", 2.9, 0.2, 5.5, 0.6), "topfregal", B),                  # n69: groesser
-    (("rect", 13.9, 6.5, 15.1, 7.3), "umgestuerzter_stuhl", B),      # n76: groesser
     (("rect", 24.3, 5.95, 25.6, 6.95), "tonband_boden", B),          # n73: groesser, frei vor dem Regal
-    (("rect", 32.25, 4.25, 33.15, 4.45), "sternkarte", B),           # n82: kleine Sternkarte an der Sternwarten-Wand
-    (("rect", 23.25, 15.5, 23.45, 16.5), "portrait_dame", B),        # n13: verschiedene Bilder statt viermal derselbe Mann
-    (("rect", 23.25, 16.95, 23.45, 17.95), "portrait_maedchen", B),
-    (("rect", 25.55, 17.0, 25.75, 18.0), "portrait_offizier", B),
-    (("rect", 25.55, 23.0, 25.75, 23.8), "portrait_katze", B),
-    (("rect", 25.55, 14.4, 25.75, 15.4), "portrait", B),             # der Hausherr bleibt einmal
+    (("rect", 32.1, 4.25, 32.9, 4.45), "sternkarte", B),             # n82: kleine Sternkarte an der Sternwarten-Wand
+    # n13 + Feedback 2 Nr. 3: drei Doctor-Gemaelde (Crewmates im Kostuem) und die Katze; ganz im Raum, nicht halb in der Wand
+    (("rect", 23.85, 15.5, 24.05, 16.5), "portrait_dame", B),
+    (("rect", 23.85, 16.95, 24.05, 17.95), "portrait_maedchen", B),
+    (("rect", 24.95, 14.4, 25.15, 15.4), "portrait_offizier", B),
+    (("rect", 24.95, 23.0, 25.15, 23.8), "portrait_katze", B),
          # Fountain Court, rotes Wasser + Schleierstatue (vor dem Brunnen)
     (("rect", 42.5, 16.1, 43.3, 16.4), "kraehen", L),                # Graveyard, auf den Steinen
     (("rect", 44.25, 29.0, 44.45, 32.0), "nischen_urnen", L),        # Family Crypt, Westwand
@@ -435,11 +434,11 @@ HITBOX = {
     ("herd", ("rect", 0.3, 0.25, 2.8, 0.85)): ("rect", 0.75, 0.25, 2.5, 0.85),
     ("waschzuber", ("circle", 9.0, 1.3, 0.55)): ("ellipse", 8.93, 1.25, 0.53, 0.38),
     ("seance_tisch", ("ellipse", 13.0, 1.95, 1.4, 0.85)): ("ellipse", 13.0, 2.2, 0.95, 0.55),   # 28.10. n77: kleiner
-    ("kristallkugel_tisch", ("circle", 13.0, 6.5, 0.35)): ("circle", 13.0, 6.4, 0.3),
+    ("kristallkugel_tisch", ("circle", 13.0, 6.45, 0.5)): ("circle", 13.0, 6.25, 0.4),
     ("funktisch", ("rect", 23.3, 0.25, 25.5, 0.85)): ("rect", 23.8, 0.25, 25.0, 0.85),
     ("kleiderstange", ("rect", 28.5, 0.3, 30.4, 0.7)): ("rect", 28.5, 0.45, 30.4, 1.05),
     ("teleskop", ("circle", 28.6, 6.0, 0.55)): ("ellipse", 28.62, 5.95, 0.38, 0.22),
-    ("lesetisch", ("rect", 4.9, 16.1, 6.1, 16.9)): ("rect", 5.0, 16.45, 6.0, 16.9),
+    ("lesetisch", ("rect", 4.9, 16.1, 6.1, 16.9)): ("rect", 5.15, 16.5, 5.85, 16.9),
     ("kirchenbank", ("rect", 5.8, 20.9, 7.8, 21.35)): ("rect", 6.15, 20.9, 7.45, 21.35),
     ("kirchenbank", ("rect", 8.6, 20.9, 10.6, 21.35)): ("rect", 8.95, 20.9, 10.25, 21.35),
     ("kirchenbank", ("rect", 5.8, 21.9, 7.8, 22.35)): ("rect", 6.15, 21.9, 7.45, 22.35),
@@ -460,7 +459,7 @@ HITBOX = {
     ("absperrung", ("rect", 13.0, 29.35, 15.0, 29.65)): ("rect", 13.45, 29.35, 14.55, 29.65),
     ("getraenketisch", ("rect", 20.1, 28.95, 22.1, 29.75)): ("rect", 20.3, 29.25, 21.9, 29.75),
     ("lichtstativ", ("circle", 22.5, 25.5, 0.3)): ("ellipse", 22.62, 25.55, 0.5, 0.25),
-    ("lichtstativ", ("circle", 16.5, 28.0, 0.3)): ("ellipse", 16.62, 28.05, 0.5, 0.25),
+    ("lichtstativ", ("circle", 15.8, 28.6, 0.3)): ("ellipse", 15.92, 28.65, 0.5, 0.25),
     ("campingtisch", ("rect", 6.0, 26.2, 7.8, 27.0)): ("rect", 6.35, 26.3, 7.45, 27.0),
     ("kabeltrommel", ("circle", 5.0, 34.6, 0.45)): ("ellipse", 5.35, 34.5, 0.52, 0.32),
     ("riesenpflanze", ("rect", 47.2, 3.6, 49.0, 5.2)): ("rect", 47.65, 4.35, 48.9, 4.95),
@@ -478,23 +477,24 @@ HITBOX = {
     ("laterne", ("circle", 27.5, 28.5, 0.2)): ("circle", 27.37, 28.75, 0.12),
     ('kuebelpflanze', ('rect', 34.3, 7.0, 34.9, 8.0)): ('rect', 34.35, 6.9, 34.75, 8.0),   # Kollisionspruefung 26.10. VL-1
     ('kuebelpflanze', ('rect', 34.3, 22.0, 34.9, 23.0)): ('rect', 34.35, 21.9, 34.75, 23.0),   # Kollisionspruefung 26.10. VL-1
-    ('zelt_aufgeschlitzt', ('rect', 1.0, 26.0, 4.0, 28.8)): ('rect', 1.15, 27.2, 3.85, 28.8),   # Kollisionspruefung 26.10. VL-2
-    ('zelt', ('rect', 6.5, 30.0, 10.0, 33.0)): ('rect', 6.7, 31.4, 9.8, 33.0),   # Kollisionspruefung 26.10. VL-2
+    ('zelt_aufgeschlitzt', ('rect', 1.0, 26.0, 4.0, 28.8)): ('rect', 0.85, 27.2, 4.15, 28.8),   # 28.10.: bis zu den Heringen
+    ('zelt', ('rect', 6.5, 30.0, 10.0, 33.0)): ('rect', 6.35, 31.6, 10.15, 33.1),               # 28.10.: bis zu den Heringen
     ("bandregal", ("rect", 26.0, 4.6, 26.75, 5.6)): ("rect", 26.1, 5.1, 26.75, 5.6),   # 28.10. n72
-    ('kristallkugel_tisch', ('circle', 13.0, 6.5, 0.35)): ('circle', 13.0, 6.26, 0.27),   # Kollisionspruefung 26.10. VL-6
     ("orrery", ("circle", 28.6, 6.0, 0.35)): ("circle", 28.6, 5.9, 0.3),
     ("globusbar", ("circle", 26.6, 12.5, 0.35)): ("circle", 26.6, 12.4, 0.3),     # 28.10. n19
     # 28.10. Feedback DrSuspect
     ("sessel", ("rect", 14.9, 1.65, 15.8, 2.45)): ("rect", 15.0, 2.0, 15.7, 2.45),          # n38
     ("sessel", ("rect", 18.2, 1.65, 19.1, 2.45)): ("rect", 18.3, 2.0, 19.0, 2.45),
-    ("offenes_grab", ("rect", 41.2, 26.6, 42.6, 28.6)): ("rect", 41.45, 27.3, 42.35, 28.4),  # n31/n58
-    ("craftservice", ("rect", 0.3, 6.4, 1.7, 7.6)): ("rect", 0.35, 7.05, 1.6, 7.6),         # n71
-    ("ruestung", ("rect", 23.25, 13.4, 23.85, 14.0)): ("rect", 23.25, 13.65, 23.75, 14.0),
-    ("ruestung", ("rect", 25.15, 12.4, 25.75, 13.0)): ("rect", 25.25, 12.65, 25.75, 13.0),
-    ("ruestung", ("rect", 23.25, 18.65, 23.85, 19.25)): ("rect", 23.25, 18.9, 23.75, 19.25),
-    ("ruestung", ("rect", 25.2, 19.0, 25.8, 19.6)): ("rect", 25.3, 19.25, 25.8, 19.6),
-    ("kamerawagen", ("rect", 19.6, 16.45, 21.0, 17.25)): ("rect", 19.75, 16.8, 20.85, 17.25),
-    ("kronleuchter_boden", ("ellipse", 14.0, 15.5, 1.4, 1.05)): ("ellipse", 14.0, 15.6, 1.2, 0.8),
+    ("offenes_grab", ("rect", 41.2, 26.6, 42.6, 28.6)): ("rect", 41.3, 27.35, 42.5, 28.4),   # n31/n58, 28.10. abends etwas breiter
+    ("craftservice", ("rect", 0.3, 5.9, 1.7, 7.1)): ("rect", 0.35, 6.55, 1.6, 7.1),         # n71
+    # Hitbox-Pruefung 28.10. abends (_reviews/villa_large/kollision, gegen die sichtbaren Fusskanten der GPT-Bilder)
+    ("ruestung", ("rect", 23.25, 13.4, 23.85, 14.0)): ("rect", 23.25, 13.65, 24.1, 14.0),     # ganzer Holzsockel
+    ("ruestung", ("rect", 25.15, 12.4, 25.75, 13.0)): ("rect", 25.0, 12.65, 25.8, 13.0),
+    ("ruestung", ("rect", 23.25, 18.65, 23.85, 19.25)): ("rect", 23.25, 18.9, 24.1, 19.25),
+    ("ruestung", ("rect", 25.2, 19.0, 25.8, 19.6)): ("rect", 25.05, 19.25, 25.8, 19.6),
+    ("kamerawagen", ("rect", 19.6, 16.45, 21.0, 17.25)): ("rect", 19.25, 16.75, 21.35, 17.25),   # Wagen ist 2,1 m breit
+    ("kronleuchter_boden", ("ellipse", 14.0, 15.5, 1.4, 1.05)): ("ellipse", 14.0, 16.1, 1.2, 0.42),
+    ("kuechentisch", ("rect", 2.2, 3.6, 4.6, 5.0)): ("rect", 2.5, 4.3, 4.3, 5.0),
     ("schminkspiegel", ("rect", 19.3, 20.25, 21.9, 20.7)): ("rect", 19.7, 20.25, 21.5, 20.7),
     ("kandelaber", ("circle", 45.0, 29.7, 0.25)): ("circle", 45.0, 30.0, 0.23),
     ("kandelaber", ("circle", 49.25, 32.3, 0.25)): ("circle", 49.25, 32.6, 0.23),

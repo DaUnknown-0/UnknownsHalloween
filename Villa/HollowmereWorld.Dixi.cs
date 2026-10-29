@@ -34,6 +34,12 @@ internal sealed partial class HollowmereWorld
 
     private void DixiReset()
     {
+        try
+        {
+            foreach (var p in PlayerControl.AllPlayerControls.ToArray())
+                if (p != null && Hiders.Contains(p.PlayerId)) SetPetShown(p, true);
+        }
+        catch { }
         Hiders.Clear();
         _inDixi = false;
         _dixiKnown = false;
@@ -45,10 +51,15 @@ internal sealed partial class HollowmereWorld
 
     private void DixiTick()
     {
-        // Verstecken der anderen: jeden Frame, das Spiel und andere Mods schalten Visible gern wieder ein
+        // Verstecken der anderen: jeden Frame, das Spiel und andere Mods schalten Visible gern wieder ein. Das Haustier haengt
+        // nicht an Visible (28.10. abends: man sah es neben dem Dixi), es wird eigens aus- und beim Verlassen wieder eingeschaltet.
         if (Hiders.Count > 0)
             foreach (var p in PlayerControl.AllPlayerControls.ToArray())
-                if (p != null && Hiders.Contains(p.PlayerId) && p != PlayerControl.LocalPlayer && p.Visible) p.Visible = false;
+            {
+                if (p == null || !Hiders.Contains(p.PlayerId)) continue;
+                if (p != PlayerControl.LocalPlayer && p.Visible) p.Visible = false;
+                SetPetShown(p, false);
+            }
         var lp = PlayerControl.LocalPlayer;
         if (lp == null || lp.Data == null) return;
         bool meeting = MeetingHud.Instance != null || ExileController.Instance != null;
@@ -56,6 +67,7 @@ internal sealed partial class HollowmereWorld
         {
             if (meeting || lp.Data.IsDead) { LeaveDixi(); return; }
             if (lp.moveable) lp.moveable = false;
+            StopBody(lp);
             AtlasMaps.OfferUse("LEAVE", "task_villa_btn_secret.png", LeaveDixi, always: true);
             return;
         }
@@ -69,6 +81,9 @@ internal sealed partial class HollowmereWorld
         if (lp == null || _inDixi) return;
         _inDixi = true;
         lp.moveable = false;
+        // stehen bleiben und vor die Tuer setzen (28.10. abends: wer beim Betreten lief, rutschte weiter)
+        StopBody(lp);
+        try { lp.NetTransform.RpcSnapTo(_dixiSpot); } catch { }
         Hiders.Add(lp.PlayerId);
         SendDixi(true);
         ShowPeephole(true);
@@ -85,10 +100,28 @@ internal sealed partial class HollowmereWorld
         {
             lp.moveable = true;
             Hiders.Remove(lp.PlayerId);
+            SetPetShown(lp, true);
         }
         SendDixi(false);
         ShowPeephole(false);
         AtlasMaps.Sfx("creak", 0.6f);
+    }
+
+    private static void StopBody(PlayerControl p)
+    {
+        try { if (p.MyPhysics != null && p.MyPhysics.body != null) p.MyPhysics.body.velocity = Vector2.zero; } catch { }
+    }
+
+    private static void SetPetShown(PlayerControl p, bool on)
+    {
+        try
+        {
+            var pet = p.cosmetics != null ? p.cosmetics.currentPet : null;
+            if (pet == null) return;
+            foreach (var r in pet.GetComponentsInChildren<Renderer>(true))
+                if (r != null && r.enabled != on) r.enabled = on;
+        }
+        catch { }
     }
 
     private void ShowPeephole(bool on)
@@ -139,6 +172,7 @@ internal sealed partial class HollowmereWorld
         else
         {
             Hiders.Remove(pid);
+            SetPetShown(sender, true);
             var lp = PlayerControl.LocalPlayer;
             if (sender.Data != null && (!sender.Data.IsDead || (lp != null && lp.Data != null && lp.Data.IsDead))) sender.Visible = true;
         }

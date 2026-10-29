@@ -86,7 +86,7 @@ PROP_H = {"standuhr": 2.3, "seance_tisch": 0.8, "buecherregal": 2.6, "kamin": 1.
           "kirchenbank": 1.0, "baer": 2.5, "schreibtisch": 1.4, "catering": 1.5, "urne": 1.5,
           "gartenbank": 1.0, "pflanztisch": 1.6, "brunnen": 1.9, "barrikade": 2.0,
           # Moebelstapel am Fuss der Freitreppe (das Obergeschoss gibt es nicht)
-          "treppensperre": 2.2}
+          "treppensperre": 1.5}         # 28.10. abends: die Stangen waren riesig
 KINDS = set(PROP_H)
 NO_SHADOW = set()        # Arten ohne Bodenschatten (Wandbilder, Haengendes, Bodenkram; villa_art2 traegt ein)
 # Leinwandrand je Objekt (Standard 0,3 m): Lichtkegel, Glutschein und Lichtlachen reichen ueber die Grundflaeche
@@ -2379,7 +2379,7 @@ IMAGE_PROPS = {"baer": ("villa_baer.png", 3.0),
                "engelsstatue_tuch": ("villa_engel_betend.png", 2.5),   # 25.10.: GPT, betender Engel statt Tuchstatue (Kapelle)
                # 28.10.: GPT-Boegen 18-20 (Feedback DrSuspect), Tauschbilder "<datei>_l.png"/"_r.png" fuer die Varianten l/r
                "kamerawagen": ("villa_kamerawagen.png", 1.9),
-               "kronleuchter_boden": ("villa_kronleuchter_boden.png", 1.4),
+               "kronleuchter_boden": ("villa_kronleuchter_boden.png", 2.2),
                "ruestung": ("villa_ruestung.png", 2.3),
                # Wandbilder: dritter Wert = Abstand der Bildunterkante ueber der Standlinie (haengt an der Wand)
                "portrait_dame": ("villa_portrait_dame.png", 1.3, 0.85), "portrait_offizier": ("villa_portrait_offizier.png", 1.3, 0.85),
@@ -2389,9 +2389,9 @@ IMAGE_PROPS = {"baer": ("villa_baer.png", 3.0),
                "laternenpfahl": ("villa_laternenpfahl.png", 2.5),
                "sternkarte": ("villa_sternkarte.png", 0.55, 0.05),
                "herd": ("villa_herd_gross.png", 1.9),
-               "kuechentisch": ("villa_kuechentisch.png", 1.15),
-               "hackblock": ("villa_hackblock.png", 1.05),
-               "topfregal": ("villa_topfregal.png", 1.45),
+               "kuechentisch": ("villa_kuechentisch.png", 1.45),
+               "hackblock": ("villa_hackblock.png", 1.3),
+               "topfregal": ("villa_topfregal.png", 1.0),
                "craftservice": ("villa_craftservice.png", 1.35),
                "speiseaufzug": ("villa_speiseaufzug.png", 1.35),
                "umgestuerzter_stuhl": ("villa_stuhl_umgekippt.png", 0.7),

@@ -139,6 +139,8 @@ namespace UnknownsHalloween {
             try { foreach (var c in UnityEngine.Object.FindObjectsOfType<PlatformConsole>()) if (c != null) far.Add(c.transform.position); } catch { }
             try { foreach (var c in UnityEngine.Object.FindObjectsOfType<ZiplineConsole>()) if (c != null) far.Add(c.transform.position); } catch { }
             far.AddRange(UsableProps());
+            // Atlas' stations with a Use button of their own (ferry landings, Ferris wheel, lookout, ...), see AtlasUse.NoteSpot
+            try { if (AppDomain.CurrentDomain.GetData("UnknownsAtlas.UseSpots") is Vector2[] spots) far.AddRange(spots); } catch { }
             try {
                 // the secret passages' entries and exits of Hollowmere Manor (they are spots, not always props)
                 if (MapKey() == HollowmereMap.Key)

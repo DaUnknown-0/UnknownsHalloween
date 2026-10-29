@@ -925,7 +925,7 @@ namespace UnknownsHalloween {
             var top = uiCam.ViewportToWorldPoint(new Vector3(0.5f, 0.8f, 10f));
             float w = uiCam.orthographicSize * uiCam.aspect;
             if (popupPicture) {
-                float cw = Mathf.Min(5.8f, w * 1.5f), u = cw / CardPxW;
+                float cw = Mathf.Min(3.9f, w * 1.0f), u = cw / CardPxW;     // 28.10. abends (DrSuspect): kleiner, vorher 5,8 / 1,5
                 float l = top.x - cw / 2f, tp = top.y + CardPxH * u / 2f;
                 Vector3 At(float px, float py, float z) => new Vector3(l + px * u, tp - py * u, z);
                 popupBack.transform.position = new Vector3(top.x, top.y, -60f);

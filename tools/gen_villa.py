@@ -351,8 +351,12 @@ def render_props():
             uniq.setdefault((k, wshape(s)), None)
     keys = list(uniq)
     images, meta = [], []
+    # gespiegelte Objekte (villa_layout.FLIP, 28.10. abends): Bild und Tauschbilder links-rechts, um die Bildmitte
+    flips = {(k, wshape(s)) for k, s in getattr(L, "FLIP", set())}
     for i, (kind, ws) in enumerate(keys):
         im, wx, wy, base = draw_block(kind, ws)
+        if (kind, ws) in flips:
+            im = im.transpose(Image.FLIP_LEFT_RIGHT)
         images.append((i, im))
         fx0, _, fx1, _ = A.shape_bounds(ws)
         meta.append((kind, wx, wy, base, fx0, fx1))
@@ -362,6 +366,8 @@ def render_props():
             except Exception as e:      # noqa: BLE001
                 print(f"WARN variant {kind}/{var} failed: {e}")
                 continue
+            if (kind, ws) in flips:
+                im2 = im2.transpose(Image.FLIP_LEFT_RIGHT)
             if im2.size != im.size or abs(wx2 - wx) > 1e-6 or abs(wy2 - wy) > 1e-6:
                 print(f"WARN variant {kind}/{var}: size/anchor differs ({im2.size} vs {im.size})")
             # Anker so, dass das Tauschbild an der Stelle des Originals sitzt (Prop-Pivot = unten links bei wx/wy)

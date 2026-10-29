@@ -320,9 +320,15 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
                 Vector2 d = pc.GetTruePosition() - pv.Pos;
                 if (d.sqrMagnitude < best) { best = d.sqrMagnitude; at = d; any = true; }
             }
-            Show(pv, !any || Mathf.Abs(at.x) < 0.45f ? null : at.x < 0f ? "l" : "r");
+            // 28.10. abends (DrSuspect: "slower tracking, a bit delay"): erst wenn die neue Richtung 0,7 s lang gilt
+            string want = !any || Mathf.Abs(at.x) < 0.45f ? null : at.x < 0f ? "l" : "r";
+            if (want == pv.Shown) { _armorWant.Remove(pv); continue; }
+            if (!_armorWant.TryGetValue(pv, out var w) || w.Pose != want) { _armorWant[pv] = (want, Time.time); continue; }
+            if (Time.time - w.Since >= 0.7f) { Show(pv, want); _armorWant.Remove(pv); }
         }
     }
+
+    private readonly Dictionary<PropVar, (string Pose, float Since)> _armorWant = new();
 
     private static void Show(PropVar pv, string var)
     {
@@ -892,6 +898,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             else if (p == "clock") { _diagTasks.Add("clock"); _diagClock = true; }
             else if (p == "candle") _diagTasks.Add("candle");
             else if (p == "angels") _diagTasks.Add("angels");
+            else if (p == "summon") _diagTasks.Add("summon");      // Buch lesen, blaettern, Kerzen 4-1-3-5-2 (Summon.cs)
         }
         if (_diagTasks.Count == 0) return;
         // erst nach den Ansichtsfotos von Atlas (AtlasMapShot teleportiert den Spieler ~20 s lang herum und laesst
@@ -918,6 +925,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         if (task == "clock") { DiagClock(lp); return; }
         if (task == "candle") { DiagCandle(lp); return; }
         if (task == "angels") { DiagAngels(lp); return; }
+        if (task == "summon") { DiagSummon(lp); return; }
         int idx = Array.FindIndex(_secrets, s => s.Key == task.Substring(7));
         if (idx < 0)
         {
