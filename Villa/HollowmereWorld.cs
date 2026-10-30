@@ -124,7 +124,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             // 1961 war bis 24.10. "Hollowmere Intro"; als "Weeping Angels Attack" erbte sie den gespeicherten Wert der alten
             // Option (bei vielen aus), deshalb seit 25.10. 1951. 1961 bleibt frei, damit alte Presets nichts umschalten.
             AngelAttack = CustomOption.Create(1951, CustomOption.CustomOptionType.General, "Weeping Angels Attack", true, null, false, null, "Hollowmere Manor");
-            AngelMove = CustomOption.Create(1952, CustomOption.CustomOptionType.General, "Weeping Angels Move", true, AngelAttack);
+            // 1952 "Weeping Angels Move" entfernt (30.10.): nach dem Countdown laufen die Engel immer, vorher nie. ID bleibt frei.
             AngelBreakout = CustomOption.Create(1953, CustomOption.CustomOptionType.General, "Angel Breakout Sabotage", true, AngelAttack);
             // 28.10. (Feedback DrSuspect, n26/n27): zwei weitere Verhaltensweisen der Engel zur Wahl
             AngelBehaviour = CustomOption.Create(1955, CustomOption.CustomOptionType.General, "Weeping Angels Behaviour",

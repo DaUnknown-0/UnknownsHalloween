@@ -202,18 +202,36 @@ internal sealed partial class HollowmereWorld
                 if (_angelWatched[i]) _slotLevel[i] = Mathf.Max(0f, _slotLevel[i] - dt / 2f);
                 else if (seenBy) _slotLevel[i] = Mathf.Min(2f, _slotLevel[i] + dt / 2f);
             }
-            if (!AmHost || !AngelAttackOn || SlotPose(i) != "step") continue;
+            if (!AmHost || !AngelAttackOn) continue;
             var s = _slots[i];
+            // nach dem Countdown gilt in jedem Modus die Ausbruch-Regel (User 30.10.), sonst die Stufe "step"
+            bool rampage = _breakout == 2 && s.Movable;
+            if (rampage ? _angelWatched[i] : SlotPose(i) != "step") continue;
             for (int n = 0; n < players.Count; n++)
             {
                 var p = players[n];
                 if (p == null || p.Data == null || p.Data.IsDead || p.inVent || p.onLadder) continue;
-                if (sights[n, i] == AngelSight.Watched) continue;
-                if (Vector2.Distance(p.GetTruePosition(), s.Pos) > AngelSmallReach) continue;
+                if (rampage)
+                {
+                    if (!RampageCanKill(p, s)) continue;
+                }
+                else
+                {
+                    if (sights[n, i] == AngelSight.Watched) continue;
+                    if (Vector2.Distance(p.GetTruePosition(), s.Pos) > AngelSmallReach) continue;
+                }
                 KillByAngel(p);
                 break;
             }
         }
+    }
+
+    /// <summary>Ausbruch (nach dem Countdown, Host): jeder in Reichweite, den der Engel sieht, auch Impostor. Dass niemand
+    /// den Engel ansieht, prueft der Aufrufer.</summary>
+    private static bool RampageCanKill(PlayerControl p, AngelSlot s)
+    {
+        if (p.inVent || p.onLadder || Vector2.Distance(p.GetTruePosition(), s.Pos) > AngelReach) return false;
+        return PointInSight(p.GetTruePosition(), s.Pos + new Vector2(0f, 0.3f), 99f, 99f, 99f);
     }
 
     private string SlotPose(int i)
@@ -342,9 +360,7 @@ internal sealed partial class HollowmereWorld
                 if (!AmHost || !AngelAttackOn || _angelWatched[i]) continue;
                 if (_breakout == 2 && s.Movable)
                 {
-                    // Ausbruch: jeder in Reichweite, den der Engel sieht (niemand schaut ihn an), auch Impostor
-                    if (p.inVent || p.onLadder || Vector2.Distance(p.GetTruePosition(), s.Pos) > AngelReach) continue;
-                    if (!PointInSight(p.GetTruePosition(), s.Pos + new Vector2(0f, 0.3f), 99f, 99f, 99f)) continue;
+                    if (!RampageCanKill(p, s)) continue;
                 }
                 else
                 {

@@ -4,8 +4,8 @@
 // HollowmereWorld.AngelMove - die Friedhofsengel der grossen Manor bewegen sich (User 25.10.), dazu Blinzeln und die
 // Sabotage "Engel-Ausbruch". Die Brunnenfigur bleibt stehen (sie gehoert zum Brunnen).
 //
-// Spruenge (Option 1952 "Weeping Angels Move", Host-autoritativ; User 30.10.): Erst NACH Ablauf des 45-s-Countdowns.
-// Solange der Countdown laeuft, stehen die Engel fest auf ihrem Platz. Danach springt ein unbeobachteter Engel
+// Spruenge (Host-autoritativ; User 30.10.): immer erst NACH Ablauf des 45-s-Countdowns, ohne eigene Option (1952
+// "Weeping Angels Move" ist entfernt). Solange der Countdown laeuft, stehen die Engel fest auf ihrem Platz. Danach springt ein unbeobachteter Engel
 // hoechstens 1,5 m naeher, nie naeher als 0,8 m, ohne Leine um seinen Ausgangspunkt. Der Weg folgt einem Laufraster
 // (0,5 m, beim ersten Tick aus den Kollidern gebaut), damit kein Engel durch eine Wand springt; vor jedem Sprung prueft eine
 // Sichtlinie gegen Waende und geschlossene Tueren. Die Engel tragen dafuer eigene Kollider, die mitwandern (die statischen
@@ -44,7 +44,7 @@ namespace UnknownsHalloween;
 
 internal sealed partial class HollowmereWorld
 {
-    public static CustomOption AngelMove, AngelBreakout;
+    public static CustomOption AngelBreakout;
     internal const byte SubAngelMove = 11;       // [slot][x][y]           Host -> alle
     internal const byte SubBreakout = 12;        // [phase] 0 Ende, 1 Countdown, 2 Ausbruch   Host -> alle
     internal const byte SubSealHold = 13;        // [siegel][an]           jeder -> Host
@@ -62,7 +62,6 @@ internal sealed partial class HollowmereWorld
     // Nordwestecke des Friedhofs (Plan 41,3 / 14,9 und 41,3 / 19,4, User 25.10. Bild 93)
     private static readonly Vector2[] SealPos = { new(41.3f - 17f, 14f - 14.9f), new(41.3f - 17f, 14f - 19.4f) };
 
-    private static bool AngelMoveOn { get { try { return AngelMove == null || AngelMove.getBool(); } catch { return true; } } }
     private static bool AngelBreakoutOn { get { try { return AngelBreakout == null || AngelBreakout.getBool(); } catch { return true; } } }
 
     // Laufraster
@@ -363,7 +362,7 @@ internal sealed partial class HollowmereWorld
     private void AngelMoveHost(List<PlayerControl> players)
     {
         // Der Countdown ist Vorbereitungszeit. Auch Blinzeln oder volle Aggression erlauben darin keinen Sprung.
-        if (!AmHost || !_moveReady || _breakout != 2 || !AngelMoveOn) return;
+        if (!AmHost || !_moveReady || _breakout != 2) return;
         float now = Time.time;
         for (int i = 0; i < _slots.Count; i++)
         {
@@ -868,7 +867,7 @@ internal sealed partial class HollowmereWorld
             int slot = reader.ReadByte();
             float x = reader.ReadSingle(), y = reader.ReadSingle();
             if (w == null || !UCRpc.RequireHost("Hollowmere.AngelMove")) return;
-            if (w._breakout == 2 && AngelMoveOn && slot < w._slots.Count && w._slots[slot].Movable)
+            if (w._breakout == 2 && slot < w._slots.Count && w._slots[slot].Movable)
                 w.MoveAngel(slot, new Vector2(x, y));
         }
         else if (sub == SubBreakout)
