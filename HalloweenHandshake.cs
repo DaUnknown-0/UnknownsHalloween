@@ -40,7 +40,9 @@ namespace UnknownsHalloween {
         private static readonly Dictionary<int, Peer> peers = new();       // by ClientId
         private static bool sent;
 
-        private static Version Local => HalloweenPlugin.Version;
+        // Always four parts like a received hello: Version.Parse("1.0.2") has Revision -1 and never equals 1.0.2.0.
+        private static readonly Version Local = new(HalloweenPlugin.Version.Major, HalloweenPlugin.Version.Minor,
+            Math.Max(0, HalloweenPlugin.Version.Build), Math.Max(0, HalloweenPlugin.Version.Revision));
         private static bool FreePlay() { try { return AmongUsClient.Instance != null && AmongUsClient.Instance.NetworkMode == NetworkModes.FreePlay; } catch { return false; } }
 
         private static bool booted;

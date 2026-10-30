@@ -407,8 +407,8 @@ namespace UnknownsHalloween {
                 Key = d.Key, Name = d.Name, Online = true, Package = d.Package,
                 HasLegs = d.HasLegs, HasAccent = d.HasAccent, HidesBody = d.HidesBody, NoLiveBob = d.NoLiveBob,
                 StillWalk = d.StillWalk, WalkFps = d.WalkFps, IdleFps = d.IdleFps, WalkIntro = d.WalkIntro,
-                KillKey = d.KillFrames > 0 ? d.Key : null, KillFrames = d.KillFrames, Flashes = d.Flashes, KillHold = d.KillHold,
-                KillerLayers = d.KillerLayers,
+                KillKey = d.KillFrames > 0 ? d.KillKey ?? d.Key : null, KillFrames = d.KillFrames, Flashes = d.Flashes, KillHold = d.KillHold,
+                KillerLayers = d.KillerLayers, Alt = AltScenes(d),
             };
             Costumes = Costumes.Append(c).ToArray();
             lock (onlineWaiting) onlineWaiting.Add(c);
@@ -420,7 +420,7 @@ namespace UnknownsHalloween {
         private static void UpdateOnline(Costume c, HalloweenExtraCostumes.Def d) {
             c.HasLegs = d.HasLegs; c.HasAccent = d.HasAccent; c.NoLiveBob = d.NoLiveBob; c.StillWalk = d.StillWalk;
             c.WalkFps = d.WalkFps; c.IdleFps = d.IdleFps; c.WalkIntro = d.WalkIntro;
-            if (d.KillFrames > 0) { c.KillKey = d.Key; c.KillFrames = d.KillFrames; c.Flashes = d.Flashes; c.KillHold = d.KillHold; c.KillerLayers = d.KillerLayers; }
+            SetKill(c, d);
             if (d.Name != c.Name) HalloweenPlugin.Logger?.LogInfo($"[Halloween] online costume '{c.Key}' renamed to '{d.Name}': takes effect after a restart.");
             if (d.Package == c.Package) return;
             string old = c.Package;
@@ -428,15 +428,113 @@ namespace UnknownsHalloween {
                 if (c.Package != old) return;                                  // overtaken by an even newer package
                 c.Package = d.Package;
                 HalloweenAssets.RemoveExtra(old);
-                c.FramesTried = c.MoveFramesTried = false;
-                c.Idle = c.Walk = c.IdleAcc = c.WalkAcc = c.Body = c.BodyAcc = null;
-                mainScene.Remove(c);
-                try {
-                    string dir = hatsDir?.Invoke(null, null) as string;
-                    if (dir != null) MakeHat(dir, c);                          // rewrites UC_HW_<key>*.png for the next start
-                } catch { }
+                ReloadCostume(c);
                 HalloweenPlugin.Logger?.LogInfo($"[Halloween] online costume '{c.Key}' updated to {d.Package}.");
             });
+        }
+
+        private static KillScene[] AltScenes(HalloweenExtraCostumes.Def d) =>
+            d.Alt?.Select(a => new KillScene { Key = a.Key, Frames = a.Frames, Flashes = a.Flashes, Hold = a.Hold, Killer = a.Killer }).ToArray();
+
+        private static void SetKill(Costume c, HalloweenExtraCostumes.Def d) {
+            if (d.KillFrames > 0) {
+                c.KillKey = d.KillKey ?? c.KillKey ?? d.Key ?? c.Key;
+                c.KillFrames = d.KillFrames; c.Flashes = d.Flashes; c.KillHold = d.KillHold; c.KillerLayers = d.KillerLayers;
+            }
+            if (d.Alt != null) c.Alt = AltScenes(d);
+            mainScene.Remove(c);
+        }
+
+        // Pictures changed: the frames load afresh the next time the hat is drawn (the old ones stay until then, a few MB
+        // per update and session), TOR's hat data is renewed. Kill scenes need nothing: EndSequence drops every picture and
+        // the next kill reads them through HalloweenAssets again.
+        private static void ReloadCostume(Costume c) {
+            c.FramesTried = c.MoveFramesTried = false;
+            c.Idle = c.Walk = c.IdleAcc = c.WalkAcc = c.Body = c.BodyAcc = null;
+            mainScene.Remove(c);
+            try {
+                string dir = hatsDir?.Invoke(null, null) as string;
+                if (dir != null) MakeHat(dir, c);                              // rewrites UC_HW_<key>*.png for the next start
+            } catch { }
+            RefreshTorHat(c);
+        }
+
+        /// <summary>Update packages arrived or went away (file names like "hats.hw_freddy_1.png"): reload what they touch.</summary>
+        internal static void ResourcesChanged(List<string> files) {
+            int n = 0;
+            foreach (var c in Costumes) {
+                string prefix = $"hats.hw_{c.Key}_";
+                if (!files.Any(f => f.StartsWith(prefix, StringComparison.Ordinal))) continue;
+                ReloadCostume(c);
+                n++;
+            }
+            HalloweenPlugin.Logger?.LogInfo($"[Halloween] update: {files.Count} file(s) changed, {n} costume(s) reloaded; kill scenes use the new pictures from the next kill.");
+        }
+
+        // Tweaks of built-in costumes. The values from the DLL are kept once, so a tweak that leaves the list reverts
+        // without a restart.
+        private static readonly Dictionary<Costume, Costume> tweakBase = new();
+
+        internal static void ApplyTweaks(List<HalloweenExtraCostumes.Tweak> tweaks) {
+            foreach (var kv in tweakBase) CopyTweakable(kv.Value, kv.Key);
+            foreach (var t in tweaks) {
+                var c = Costumes.FirstOrDefault(x => !x.Online && x.Key == t.Key);
+                if (c == null) { HalloweenPlugin.Logger?.LogInfo($"[Halloween] tweak for unknown costume '{t.Key}' skipped."); continue; }
+                if (!tweakBase.ContainsKey(c)) { var b = new Costume(); CopyTweakable(c, b); tweakBase[c] = b; }
+                c.WalkFps = t.WalkFps ?? c.WalkFps; c.IdleFps = t.IdleFps ?? c.IdleFps; c.WalkIntro = t.WalkIntro ?? c.WalkIntro;
+                c.HasAccent = t.HasAccent ?? c.HasAccent; c.HasLegs = t.HasLegs ?? c.HasLegs; c.NoLiveBob = t.NoLiveBob ?? c.NoLiveBob;
+                c.StillWalk = t.StillWalk ?? c.StillWalk; c.HidesBody = t.HidesBody ?? c.HidesBody;
+                if (t.Kill != null) SetKill(c, t.Kill);
+            }
+            foreach (var c in tweakBase.Keys) {
+                mainScene.Remove(c);
+                if (c.HatId == null) continue;
+                if (c.HidesBody) HalloweenCorpse.BodylessHats.Add(c.Name); else HalloweenCorpse.BodylessHats.Remove(c.Name);
+                // accent masks and walk frames depend on these flags: load them again
+                c.FramesTried = c.MoveFramesTried = false;
+                c.Idle = c.Walk = c.IdleAcc = c.WalkAcc = c.Body = c.BodyAcc = null;
+            }
+            if (tweaks.Count > 0 || tweakBase.Count > 0) HalloweenPlugin.Logger?.LogInfo($"[Halloween] {tweaks.Count} costume tweak(s) applied.");
+        }
+
+        private static void CopyTweakable(Costume from, Costume to) {
+            to.WalkFps = from.WalkFps; to.IdleFps = from.IdleFps; to.WalkIntro = from.WalkIntro;
+            to.HasAccent = from.HasAccent; to.HasLegs = from.HasLegs; to.NoLiveBob = from.NoLiveBob;
+            to.StillWalk = from.StillWalk; to.HidesBody = from.HidesBody;
+            to.KillKey = from.KillKey; to.KillFrames = from.KillFrames; to.Flashes = from.Flashes;
+            to.KillHold = from.KillHold; to.KillerLayers = from.KillerLayers; to.Alt = from.Alt;
+        }
+
+        // 2026-10-30 (the first bat lacked a back image and needed a restart): TOR reads a hat's pictures only when it
+        // registers the hat and derives InFront from the back image, and with InFront the back layer stays off, so the
+        // costume code does not animate (HatLateUpdateCore). A new package therefore also renews TOR's view data and
+        // InFront, and rebuilds the hats players wear right now. Open wardrobe chips follow the next time the tab opens.
+        private static void RefreshTorHat(Costume c) {
+            try {
+                if (c.HatId == null) return;                                   // not registered yet: RegisterOnline reads the new files
+                var cache = AccessTools.Field(typeof(CustomHatManager), "ViewDataCache")?.GetValue(null) as Dictionary<string, HatViewData>;
+                if (cache == null || !cache.TryGetValue(c.Name, out var view) || view == null) {
+                    HalloweenPlugin.Logger?.LogWarning($"[Halloween] online costume '{c.Key}': TOR's hat data not found, new pictures after a restart.");
+                    return;
+                }
+                string mainRes = HalloweenAssets.Exists(Res + $"hw_{c.Key}_main.png") ? $"hw_{c.Key}_main.png" : $"hw_{c.Key}_1.png";
+                var main = LoadHatSprite(Res + mainRes);
+                if (main != null) { view.MainImage = main; view.FloorImage = main; }
+                var back = HalloweenAssets.Exists(Res + $"hw_{c.Key}_back.png") ? LoadHatSprite(Res + $"hw_{c.Key}_back.png") : null;
+                view.BackImage = back;
+                var climb = HalloweenAssets.Exists(Res + $"hw_{c.Key}_climb.png") ? LoadHatSprite(Res + $"hw_{c.Key}_climb.png") : null;
+                if (climb != null) { view.ClimbImage = climb; view.LeftClimbImage = climb; }
+                if (HatManager.InstanceExists)
+                    foreach (var data in HatManager.Instance.allHats)
+                        if (data != null && data.name == c.Name) { data.InFront = back == null; break; }
+                foreach (var pc in PlayerControl.AllPlayerControls.ToArray()) {
+                    var worn = pc != null && pc.cosmetics != null ? pc.cosmetics.hat : null;
+                    if (worn != null && worn.Hat != null && worn.Hat.name == c.Name) worn.PopulateFromViewData();
+                }
+                HalloweenPlugin.Logger?.LogInfo($"[Halloween] online costume '{c.Key}': TOR's hat data renewed (back image {(back != null ? "yes" : "no")}).");
+            } catch (Exception ex) {
+                HalloweenPlugin.Logger?.LogWarning($"[Halloween] online costume '{c.Key}': refreshing TOR's hat failed: {ex.Message}");
+            }
         }
 
         // Main thread (HalloweenAssets.Tick / RegisterHats): every waiting online costume whose package is there.

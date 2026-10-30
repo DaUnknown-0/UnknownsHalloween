@@ -56,6 +56,14 @@ def build(key):
     assert re.fullmatch(r"[a-z][a-z0-9]{1,23}", key), f"bad key {key}"
     folder = SRC / key
     meta = json.loads((folder / "costume.json").read_text(encoding="utf-8"))
+    # Ohne Rueckbild schaltet TOR die hintere Hut-Ebene ab, und HalloweenCostumes animiert den Hut dann nicht (Schutz fuer
+    # Leiter- und Leichenposen): kein Laufen, keine Spielerfarbe (Fledermaus 30.10.). Die eingebauten Kostueme haben dafuer
+    # ein leeres 450x562-Bild; fehlt es, wird es hier angelegt.
+    back = folder / f"hw_{key}_back.png"
+    if not back.exists():
+        from PIL import Image
+        Image.new("RGBA", (450, 562), (0, 0, 0, 0)).save(back)
+        print(f"  {back.name}: leeres Rueckbild angelegt")
     files = sorted(p for p in folder.iterdir() if p.is_file() and p.suffix == ".png"
                    and (p.name.startswith(f"hw_{key}_") or p.name.startswith(f"hk_{key}_")))
     assert any(p.name == f"hw_{key}_1.png" for p in files), f"hw_{key}_1.png missing in {folder}"
@@ -80,10 +88,58 @@ def build(key):
     print(f"{key}: {len(items)} Bilder, {len(data) / 1048576:.2f} MB -> extra/{name}")
 
 
+def build_update(uid):
+    """ExtraCostumes/_updates/<uid>/: Dateien wie in Resources, Unterordner = Praefix (hats/hw_freddy_1.png -> hats.hw_freddy_1.png)."""
+    assert re.fullmatch(r"[a-z][a-z0-9_]{1,40}", uid), f"bad update id {uid}"
+    folder = SRC / "_updates" / uid
+    items = []
+    for p in sorted(folder.rglob("*")):
+        if p.is_file():
+            items.append((".".join(p.relative_to(folder).parts), p.read_bytes()))
+    assert items, f"keine Dateien in {folder}"
+    OUT.mkdir(parents=True, exist_ok=True)
+    tmp = OUT / f"extra_update_{uid}_tmp.hwp"
+    data = write_pack(tmp, items)
+    sha = hashlib.sha256(data).hexdigest()
+    name = f"extra_update_{uid}_{sha[:8]}.hwp"
+    tmp.replace(OUT / name)
+    drop_old(f"update_{uid}", keep=name)
+    m = load_manifest()
+    m["updates"] = [u for u in m.get("updates", []) if u.get("id") != uid] + [{"id": uid, "package": name, "size": len(data), "sha256": sha}]
+    save_manifest(m)
+    print(f"update {uid}: {len(items)} Dateien, {len(data) / 1048576:.2f} MB -> extra/{name}")
+
+
+def sync_tweaks():
+    """ExtraCostumes/tweaks.json (Liste) in die Online-Liste uebernehmen; leere oder fehlende Datei = keine Tweaks."""
+    path = SRC / "tweaks.json"
+    tweaks = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+    m = load_manifest()
+    m["tweaks"] = tweaks
+    save_manifest(m)
+    print(f"{len(tweaks)} Tweak(s) in der Liste")
+
+
 def main():
     args = sys.argv[1:]
     if not args:
-        print(__doc__ or "build_extra_costume.py <key> ... | --remove <key>")
+        print("build_extra_costume.py <key> ... | --remove <key> ... | --update <id> ... | --remove-update <id> ... | --tweaks")
+        return
+    if args[0] == "--update":
+        for uid in args[1:]:
+            build_update(uid)
+        sync_tweaks()
+        return
+    if args[0] == "--remove-update":
+        m = load_manifest()
+        for uid in args[1:]:
+            m["updates"] = [u for u in m.get("updates", []) if u.get("id") != uid]
+            drop_old(f"update_{uid}")
+            print(f"update {uid}: aus der Liste genommen")
+        save_manifest(m)
+        return
+    if args[0] == "--tweaks":
+        sync_tweaks()
         return
     if args[0] == "--remove":
         m = load_manifest()

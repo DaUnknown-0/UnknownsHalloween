@@ -115,6 +115,20 @@ internal static class HalloweenAssets
         });
     }
 
+    // Ein Update-Paket darf auch Dateien ersetzen, die in der DLL eingebettet sind (Symbole usw.).
+    private static bool OverridesEmbedded(string res)
+    {
+        var e = Locate(res, out _, out _);
+        return e != null && e.Url != null && Confirmed(e);
+    }
+
+    /// <summary>Die Dateinamen eines bestaetigten Pakets ("hats.hw_freddy_1.png" ...), sonst leer.</summary>
+    internal static List<string> PackageFiles(string name)
+    {
+        lock (Gate)
+            return ByName.TryGetValue(name, out var e) && e.Index != null ? e.Index.Keys.ToList() : new List<string>();
+    }
+
     /// <summary>Ein ersetztes Online-Paket aus dem Store nehmen (die Datei raeumt HalloweenExtraCostumes beim naechsten Start weg).</summary>
     internal static void RemoveExtra(string name)
     {
@@ -157,6 +171,7 @@ internal static class HalloweenAssets
     /// <summary>Stream einer Ressource: eingebettet, sonst aus einem bestaetigten Paket, sonst null.</summary>
     internal static Stream Open(string res)
     {
+        if (OverridesEmbedded(res)) return new MemoryStream(ReadPacked(res), false);
         var s = Own.GetManifestResourceStream(res);
         if (s != null) return s;
         var data = ReadPacked(res);
@@ -166,6 +181,7 @@ internal static class HalloweenAssets
     /// <summary>Bytes einer Ressource (eingebettet oder aus einem Paket), sonst null.</summary>
     internal static byte[] Read(string res)
     {
+        if (OverridesEmbedded(res)) return ReadPacked(res);
         using (var s = Own.GetManifestResourceStream(res))
             if (s != null)
             {
@@ -194,9 +210,13 @@ internal static class HalloweenAssets
         off = 0; len = 0;
         if (res == null || !res.StartsWith(ResRoot, StringComparison.Ordinal)) return null;
         string key = res.Substring(ResRoot.Length);
+        // von hinten: zur Laufzeit angehaengte Update-Pakete (AddExtra) gewinnen gegen den Katalog der DLL
         lock (Gate)
-            foreach (var e in Entries)
+            for (int i = Entries.Count - 1; i >= 0; i--)
+            {
+                var e = Entries[i];
                 if (e.OkLength > 0 && e.Index != null && e.Index.TryGetValue(key, out var at)) { off = at.Off; len = at.Len; return e; }
+            }
         return null;
     }
 

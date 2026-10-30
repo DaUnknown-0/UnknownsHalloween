@@ -1,0 +1,8 @@
+{
+ "name": "Halloween Fox Demon",
+ "hidesBody": true,
+ "hasAccent": true,
+ "stillWalk": true,
+ "walkFps": 12,
+ "idleFps": 6
+}
