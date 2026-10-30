@@ -2400,7 +2400,8 @@ IMAGE_PROPS = {"baer": ("villa_baer.png", 3.0),
                "maskenregal": ("villa_maskenregal.png", 2.0),
                "kisten": ("villa_kisten.png", 1.5),
                "catering": ("villa_catering.png", 1.35), "getraenketisch": ("villa_getraenke.png", 1.35),
-               "dixi": ("villa_dixi.png", 2.4)}
+               "dixi": ("villa_dixi.png", 2.05),
+               "kraehen": ("villa_kraehen.png", 0.8)}      # 29.10. abends: Kabine etwa 85 % (n14)
 # Arten ohne eigenen Zeichner, die nur aus dem Bild kommen (Hoehe fuer KINDS/PROP_H)
 for _k, _v in list(IMAGE_PROPS.items()):
     PROP_H.setdefault(_k, _v[1])
@@ -2409,6 +2410,21 @@ KINDS.update(IMAGE_PROPS)
 PROP_H["unsichtbar"] = 0.1
 KINDS.add("unsichtbar")
 _IMG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "villa_assets")
+
+# Zeichenmasstab je prozeduraler Art (29.10. abends, Feedback DrSuspect): das fertige Sprite wird um Fussmitte und Standlinie
+# verkleinert (die GPT-Einpassung nimmt danach die kleinere Kernbox). Kollision steht davon unabhaengig in villa_layout.HITBOX.
+PROP_SCALE = {"treppensperre": 0.77, "schminkspiegel": 0.8, "seance_tisch": 0.86}
+
+
+def _scaled(got, kind, shape, ppm):
+    s = PROP_SCALE.get(kind)
+    if not s:
+        return got
+    img, left, bottom, base = got
+    x0, _y0, x1, _y1 = A.shape_bounds(shape)
+    pcx = (x0 + x1) / 2
+    w, h = max(1, int(round(img.width * s))), max(1, int(round(img.height * s)))
+    return img.resize((w, h), Image.LANCZOS), pcx - (pcx - left) * s, base - (base - bottom) * s, base
 
 
 def _image_prop(kind, shape, ppm, variant=None):
@@ -2467,4 +2483,4 @@ def draw(kind, shape, idx, ppm, variant=None):
         _KIND_FN[kind](p, c, x0, y0, x1, y1, idx, rnd)
     else:
         _KIND_FN[kind](p, c, x0, y0, x1, y1, idx, rnd, variant=variant)
-    return c.finish(), c.x0, c.y0, p.base_y
+    return _scaled((c.finish(), c.x0, c.y0, p.base_y), kind, shape, ppm)

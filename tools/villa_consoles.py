@@ -332,7 +332,7 @@ def render_all(ppm, brief):
 IMAGE_CONSOLES = {
     "EmergencyButton": ("villa_notfalltisch.png", 1.15),
     "MakeBurger": ("villa_herd_gross.png", 1.9),          # der grosse Herd selbst ist die Burger-Konsole (n66)
-    "FuelEngineConsole@kitchen": ("villa_gasflasche.png", 0.9),   # statt Kohlenkasten (n70)
+    "FuelEngineConsole@kitchen": ("villa_holzkorb_kueche.png", 0.85),   # 29.10. abends (n16): Holzkorb statt Gasflasche ("ich fuerchte Explosionen"); aus der GPT-Zelle des Holzkorbs
     "UnlockSafe": ("villa_safe.png", 1.3),                # Airship-Tresor im Arbeitszimmer (n33)
     "WaterBench": ("villa_pflanzbank.png", 1.25),         # Pflanzen giessen, Gewaechshaus (n24)
     "Campfire": ("villa_lagerfeuer.png", 1.2),            # Marshmallows, Crew Camp (n62)
@@ -382,7 +382,7 @@ def _render_all(ppm, brief):
         elif name in VCA.BY_NAME:
             # Villa-eigene Motive (Audit 15.10.); idx variiert Details je Konsole. 28.10. abends: der Seance-Tisch mit dem
             # Ouija-Brett ("Set the Seance Table") groesser
-            scale = 1.9 if name == "StartReactorConsole" else 1.0
+            scale = {"StartReactorConsole": 1.9, "StabilizeSteeringConsole": 2.5}.get(name, 1.0)
             spr = VCA.BY_NAME[name](ppm * scale, sum(ord(ch) for ch in key) % 7)
         elif key == "SurveillanceConsole":
             spr = WC.ranger_desk(ppm)
@@ -407,7 +407,7 @@ def _render_all(ppm, brief):
         elif name == "gasCanConsole":
             spr = WC.jerrycan_rack(ppm)
         elif name == "StabilizeSteeringConsole":
-            spr = WC.theodolite(ppm * 2.8)                   # 28.10. n81: das Teleskop in der Raummitte, groesser
+            spr = WC.theodolite(ppm * 2.8)                   # Rueckfall fuer Karten ohne Villa-eigenes Teleskop
         elif name == "FixCommsConsole":
             spr = WC.radio_set(ppm)
         else:

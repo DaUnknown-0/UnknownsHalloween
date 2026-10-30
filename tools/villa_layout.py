@@ -125,6 +125,7 @@ FIXED = {
     "Reactor/UnlockManifoldsConsole/2": (20.4, 0.6),      # Puzzle-Box rechts neben dem Kamin (stand am Tisch)
     # Kamin raucht (O2): Kaminklappe + Lueftung im Arbeitszimmer
     "LifeSupp/NoOxyConsole/0": (29.6, 14.5),
+    "LifeSupp/CleanFilterConsole/0": (30.6, 14.65),      # 29.10. abends (n07): Rauchfangklappe an den Kamin statt in den Durchgang
     "Admin/NoOxyConsole/1": (33.3, 20.4),
     "Electrical/SwitchConsole/0": (6.9, 8.9),             # Sicherungskasten im Heizungskeller
     "Comms/FixCommsConsole/0": (26.3, 1.6),               # Funkraum, Ostwand
@@ -136,9 +137,9 @@ FIXED = {
     # 28.10. Feedback DrSuspect (Atlas-Reiter aus Airship, HollowmereMap.ForeignTasks)
     "Admin/UnlockSafe/0": (33.3, 19.75),                  # Tresor an der Ostwand, Tuer nach links (n33)
     "Electrical/PressureValve/0": (2.55, 10.75),          # Druckventil rechts neben dem Kessel (n64)
-    "Admin/FixWiringConsole/2": (27.6, 18.75),            # Elektro auf die linke Raumseite (n33)
+    "Admin/FixWiringConsole/2": (26.6, 19.1),             # Elektro an die linke Wand (n33); 29.10. abends: ganz an die Westwand, nicht mehr im Durchgang (n08)
     "Weapons/UploadDataConsole/1": (31.85, 12.55),        # stand hinter dem Baeren (n18)
-    "Nav/StabilizeSteeringConsole/0": (30.6, 6.15),       # Teleskop in die Raummitte, ersetzt das zweite Teleskop (n80/n81)
+    "Nav/StabilizeSteeringConsole/0": (30.6, 6.55),       # Teleskop in die Raummitte, ersetzt das zweite Teleskop (n80/n81); 29.10. abends 250 % (n20), deshalb 0,4 m nach Sueden
     "Nav/UploadDataConsole/0": (28.4, 7.45),
 }
 
@@ -150,6 +151,7 @@ FIXED_SMALL = {
 }
 # Nur gross: Crew Camp (UpperEngine) - Umleitung neben die Triebwerksausrichtung an der Hauswand (User 24.10.)
 FIXED_LARGE = {
+    "LifeSupp/NoOxyConsole/0": (39.35, 10.3),            # 29.10. abends: O2 aussen auf der Terrasse, zweite Konsole bleibt im Arbeitszimmer
     "UpperEngine/DivertPowerConsole/1": (7.1, 24.6),
     "Storage/WaterBench/0": (44.0, 7.0),                  # Pflanzen giessen, Gewaechshaus (n24)
     "UpperEngine/Campfire/0": (5.2, 29.05),               # Marshmallows am Lagerfeuer (n62)
@@ -240,7 +242,7 @@ OPAQUE = [
 GLASS = [
     (("circle", 12.4, 18.6, 0.35), "scheinwerfer", B),
     (("circle", 21.8, 9.4, 0.35), "scheinwerfer", B),
-    (("ellipse", 13.0, 1.95, 1.4, 0.85), "seance_tisch", B),     # 25.10.: Nordwestecke, ganz nach oben (Raummitte = Pentagramm)
+    (("ellipse", 13.0, 1.95, 1.4, 0.85), "seance_tisch", B),     # 25.10.: Nordwestecke, ganz nach oben (Raummitte = Pentagramm); 29.10. abends: Bild 86 % (PROP_SCALE)
     (("rect", 14.9, 1.65, 15.8, 2.45), "sessel", B),              # Seance: zwei Sessel vor dem Kamin, das Baerenfell dazwischen
     (("rect", 18.2, 1.65, 19.1, 2.45), "sessel", B),
     (("circle", 19.55, 0.75, 0.25), "kandelaber", B),             # Seance: rechts neben dem Kamin (25.10.)
@@ -293,11 +295,11 @@ GLASS += [
     (("rect", 5.6, 1.0, 6.4, 1.8), "hackblock", B),                  # Kitchen
     (("rect", 7.3, 0.3, 8.35, 1.05), "mangel", B),                   # Laundry, Nordwestecke (stand bis 24.10. vor der Kuechentuer)
     (("rect", 7.3, 7.0, 8.0, 7.75), "seifenkisten", B),              # Laundry, Suedwestecke
-    (("circle", 13.0, 6.45, 0.5), "kristallkugel_tisch", B),         # Seance Parlour (28.10. abends groesser)
+    # 29.10. abends (n18): das Kristallkugel-Tischchen im Seance Parlour ist entfernt
     (("rect", 21.85, 5.75, 22.6, 6.4), "phonograph", B),             # Seance Parlour, Ostwand suedlich der Radio-Oeffnung (25.10.)
     (("rect", 26.3, 3.2, 26.75, 4.0), "walkie_station", B),          # Radio Room, Ostwand
     (("circle", 24.4, 2.2, 0.3), "drehstuhl", B),                    # Radio Room
-    (("circle", 28.4, 3.2, 0.3), "schneiderpuppe", B),           # Prop Store / Box Room (25.10.: stand im neuen Requisitentisch)
+    (("circle", 28.4, 2.7, 0.3), "schneiderpuppe", B),           # Prop Store / Box Room (25.10.: stand im neuen Requisitentisch); 29.10. abends: 0,5 m nach Norden, davor kam man nicht an ihr vorbei
     (("rect", 32.2, 2.6, 33.0, 3.7), "sarg_angelehnt", B),           # Prop Store
     (("circle", 2.0, 17.8, 0.3), "globus", B),                       # Long Library
     (("rect", 8.0, 15.2, 8.9, 16.0), "lesesessel", B),               # Long Library
@@ -335,13 +337,13 @@ GLASS += [
 # 28.10. Feedback DrSuspect (85 Notizen, scratchpad fb/PLAN.md): Schatten weg = GLASS statt OPAQUE (Kollision bleibt), neue
 # Bild-Arten aus den GPT-Boegen 18-22 (villa_art.IMAGE_PROPS), unsichtbare Sperren unter den grossen Bild-Konsolen
 GLASS += [
-    (("rect", 15.2, 9.7, 18.8, 10.9), "treppensperre", B),         # n01
+    (("rect", 15.2, 9.7, 18.8, 10.9), "treppensperre", B),         # n01; 29.10. abends: Bild 77 % (villa_art.PROP_SCALE), Sperre HITBOX
     (("rect", 0.7, 0.25, 2.5, 1.25), "unsichtbar", B),             # Fussflaeche des grossen Herds (Burger-Konsole, n66)
     (("rect", 32.1, 0.25, 33.75, 1.1), "kisten", B),               # Box Room, Nordostecke (n83)
     (("rect", 26.5, 8.85, 28.2, 9.3), "gewehrschrank", B),         # n15: kleiner, ohne Sichtschatten
     (("rect", 26.0, 4.6, 26.75, 5.6), "bandregal", B),             # n72: kleiner
     (("rect", 0.4, 19.3, 1.2, 19.9), "engelsstatue_tuch", B),      # n48
-    (("rect", 19.3, 20.25, 21.9, 20.7), "schminkspiegel", B),      # n35
+    (("rect", 19.3, 20.25, 21.9, 20.7), "schminkspiegel", B),      # n35; 29.10. abends: Bild 80 % (villa_art.PROP_SCALE; Stuhl, Tisch, Spiegel zu gross)
     (("rect", 35.0, 3.0, 37.5, 5.0), "kamerakran", L),             # n20/n32/n61
     (("rect", 38.6, 24.0, 39.6, 25.0), "statue_schleier", L),      # n59
     (("rect", 12.6, 24.6, 15.4, 26.3), "van", L),                  # n53
@@ -349,7 +351,7 @@ GLASS += [
     (("rect", 47.2, 3.6, 49.0, 5.2), "riesenpflanze", L),          # n23
     (("rect", 44.3, 34.6, 45.3, 35.7), "tunneleingang", L),        # n29
     (("rect", 0.8, 23.1, 1.6, 23.7), "tunnelausgang", L),          # n51
-    (("rect", 19.6, 16.45, 21.0, 17.25), "kamerawagen", B),        # n06: Dolly mit Kamera auf der Schiene, Blick nach Westen
+    (("rect", 19.6, 16.9, 21.0, 17.7), "kamerawagen", B),          # n06: Dolly mit Kamera auf der Schiene, Blick nach Westen; 29.10. abends: Raeder auf der unteren Schiene (y 17,56)
     (("rect", 4.9, 16.1, 6.1, 16.9), "lesetisch", B),              # n44: kleiner
     (("rect", 28.5, 0.3, 30.4, 0.7), "kleiderstange", B),          # Box Room, Nordwand (kuerzer, Platz fuers Maskenregal)
     (("rect", 30.6, 0.25, 31.9, 0.7), "maskenregal", L),           # n83: an der Nordwand statt ueber den Kisten
@@ -386,7 +388,7 @@ DECOR = [
     # 29.10. (User: Speiseaufzug behalten, erkennbar zeichnen): Seitenansicht nach Westen an der Ostwand (GPT, villa_speiseaufzug.png)
     (("rect", 6.75, 5.0, 7.0, 6.0), "speiseaufzug", B),              # Kitchen, Ostwand (Geheimgang)
     (("rect", 26.75, 6.3, 27.0, 7.3), "speiseaufzug", B),            # Radio Room, Ostwand: das andere Ende des Aufzugs
-    (("rect", 0.6, 2.6, 1.6, 2.9), "fleischerhaken", B),             # Kitchen, haengt von der Decke
+    # 29.10. abends (n17): die Fleischerhaken sind entfernt ("fuehlt sich an wie Dead by Daylight")
     (("rect", 7.4, 6.2, 10.6, 6.5), "waescheleine", B),              # Laundry, Laken wie Gestalten
     (("rect", 20.0, 7.5, 22.0, 7.75), "wandteppich", B),             # Seance, Suedwand (Geheimgang zur Halle)
     (("rect", 2.5, 8.25, 6.0, 8.55), "rohre", B),                    # Boiler Room, Nordwand
@@ -412,9 +414,9 @@ DECOR = [
     (("rect", 23.85, 15.5, 24.05, 16.5), "portrait_dame", B),
     (("rect", 23.85, 16.95, 24.05, 17.95), "portrait_maedchen", B),
     (("rect", 24.95, 14.4, 25.15, 15.4), "portrait_offizier", B),
-    (("rect", 24.95, 23.0, 25.15, 23.8), "portrait_katze", B),
+    (("rect", 25.07, 23.0, 25.27, 23.8), "portrait_katze", B),       # 29.10. abends: buendig an der Ostwand (Innenkante 25,8), weiter als Wandbild montiert
          # Fountain Court, rotes Wasser + Schleierstatue (vor dem Brunnen)
-    (("rect", 42.5, 16.1, 43.3, 16.4), "kraehen", L),                # Graveyard, auf den Steinen
+    (("rect", 44.6, 27.75, 45.4, 28.1), "kraehen", L),               # Graveyard, vor der Gruftwand links vom Tor (29.10. abends n11: vorhandene GPT-Kraehen, 0,8 m hoch)
     (("rect", 44.25, 29.0, 44.45, 32.0), "nischen_urnen", L),        # Family Crypt, Westwand
     (("rect", 49.55, 29.0, 49.75, 32.0), "nischen_urnen", L),        # Family Crypt, Ostwand
     (("rect", 48.0, 33.0, 48.6, 33.4), "zerbrochene_urne", L),       # Family Crypt, am Boden
@@ -436,8 +438,7 @@ HITBOX = {
     ("bandregal", ("rect", 25.65, 4.3, 26.75, 5.9)): ("rect", 25.7, 5.0, 26.75, 5.9),
     ("herd", ("rect", 0.3, 0.25, 2.8, 0.85)): ("rect", 0.75, 0.25, 2.5, 0.85),
     ("waschzuber", ("circle", 9.0, 1.3, 0.55)): ("ellipse", 8.93, 1.25, 0.53, 0.38),
-    ("seance_tisch", ("ellipse", 13.0, 1.95, 1.4, 0.85)): ("ellipse", 13.0, 2.2, 0.95, 0.55),   # 28.10. n77: kleiner
-    ("kristallkugel_tisch", ("circle", 13.0, 6.45, 0.5)): ("circle", 13.0, 6.25, 0.4),
+    ("seance_tisch", ("ellipse", 13.0, 1.95, 1.4, 0.85)): ("ellipse", 13.0, 2.15, 0.82, 0.47),   # 28.10. n77: kleiner, 29.10. abends nochmal 86 %
     ("funktisch", ("rect", 23.3, 0.25, 25.5, 0.85)): ("rect", 23.8, 0.25, 25.0, 0.85),
     ("kleiderstange", ("rect", 28.5, 0.3, 30.4, 0.7)): ("rect", 28.5, 0.45, 30.4, 1.05),
     ("teleskop", ("circle", 28.6, 6.0, 0.55)): ("ellipse", 28.62, 5.95, 0.38, 0.22),
@@ -448,7 +449,7 @@ HITBOX = {
     ("kirchenbank", ("rect", 8.6, 21.9, 10.6, 22.35)): ("rect", 8.95, 21.9, 10.25, 22.35),
     ("zersplitterte_bank", ("rect", 5.8, 22.9, 7.8, 23.35)): ("rect", 6.4, 22.9, 7.5, 23.4),
     ("mischpult", ("rect", 11.3, 20.5, 11.75, 21.8)): ("rect", 11.2, 21.4, 11.8, 22.0),
-    ("schminkspiegel", ("rect", 19.3, 20.25, 21.9, 20.7)): ("rect", 19.7, 20.25, 21.5, 20.7),
+    ("schminkspiegel", ("rect", 19.3, 20.25, 21.9, 20.7)): ("rect", 19.9, 20.25, 21.3, 20.7),
     ("gewehrschrank", ("rect", 26.5, 8.85, 28.2, 9.3)): ("rect", 26.95, 8.85, 27.75, 9.3),
     ("billardtisch", ("rect", 28.5, 10.2, 31.3, 11.7)): ("rect", 28.7, 10.2, 31.1, 11.7),
     ("kamin", ("rect", 30.5, 13.85, 32.8, 14.45)): ("rect", 30.75, 13.85, 32.55, 14.45),
@@ -495,13 +496,19 @@ HITBOX = {
     ("ruestung", ("rect", 25.15, 12.4, 25.75, 13.0)): ("rect", 25.0, 12.65, 25.8, 13.0),
     ("ruestung", ("rect", 23.25, 18.65, 23.85, 19.25)): ("rect", 23.25, 18.9, 24.1, 19.25),
     ("ruestung", ("rect", 25.2, 19.0, 25.8, 19.6)): ("rect", 25.05, 19.25, 25.8, 19.6),
-    ("kamerawagen", ("rect", 19.6, 16.45, 21.0, 17.25)): ("rect", 19.25, 16.75, 21.35, 17.25),   # Wagen ist 2,1 m breit
+    ("kamerawagen", ("rect", 19.6, 16.9, 21.0, 17.7)): ("rect", 19.4, 17.2, 21.1, 17.7),   # nur die Wagenbasis (H09), 0,45 m weiter suedlich
     ("kronleuchter_boden", ("ellipse", 14.0, 15.5, 1.4, 1.05)): ("ellipse", 14.0, 16.1, 1.2, 0.42),
     ("kuechentisch", ("rect", 2.2, 3.6, 4.6, 5.0)): ("rect", 2.5, 4.3, 4.3, 5.0),
-    ("schminkspiegel", ("rect", 19.3, 20.25, 21.9, 20.7)): ("rect", 19.7, 20.25, 21.5, 20.7),
+    ("schminkspiegel", ("rect", 19.3, 20.25, 21.9, 20.7)): ("rect", 19.9, 20.25, 21.3, 20.7),
     ("kandelaber", ("circle", 45.0, 29.7, 0.25)): ("circle", 45.0, 30.0, 0.23),
     ("kandelaber", ("circle", 49.25, 32.3, 0.25)): ("circle", 49.25, 32.6, 0.23),
     ("kandelaber", ("circle", 46.2, 32.5, 0.25)): ("circle", 46.2, 32.8, 0.23),
+    # 29.10. abends (Feedback DrSuspect, 24 Notizen): kleinere Sperren
+    ("treppensperre", ("rect", 15.2, 9.7, 18.8, 10.9)): ("rect", 15.6, 9.85, 18.4, 10.75),   # n01: Sperre ca. 77 %
+    ("jeep", ("rect", 0.9, 30.2, 4.3, 31.9)): ("rect", 1.1, 30.75, 4.2, 31.9),            # n13/n24: nur Karosserie und Raeder, nicht die Windschutzscheibe
+    ("dixi", ("rect", 10.8, 24.4, 11.7, 25.6)): ("rect", 10.65, 24.5, 11.85, 25.6),       # n14: Kabine 85 %, Sockel breiter als die alte Sperre (H02)
+    ("schneiderpuppe", ("circle", 28.4, 2.7, 0.3)): ("circle", 28.4, 2.75, 0.14),         # n21: nur der Staender, man kommt dahinter vorbei
+    ("lesesessel", ("rect", 8.0, 15.2, 8.9, 16.0)): ("rect", 8.1, 15.5, 8.8, 16.0),       # n23: Sitzflaeche statt Rueckenlehne
 }
 
 

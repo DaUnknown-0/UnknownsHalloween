@@ -34,6 +34,7 @@ using UnityEngine;
 using UnknownsAtlas;
 using UnknownsCollection;
 using Object = UnityEngine.Object;
+using Being = UnknownsHalloween.SummonBeing;
 
 namespace UnknownsHalloween;
 
@@ -42,25 +43,17 @@ internal sealed partial class HollowmereWorld
     public static CustomOption Summoning;
     private const byte SubSummon = 33, SubSummonVictim = 34, SubBlessing = 35, SubArmorBroken = 36, SubRead = 37, SubReadResult = 38;
 
-    private enum Being : byte { Diablo, Baal, Mephisto, Tyrael, Castiel, Bobby, Ghost }
-    private static readonly string[] BeingKey = { "diablo", "baal", "mephisto", "tyrael", "castiel", "bobby", "ghost" };
-    private static readonly string[] BeingName = { "Diablo", "Baal", "Mephisto", "Tyrael", "Castiel", "Bobby", "a restless ghost" };
+    private static readonly string[] BeingKey = { "diablo", "baal", "mephisto", "tyrael", "castiel", "bobby", "ghost", "cthulhu", "shadow_pact" };
+    private static readonly string[] BeingName = { "Diablo", "Baal", "Mephisto", "Tyrael", "Castiel", "Bobby", "a restless ghost", "Cthulhu", "the Shadow Pact" };
     private static readonly Color[] BeingGlow =
     {
         new(1f, 0.35f, 0.15f), new(0.7f, 0.35f, 1f), new(0.45f, 1f, 0.35f), new(1f, 0.9f, 0.5f), new(0.75f, 0.85f, 1f), new(0.55f, 0.85f, 1f), new(0.8f, 0.9f, 1f),
+        new(0.25f, 0.95f, 0.8f), new(0.55f, 0.3f, 0.9f),
     };
     // Kerzennummer (1 oben, im Uhrzeigersinn) -> Sternspitze k in HollowmereWorld.Ritual.cs
     private static readonly int[] NumberToTip = { -1, 0, 2, 4, 1, 3 };
-    private static readonly int[] EasyGood = { 4, 1, 3, 5, 2 };
-    private static readonly int[][] HardCodes =
-    {
-        new[] { 1, 2, 3, 4, 5 },   // Diablo
-        new[] { 5, 4, 3, 2, 1 },   // Baal
-        new[] { 1, 3, 5, 2, 4 },   // Mephisto
-        new[] { 4, 2, 5, 3, 1 },   // Tyrael
-        new[] { 4, 1, 3, 5, 2 },   // Castiel (zweites Buch)
-        new[] { 4, 5, 1, 2, 3 },   // Bobby (zweites Buch)
-    };
+    private static readonly int[] EasyGood = HollowmereSummonRules.EasyGood;
+    private static readonly IReadOnlyDictionary<Being, int[]> HardCodes = HollowmereSummonRules.HardCodes;
     private const float SummonSecs = 25f, GhostSecs = 4f, DemonReach = 1.7f, PoisonDelay = 6f, ReadReach = 1.0f;
 
     // Buecher (Weltmeter): Lesetisch der Long Library, Regal im Arbeitszimmer (nur Hard)
@@ -74,6 +67,7 @@ internal sealed partial class HollowmereWorld
     private byte _lastLighter = 255;
     // alle Clients
     private static readonly HashSet<byte> Readers = new(), ArmorBlessed = new(), Graced = new();
+    private static readonly HashSet<byte> PactProtected = new(), PactClaimed = new();
     private readonly Dictionary<byte, (int Kind, float At)> _pendingBodies = new();
     private readonly Dictionary<byte, Sprite> _splitTop = new();
     private readonly Dictionary<byte, Material> _splitMat = new();
@@ -98,6 +92,7 @@ internal sealed partial class HollowmereWorld
         _litOrder.Clear();
         _lastLighter = 255;
         Readers.Clear(); ArmorBlessed.Clear(); Graced.Clear();
+        PactProtected.Clear(); PactClaimed.Clear();
         _pendingBodies.Clear(); _splitTop.Clear(); _splitMat.Clear(); _poisoned.Clear();
         _summonAt = -1f; _summoner = 255;
         _beingSr = _beingGlow = _wingShadow = null;
@@ -124,15 +119,9 @@ internal sealed partial class HollowmereWorld
     /// <summary>Host: alle fuenf brennen -> welches Wesen?</summary>
     private Being PickBeing()
     {
-        var order = _litOrder.ToArray();
-        if (_lastLighter == 255 || !Readers.Contains(_lastLighter)) return Being.Ghost;
-        var rnd = new System.Random();
-        Being Demon() => (Being)rnd.Next(0, 3);
-        if (SummonMode == 0)
-            return order.SequenceEqual(EasyGood) ? (Being)(3 + rnd.Next(0, 3)) : Demon();
-        for (int b = 0; b < HardCodes.Length; b++)
-            if (order.SequenceEqual(HardCodes[b])) return (Being)b;
-        return Demon();
+        var lighter = PlayerControl.AllPlayerControls.ToArray().FirstOrDefault(p => p != null && p.PlayerId == _lastLighter);
+        return HollowmereSummonRules.Pick(SummonMode, _litOrder.ToArray(), _lastLighter != 255 && Readers.Contains(_lastLighter),
+            lighter != null && lighter.Data != null && IsImpostor(lighter), new System.Random());
     }
 
     private void HostStartSummon()
@@ -153,7 +142,7 @@ internal sealed partial class HollowmereWorld
         _summoner = summoner;
         _summonAt = Time.time;
         _nextDemonKill = Time.time + 1.2f;
-        _demonKillsLeft = being <= Being.Mephisto ? 2 + new System.Random().Next(0, 2) : 0;
+        _demonKillsLeft = HollowmereSummonRules.IsDemon(being) ? 2 + new System.Random().Next(0, 2) : 0;
         int layer = _root.gameObject.layer;
         if (_beingGlow == null)
         {
@@ -179,10 +168,10 @@ internal sealed partial class HollowmereWorld
         _beingGlow.gameObject.SetActive(true);
         if (being == Being.Bobby) AngelsAsleep = true;                 // jeder Client, bis zum Meeting (Angel.cs)
         if (being == Being.Castiel) CastielEntrance();
-        PlaySummonSound(BeingKey[(int)being]);
+        PlaySummonSound(being == Being.ShadowPact ? "ghost" : BeingKey[(int)being]);
         if (PlayerControl.LocalPlayer != null && PlayerControl.LocalPlayer.PlayerId == summoner && being != Being.Ghost)
             Toast($"You summoned {BeingName[(int)being]}.");
-        HalloweenPlugin.Logger.LogInfo($"{LogPrefix} summoning: {BeingName[(int)being]} by player {summoner} (order {string.Join("-", _litOrder)})");
+        HalloweenPlugin.Logger.LogInfo($"{LogPrefix} summoning: {BeingName[(int)being]}");
     }
 
     private void SummonTick()
@@ -224,6 +213,11 @@ internal sealed partial class HollowmereWorld
             _nextFireFx = now + 0.12f;
             Spawn(_puffSprite ??= PaintPuff(), RitualCenter + new Vector2(UnityEngine.Random.Range(-0.6f, 0.6f), UnityEngine.Random.Range(-0.3f, 0.2f)),
                 new Vector2(0f, 0.9f), new Color(1f, 0.45f, 0.1f, 0.8f));
+        }
+        if (_being == Being.Cthulhu && now >= _nextFireFx)
+        {
+            _nextFireFx = now + 0.4f;
+            CthulhuFire(RitualCenter + new Vector2(UnityEngine.Random.Range(-0.6f, 0.6f), UnityEngine.Random.Range(-0.2f, 0.2f)));
         }
         if (AmHost && _demonKillsLeft > 0 && t > 1f && t < dur && now >= _nextDemonKill)
         {
@@ -267,6 +261,11 @@ internal sealed partial class HollowmereWorld
                 break;
             case Being.Bobby:
                 break;                                                     // jeder Client: AngelsAsleep
+            case Being.ShadowPact:
+                var caller = alive.FirstOrDefault(p => p.PlayerId == summoner && IsImpostor(p));
+                if (caller != null && PactClaimed.Add(summoner)) HostBless(2, new[] { caller });
+                else if (PlayerControl.LocalPlayer?.PlayerId == summoner) Toast("The pact can only be claimed once per game.");
+                break;
             default:
                 HostBless(0, alive.Where(IsImpostor));
                 break;
@@ -282,6 +281,13 @@ internal sealed partial class HollowmereWorld
             if (Vector2.Distance(p.GetTruePosition(), RitualCenter) > DemonReach) continue;
             if (_poisoned.Any(x => x.Pid == p.PlayerId)) continue;
             _demonKillsLeft--;
+            if (PactProtected.Remove(p.PlayerId))
+            {
+                byte protectedPid = p.PlayerId;
+                SendRitual(SubSummonVictim, w => { w.Write(protectedPid); w.Write((byte)5); });
+                PactSpent(protectedPid);
+                continue;
+            }
             if (_being == Being.Mephisto)
             {
                 _poisoned.Add((p.PlayerId, Time.time + PoisonDelay));
@@ -289,11 +295,11 @@ internal sealed partial class HollowmereWorld
                 SendRitual(SubSummonVictim, w => { w.Write(pid); w.Write((byte)3); });   // 3 = vergiftet (nur Anzeige)
                 MarkPoisoned(pid);
             }
-            else HostKill(p.PlayerId, 0, true);
+            else HostKill(p.PlayerId, _being == Being.Cthulhu ? 4 : 0, true);
         }
     }
 
-    /// <summary>art: 0 Feuer, 1 Gift, 2 Geist (Leiche in zwei Haelften).</summary>
+    /// <summary>art: 0 Feuer, 1 Gift, 2 Geist (Leiche in zwei Haelften), 4 Blitzfeuer.</summary>
     private void HostKill(byte pid, int kind, bool announce)
     {
         var p = PlayerControl.AllPlayerControls.ToArray().FirstOrDefault(x => x != null && x.PlayerId == pid);
@@ -306,7 +312,7 @@ internal sealed partial class HollowmereWorld
             bool freeplay = AmongUsClient.Instance != null && AmongUsClient.Instance.NetworkMode == NetworkModes.FreePlay;
             if (freeplay) p.MurderPlayer(p, MurderResultFlags.Succeeded);
             else Helpers.MurderPlayer(p, p, false);
-            HalloweenPlugin.Logger.LogInfo($"{LogPrefix} summoning: {BeingName[(int)_being]} took {p.Data.PlayerName} ({(kind == 0 ? "fire" : kind == 1 ? "poison" : "ghost")})");
+            HalloweenPlugin.Logger.LogInfo($"{LogPrefix} summoning: {BeingName[(int)_being]} killed with {(kind == 0 ? "fire" : kind == 1 ? "poison" : kind == 4 ? "stormfire" : "ghost")}");
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} summon kill failed: {e.Message}"); }
     }
@@ -320,11 +326,12 @@ internal sealed partial class HollowmereWorld
 
     private static void ApplyBlessing(byte kind, List<byte> ids)
     {
-        var set = kind == 0 ? ArmorBlessed : Graced;
+        if (kind > 2) return;
+        var set = kind == 0 ? ArmorBlessed : kind == 1 ? Graced : PactProtected;
         foreach (var id in ids) set.Add(id);
         var lp = PlayerControl.LocalPlayer;
         if (lp != null && ids.Contains(lp.PlayerId))
-            _current?.Toast(kind == 0 ? "A blessing armours you until the next meeting." : "Castiel's grace will shield you from the next vote.");
+            _current?.Toast(kind == 0 ? "A blessing armours you until the next meeting." : kind == 1 ? "Castiel's grace will shield you from the next vote." : "The Shadow Pact shields you from one demonic attack until the next meeting.");
     }
 
     // ------------------------------------------------------------------ Meeting: Segen enden, Gnade wirkt (Host)
@@ -337,6 +344,7 @@ internal sealed partial class HollowmereWorld
         if (meeting && !_summonMeeting)
         {
             ArmorBlessed.Clear();                                          // Ruestung bis zum naechsten Meeting
+            PactProtected.Clear();
             _graceArmed = Graced.Count > 0;
             if (SummonRunning) EndSummon();
             CloseBook();
@@ -392,6 +400,11 @@ internal sealed partial class HollowmereWorld
     {
         _pendingBodies[pid] = (kind, Time.time);
         if (kind == 2) CaptureTopHalf(pid);
+        if (kind == 4)
+        {
+            var p = PlayerControl.AllPlayerControls.ToArray().FirstOrDefault(x => x != null && x.PlayerId == pid);
+            if (p != null) CthulhuFire(p.GetTruePosition());
+        }
     }
 
     private void MarkPoisoned(byte pid)
@@ -432,7 +445,7 @@ internal sealed partial class HollowmereWorld
             _pendingBodies.Remove(pid);
             try
             {
-                if (kind == 0)
+                if (kind == 0 || kind == 4)
                 {
                     foreach (var sr in b.GetComponentsInChildren<SpriteRenderer>()) if (sr != null) sr.color = new Color(0.2f, 0.16f, 0.14f, sr.color.a);
                     for (int i = 0; i < 10; i++)
@@ -549,6 +562,7 @@ internal sealed partial class HollowmereWorld
 
     private static Sprite BeingSprite(Being b)
     {
+        if (b == Being.ShadowPact) return null;                       // the pact uses the existing circle glow, no creature
         string key = b == Being.Ghost ? "bobby" : BeingKey[(int)b];         // der Geist ist ein blasser, verzerrter Bobby-Umriss
         if (BeingSprites.TryGetValue(key, out var s) && s != null) return s;
         var res = SummonRes + $"summon_{key}.png";
@@ -711,6 +725,7 @@ internal sealed partial class HollowmereWorld
     private GameObject _bookRoot;
     private int _bookPage;
     private byte _book;
+    private bool _bookForImpostor;
     private readonly List<(string Title, Being[] Pics, string Line, string Note)> _pages = new();
     private UnityEngine.UI.Image[] _pagePics = Array.Empty<UnityEngine.UI.Image>();
     private TextMeshProUGUI[] _picNames = Array.Empty<TextMeshProUGUI>();
@@ -723,6 +738,7 @@ internal sealed partial class HollowmereWorld
         CloseBook();
         if (!HudManager.InstanceExists) return;
         _book = book;
+        _bookForImpostor = PlayerControl.LocalPlayer != null && IsImpostor(PlayerControl.LocalPlayer);
         _pages.Clear();
         if (book == 255)
             _pages.Add(("The pages are blank", Array.Empty<Being>(), "", "The ink fades before your eyes. Too many have read this book already."));
@@ -730,11 +746,12 @@ internal sealed partial class HollowmereWorld
         {
             _pages.Add(("The Guardians", new[] { Being.Tyrael, Being.Castiel, Being.Bobby }, "4 - 1 - 3 - 5 - 2", "Light the candles in this order and one of them will answer."));
             _pages.Add(("The Demons", new[] { Being.Diablo, Being.Baal, Being.Mephisto }, "any other order", "Diablo and Baal burn whoever comes close, Mephisto poisons them."));
+            _pages.Add(("Cthulhu", new[] { Being.Cthulhu }, "An uncertain call", "A failed ritual can also call Cthulhu. His stormfire flashes like lightning and leaves its victims charred."));
             _pages.Add(("A warning", Array.Empty<Being>(), "Read before you call", "Whoever lights the last candle without having read this book calls a restless ghost. It will tear them apart."));
         }
         else
         {
-            var list = book == 0 ? new[] { Being.Diablo, Being.Baal, Being.Mephisto, Being.Tyrael } : new[] { Being.Castiel, Being.Bobby };
+            var list = book == 0 ? new[] { Being.Diablo, Being.Baal, Being.Mephisto, Being.Cthulhu, Being.Tyrael } : new[] { Being.Castiel, Being.Bobby };
             string[] notes =
             {
                 "Lord of Terror. Burns whoever comes too close and armours the traitors.",
@@ -743,10 +760,16 @@ internal sealed partial class HollowmereWorld
                 "The Archangel of Justice. Armours the innocent until the next meeting.",
                 "An angel of the Lord. His grace shields the innocent from the next vote.",
                 "An old hunter's ghost. He keeps the stone angels asleep until the next meeting.",
+                "",
+                "An ancient horror. Stormfire strikes like lightning, chars nearby victims, and armours the traitors.",
             };
-            foreach (var b in list) _pages.Add((BeingName[(int)b], new[] { b }, string.Join(" - ", HardCodes[(int)b]), notes[(int)b]));
+            foreach (var b in list) _pages.Add((BeingName[(int)b], new[] { b }, string.Join(" - ", HardCodes[b]), notes[(int)b]));
             _pages.Add(("A warning", Array.Empty<Being>(), "Any other order wakes a demon", "Whoever lights the last candle without having read a book calls a restless ghost. It will tear them apart."));
         }
+
+        if (HollowmereSummonRules.ShowPactPage(_bookForImpostor, book != 255))
+            _pages.Add(("The Shadow Pact", Array.Empty<Being>(), string.Join(" - ", HollowmereSummonRules.PactCode),
+                "Traitors only. Once per game: absorb one demonic attack before the next meeting. No killer is summoned. Reading is still required; the restless ghost ignores this ward."));
 
         const float W = 1500f, H = 860f;
         _bookRoot = HalloweenUI.Canvas("HollowmereBook", 9400, true);
@@ -832,6 +855,7 @@ internal sealed partial class HollowmereWorld
         if (_bookRoot == null) { OfferBooks(); return; }
         bool dead = PlayerControl.LocalPlayer?.Data?.IsDead ?? true;
         if (Input.GetKeyDown(KeyCode.Escape) || dead) { CloseBook(); return; }
+        if (_bookForImpostor != IsImpostor(PlayerControl.LocalPlayer)) { CloseBook(); return; }
         if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D)) Flip(1);
         if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A)) Flip(-1);
     }
@@ -971,7 +995,7 @@ internal sealed partial class HollowmereWorld
             {
                 var being = (Being)reader.ReadByte();
                 byte summoner = reader.ReadByte();
-                if (w == null || !UCRpc.RequireHost("Hollowmere.Summon")) return true;
+                if (w == null || !UCRpc.RequireHost("Hollowmere.Summon") || (int)being >= BeingKey.Length) return true;
                 for (int k = 0; k < 5; k++) w.SetRitualLit(k, true);
                 w.StartSummon(being, summoner);
                 return true;
@@ -981,7 +1005,8 @@ internal sealed partial class HollowmereWorld
                 byte pid = reader.ReadByte(); int kind = reader.ReadByte();
                 if (w == null || !UCRpc.RequireHost("Hollowmere.SummonVictim")) return true;
                 if (kind == 3) w.MarkPoisoned(pid);
-                else { w.NoteVictim(pid, kind); GraveyardWorld.MarkVictim(pid); }
+                else if (kind == 5) w.PactSpent(pid);
+                else if (kind <= 4) { w.NoteVictim(pid, kind); GraveyardWorld.MarkVictim(pid); }
                 return true;
             }
             case SubBlessing:

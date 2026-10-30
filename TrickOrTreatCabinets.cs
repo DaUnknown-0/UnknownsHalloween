@@ -219,7 +219,7 @@ namespace UnknownsHalloween {
         }
 
         // Side walls (west/east) as the last resort.
-        private static bool TrySide(Vector2 p, Vector2 dir, PlainShipRoom room, int mask, int fullMask, List<Vector2> avoid, List<Vector2> doors, out Cand c) {
+        private static bool TrySide(Vector2 p, Vector2 dir, PlainShipRoom room, int mask, int fullMask, List<Vector2> avoid, List<Vector2> doors, List<Bounds> props, out Cand c) {
             c = default;
             if (!FirstHit(p, dir, 6f, mask, out var hit) || !IsWall(hit.collider) || Mathf.Abs(hit.normal.x) < 0.8f) return false;
             float wx = hit.point.x;
@@ -233,6 +233,14 @@ namespace UnknownsHalloween {
             var front = foot - dir * 0.5f + new Vector2(0f, -0.15f);
             if (!TrickOrTreat.Clear(p, front, mask)) return false;
             if (Near(avoid, foot, 1.3f) || Near(doors, foot, 1.6f) || Near(farAvoid, foot, 2.4f) || Near(farAvoid, front, 2.2f)) return false;
+            // Hollowmere (Feedback 29.10. abends, n04): auch an den Seitenwaenden keine Kiste hinter einem Wandbild oder Moebel
+            if (MapKey() == HollowmereMap.Key) {
+                var box = new Bounds(new Vector3(foot.x, foot.y + Height * 0.5f, 0f), new Vector3(Width * 0.9f, Height, 100f));
+                foreach (var b in props) {
+                    var bb = new Bounds(new Vector3(b.center.x, b.center.y, 0f), new Vector3(b.size.x, b.size.y, 100f));
+                    if (bb.Intersects(box)) { rejProp++; return false; }
+                }
+            }
             c = new Cand { Foot = foot, Front = front, Room = room, Tier = 2 };
             return true;
         }
@@ -252,7 +260,7 @@ namespace UnknownsHalloween {
             var cands = new List<Cand>();
             foreach (var (p, room) in TrickOrTreat.reachable) {
                 if (TryNorth(p, room, mask, fullMask, avoid, doors, props, out var c)) cands.Add(c);
-                else if (TrySide(p, rnd.Next(2) == 0 ? Vector2.left : Vector2.right, room, mask, fullMask, avoid, doors, out var s)) cands.Add(s);
+                else if (TrySide(p, rnd.Next(2) == 0 ? Vector2.left : Vector2.right, room, mask, fullMask, avoid, doors, props, out var s)) cands.Add(s);
             }
             bool Spread(Vector2 p, float min) {
                 foreach (var q in picked) {
