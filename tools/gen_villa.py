@@ -507,7 +507,9 @@ def render_consoles(all_consoles):
                 name = f"{key}@{v}"                   # andere Wand oder anderer Raum in dieser Variante
         if name not in names:
             h = (spr[0].size, spr[1], spr[2], hashlib.md5(spr[0].tobytes()).hexdigest())
-            if h in by_content:
+            # Tauschbilder ("Prop/...") nie zusammenlegen: compose.py malt je Platz eine eigene Gestalt hinein (30.10.:
+            # zwei Friedhofsengel teilten sich sonst ein "step"-Bild und wechselten beim Angriff die Gestalt)
+            if h in by_content and not key.startswith("Prop/"):
                 name = by_content[h]
             else:
                 by_content[h] = name

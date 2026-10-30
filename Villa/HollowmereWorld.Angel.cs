@@ -132,12 +132,40 @@ internal sealed partial class HollowmereWorld
         AngelVariantAt.Clear();
         if (_angels.Count > 0) AngelVariantAt.Add((FountainAngel, 1));
         int i = 0;
-        foreach (var pv in _graveAngels.OrderBy(p => p.Pos.x).ThenBy(p => p.Pos.y))
+        // gerundet wie compose.py (3 Dezimalen der Platz-Schluessel): Float-Rauschen in einer Spalte darf die Reihenfolge nicht drehen
+        foreach (var pv in _graveAngels.OrderBy(p => Mathf.Round(p.Pos.x * 100f)).ThenBy(p => Mathf.Round(p.Pos.y * 100f)))
             AngelVariantAt.Add((pv.Pos, i++ % AngelVariants + 1));
         foreach (var s in _slots)
             foreach (var (pos, variant) in AngelVariantAt) if ((pos - s.Home).sqrMagnitude < 0.01f) { s.Variant = variant; break; }
+        FixSharedPoseSprites();
         if (_slots.Count > 0)
             HalloweenPlugin.Logger.LogInfo($"{LogPrefix} weeping angels: {_slots.Count} (attack {(AngelAttackOn ? "on" : "off")})");
+    }
+
+    /// <summary>30.10. (Feedback "Turned into other angel"): gen_villa legte gleich gezeichnete Tauschbilder zweier Friedhofsengel
+    /// in EIN Atlas-Rechteck, compose.py malte danach nur eine Gestalt hinein (grosse Manor: "step" von 24,8/-3,45 und 27,3/-11,45).
+    /// Ein Engel wechselte deshalb beim Angriff die Gestalt. Ohne neue Atlanten: teilt sich ein Pose-Bild Engel verschiedener
+    /// Gestalt, nimmt jeder das Bild eines Engels derselben Gestalt, dessen Bild nur ihm gehoert (gleiche Groesse und Anker).</summary>
+    private void FixSharedPoseSprites()
+    {
+        var grave = _slots.Where(s => s.Movable && s.Props.Count == 1 && s.Props[0].Sr != null).ToList();
+        int fixedCount = 0;
+        foreach (var pose in new[] { "turn", "step" })
+        {
+            Sprite Get(AngelSlot s) => s.Props[0].Vars.TryGetValue(pose, out var sp) ? sp : null;
+            static bool Same(Sprite a, Sprite b) => a != null && b != null && a.texture == b.texture && a.textureRect == b.textureRect;
+            bool Shared(AngelSlot s) => grave.Any(o => o != s && o.Variant != s.Variant && Same(Get(o), Get(s)));
+            var bad = grave.Where(Shared).ToList();
+            var swap = new List<(AngelSlot Slot, Sprite Sprite)>();
+            foreach (var s in bad)
+            {
+                var donor = grave.FirstOrDefault(o => o != s && o.Variant == s.Variant && Get(o) != null && !bad.Contains(o));
+                if (donor != null) swap.Add((s, Get(donor)));
+                else HalloweenPlugin.Logger.LogWarning($"{LogPrefix} angel at {s.Home.x:F2}/{s.Home.y:F2}: shared '{pose}' image, no donor of variant a{s.Variant}");
+            }
+            foreach (var (s, sp) in swap) { s.Props[0].Vars[pose] = sp; fixedCount++; }
+        }
+        if (fixedCount > 0) HalloweenPlugin.Logger.LogInfo($"{LogPrefix} weeping angels: {fixedCount} shared pose image(s) replaced by the same variant");
     }
 
     private void AngelTick()
