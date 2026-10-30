@@ -132,6 +132,9 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             // 28.10. (n40-n43): Beschwoerung am Pentagramm, Buch in der Bibliothek (HollowmereWorld.Summon.cs)
             Summoning = CustomOption.Create(1954, CustomOption.CustomOptionType.General, "Summoning Circle",
                 new[] { "Easy", "Hard", "Off" }, null, false, null, "Hollowmere Manor");
+            // Easy is selection 0, which TOR treats as a disabled parent; keep this setting in a separate row.
+            UnreadSummonOutcome = CustomOption.Create(1957, CustomOption.CustomOptionType.General, "Summoning Without Reading",
+                new[] { "Instant Kill", "No Kill" }, null, false, null, "Hollowmere Manor");
             // 28.10. (n52): im Dixi-Klo des Crew Camps verstecken (HollowmereWorld.Dixi.cs)
             DixiHide = CustomOption.Create(1956, CustomOption.CustomOptionType.General, "Hide In The Portable Toilet", true, null, false, null, "Hollowmere Manor");
             AngelReplayRegister();
@@ -465,12 +468,13 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
 
     public void OnDestroy()
     {
+        if (_current == this) _current = null;
+        ClearSummonPlayers();
         EndPass(true);
         _sounds.Clear();
         _shut.Clear();
         RitualDestroy();
         AngelMoveDestroy();
-        if (_current == this) _current = null;
     }
 
     // ------------------------------------------------------------------ Durchgang

@@ -4,10 +4,9 @@
 // HollowmereWorld.AngelMove - die Friedhofsengel der grossen Manor bewegen sich (User 25.10.), dazu Blinzeln und die
 // Sabotage "Engel-Ausbruch". Die Brunnenfigur bleibt stehen (sie gehoert zum Brunnen).
 //
-// Spruenge (Option 1952 "Weeping Angels Move", Host-autoritativ; User 25.10.: NUR waehrend der Sabotage "Angel Breakout",
-// sonst stehen die Engel fest auf ihrem Platz): schaut niemand einen Engel an und hat er einen Spieler im
-// Visier (der Spieler schaut weg und der Wert hat "starrt an" erreicht, oder er hat gerade geblinzelt), springt der Engel
-// hoechstens 1,5 m naeher, nie naeher als 0,8 m und nie weiter als 6 m von seinem Platz. Der Weg folgt einem Laufraster
+// Spruenge (Option 1952 "Weeping Angels Move", Host-autoritativ; User 30.10.): Erst NACH Ablauf des 45-s-Countdowns.
+// Solange der Countdown laeuft, stehen die Engel fest auf ihrem Platz. Danach springt ein unbeobachteter Engel
+// hoechstens 1,5 m naeher, nie naeher als 0,8 m, ohne Leine um seinen Ausgangspunkt. Der Weg folgt einem Laufraster
 // (0,5 m, beim ersten Tick aus den Kollidern gebaut), damit kein Engel durch eine Wand springt; vor jedem Sprung prueft eine
 // Sichtlinie gegen Waende und geschlossene Tueren. Die Engel tragen dafuer eigene Kollider, die mitwandern (die statischen
 // Glass-Kollider von Atlas an ihren Plaetzen werden abgeschaltet). Position als RPC Modul 236 Sub 11 (Host -> alle).
@@ -21,8 +20,9 @@
 //
 // Engel-Ausbruch (Option 1953, nur mit Friedhofsengeln): der Host fuehrt einen gemeinsamen Zornpegel. Er steigt fuer jeden
 // Spieler, der einem Engel den Ruecken zukehrt (0,6/s) oder nahe bei einem steht (unter 3 m, 0,4/s), und sinkt ohne das
-// langsam (0,25/s). Voll (100) -> Sabotage (Sub 12/1, nicht von Impostorn ausloesbar): 45 s Countdown, der Notfallknopf ist
-// gesperrt; zwei Siegel in der Nordwestecke des Friedhofs muessen gleichzeitig gehalten werden (je ein lebender Spieler
+// langsam (0,25/s). Voll (100) -> Sabotage (Sub 12/1, nicht von Impostorn ausloesbar): 45 s Countdown. Notfall- und Mayor-
+// Knopf bleiben waehrend der gesamten Krise gesperrt; Leichenmeldungen bleiben moeglich. Zwei Siegel in der Nordwestecke
+// des Friedhofs muessen gleichzeitig gehalten werden (je ein lebender Spieler
 // steht dort und drueckt "HOLD", Sub 13 jeder -> Host; 1 s gemeinsam gehalten -> behoben, Sub 12/0). Laeuft die Zeit ab
 // (Sub 12/2), bewegen sich die Engel frei ueber die ganze Karte (Laufraster, zum naechsten Spieler) und toeten jeden in
 // Reichweite, der sie nicht ansieht, Impostor eingeschlossen. Erst das naechste Meeting setzt alles zurueck. Nach einem
@@ -52,7 +52,7 @@ internal sealed partial class HollowmereWorld
     internal const byte SubBlink = 14;           // [spieler]              Host -> alle (nur der Spieler selbst zeigt den Lidschlag)
     internal static BepInEx.Configuration.ConfigEntry<bool> BlinkEffect;
 
-    private const float JumpMax = 1.5f, JumpKeep = 0.8f, JumpEvery = 0.8f, RampageEvery = 0.6f, HomeLeash = 6f;
+    private const float JumpMax = 1.5f, JumpKeep = 0.8f, RampageEvery = 0.6f, HomeLeash = 6f;
     private const float BlinkMin = 8f, BlinkMax = 14f;
     private const float WrathFull = 100f, WrathAway = 0.6f, WrathNear = 0.4f, WrathNearDist = 3f, WrathCalm = 0.25f, WrathRest = 60f;
     private const float BreakoutSecs = 45f, SealReach = 0.9f, SealHostReach = 1.4f, SealHoldNeed = 1f;
@@ -246,7 +246,7 @@ internal sealed partial class HollowmereWorld
     private void BlinkTick(List<PlayerControl> players, AngelSight[,] sights)
     {
         _blinking.Clear();
-        if (!AmHost || _breakout == 0) return;                                // Blinzeln zaehlt nur, solange die Engel springen koennen
+        if (!AmHost || _breakout == 0) return;                                // Blinzeln waehrend der Krise; Bewegung erst nach dem Countdown
         float now = Time.time;
         for (int n = 0; n < players.Count; n++)
         {
@@ -360,37 +360,26 @@ internal sealed partial class HollowmereWorld
     }
 
     /// <summary>Host: unbeobachtete Engel springen auf ihr Ziel zu (Sub 11).</summary>
-    private void AngelMoveHost(List<PlayerControl> players, AngelSight[,] sights, bool[] blinked)
+    private void AngelMoveHost(List<PlayerControl> players)
     {
-        // User 25.10.: die Engel verlassen ihren Platz nur waehrend "Angel Breakout" (Countdown: an der Leine, Ausbruch: frei)
-        if (!AmHost || !_moveReady || _breakout == 0 || !AngelMoveOn && _breakout != 2) return;
+        // Der Countdown ist Vorbereitungszeit. Auch Blinzeln oder volle Aggression erlauben darin keinen Sprung.
+        if (!AmHost || !_moveReady || _breakout != 2 || !AngelMoveOn) return;
         float now = Time.time;
-        bool rampage = _breakout == 2;
         for (int i = 0; i < _slots.Count; i++)
         {
             var s = _slots[i];
             if (!s.Movable || _angelWatched[i] || now < s.NextJump) continue;
             var targets = new List<Vector2>();
-            float best = float.MaxValue;
             for (int n = 0; n < players.Count; n++)
             {
                 var p = players[n];
                 if (p.inVent || p.onLadder) continue;
                 var pos = p.GetTruePosition();
-                float d = Vector2.Distance(pos, s.Pos);
-                if (!rampage)
-                {
-                    _aggro.TryGetValue((p.PlayerId, i), out float a);
-                    bool wants = sights[n, i] == AngelSight.Away && (a >= AngelStareAt || blinked[n]);
-                    if (!wants || d >= best) continue;
-                    best = d;
-                    targets.Clear();
-                }
                 targets.Add(pos);
             }
             if (targets.Count == 0) continue;
-            s.NextJump = now + (rampage ? RampageEvery : JumpEvery);
-            var path = PathTo(s.Pos, targets, s.Home, !rampage);
+            s.NextJump = now + RampageEvery;
+            var path = PathTo(s.Pos, targets, s.Home, false);
             if (path == null || path.Count < 2) continue;
             var to = PickJump(s, path, targets, players);
             if (to == null) continue;
@@ -761,8 +750,8 @@ internal sealed partial class HollowmereWorld
 
     // ------------------------------------------------------------------ Autotest (UC_HALLOWEEN_DIAG=villalarge,angels)
 
-    /// <summary>Engel-Test: in den Friedhof, Ruecken zu den rechten Engeln (Spruenge), dann Ausbruch erzwingen, Siegel
-    /// fotografieren und den freien Lauf abwarten (der Spieler schaut weg und wird geholt).</summary>
+    /// <summary>Engel-Test: im Countdown bleiben die Friedhofsengel stehen, dann Siegel fotografieren und den freien Lauf
+    /// nach Ablauf der 45 s abwarten (der Spieler schaut weg und wird geholt).</summary>
     private void DiagAngels(PlayerControl lp)
     {
         float now = Time.time;
@@ -778,19 +767,19 @@ internal sealed partial class HollowmereWorld
             case 0:
                 HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag: angels ready {_moveReady} (grid {_gw}x{_gh}), movable {_slots.Count(s => s.Movable)}");
                 try { lp.NetTransform.RpcSnapTo(spot); } catch { }
-                SendBreakout(1); ApplyBreakout(1);                          // Spruenge gibt es nur waehrend der Sabotage
+                SendBreakout(1); ApplyBreakout(1);                          // Countdown: Engel muessen stehen bleiben
                 _diagStep = 1; _diagAt = now + 1f;
                 break;
             case 1: case 2: case 3: case 4: case 5: case 6:   // 1,5 s Abstand: vor dem Kill (Wert voll nach 5 s) weiter
                 Face();
                 HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag: angels t{_diagStep} player {lp.GetTruePosition().x:F1}/{lp.GetTruePosition().y:F1} dead {lp.Data.IsDead} at {Where()}");
-                if (_diagStep == 3) AtlasMaps.Shot("angels", "jump");
+                if (_diagStep == 3) AtlasMaps.Shot("angels", "countdown_still");
                 if (_diagStep == 2) { _blinkStart = Time.time - LidClose - 0.02f; BlinkFrame(); AtlasMaps.Shot("angels", "blink"); }
                 _diagStep = _diagStep == 3 ? 7 : _diagStep + 1; _diagAt = now + 1.5f;
                 if (lp.Data.IsDead) _diagStep = 7;
                 break;
             case 7:
-                AtlasMaps.Shot("angels", "after_jumps");
+                AtlasMaps.Shot("angels", "after_countdown_checks");
                 AngelsHome();
                 _aggro.Clear();
                 // lebend fuer den Ausbruch: im Freeplay neu beleben geht nicht, also nur weiter, wenn noch lebendig
@@ -879,7 +868,8 @@ internal sealed partial class HollowmereWorld
             int slot = reader.ReadByte();
             float x = reader.ReadSingle(), y = reader.ReadSingle();
             if (w == null || !UCRpc.RequireHost("Hollowmere.AngelMove")) return;
-            if (slot < w._slots.Count && w._slots[slot].Movable) w.MoveAngel(slot, new Vector2(x, y));
+            if (w._breakout == 2 && AngelMoveOn && slot < w._slots.Count && w._slots[slot].Movable)
+                w.MoveAngel(slot, new Vector2(x, y));
         }
         else if (sub == SubBreakout)
         {
@@ -905,7 +895,44 @@ internal sealed partial class HollowmereWorld
         }
     }
 
-    // ------------------------------------------------------------------ Notfallknopf waehrend des Countdowns gesperrt
+    // ------------------------------------------------------------------ Notfall- und Mayor-Knopf waehrend der gesamten Krise gesperrt
+
+    private static bool AngelEmergencyBlocked => _current != null && _current._breakout != 0;
+
+    [HarmonyPatch(typeof(HudManager), nameof(HudManager.Start))]
+    private static class BreakoutMayorPatch
+    {
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix()
+        {
+            try
+            {
+                var type = typeof(CustomOption).Assembly.GetType("TheOtherRoles.HudManagerStartPatch");
+                var button = AccessTools.Field(type, "mayorMeetingButton")?.GetValue(null) as TheOtherRoles.Objects.CustomButton;
+                if (button == null) return;
+                var original = button.CouldUse;
+                // CustomButton checks CouldUse for the grey state AND before invoking the click/hotkey action.
+                // Blocking here prevents spending one of the Mayor's remote meetings.
+                button.CouldUse = () => !AngelEmergencyBlocked && (original == null || original());
+            }
+            catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} mayor emergency guard failed: {e.Message}"); }
+        }
+    }
+
+    [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.CmdReportDeadBody))]
+    private static class BreakoutEmergencyCommandPatch
+    {
+        [HarmonyPriority(Priority.First)]
+        public static bool Prefix([HarmonyArgument(0)] NetworkedPlayerInfo target) => target != null || !AngelEmergencyBlocked;
+    }
+
+    // Mayor and TOR's unchecked report RPC bypass CmdReportDeadBody. Guard the received request as well.
+    [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.ReportDeadBody))]
+    private static class BreakoutEmergencyReportPatch
+    {
+        [HarmonyPriority(Priority.First)]
+        public static bool Prefix([HarmonyArgument(0)] NetworkedPlayerInfo target) => target != null || !AngelEmergencyBlocked;
+    }
 
     [HarmonyPatch(typeof(EmergencyMinigame), nameof(EmergencyMinigame.Update))]
     private static class BreakoutEmergencyPatch
@@ -913,7 +940,7 @@ internal sealed partial class HollowmereWorld
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(EmergencyMinigame __instance)
         {
-            if (_current == null || _current._breakout != 1 || __instance == null) return;
+            if (!AngelEmergencyBlocked || __instance == null) return;
             try
             {
                 __instance.StatusText.text = TranslationController.Instance.GetString(StringNames.EmergencyDuringCrisis, Array.Empty<Il2CppSystem.Object>());

@@ -261,16 +261,13 @@ internal sealed partial class HollowmereWorld
         return left ? dx > 0f : dx < 0f;
     }
 
-    /// <summary>Hat der Spieler den Engel in Sichtweite? Fuss oder Kopf im Bildausschnitt um den Spieler (Kameragroesse des
-    /// eigenen Clients, die Kamera folgt dem Spieler), in Lichtweite und ohne Wand dazwischen. Rechnet fuer jeden Spieler
-    /// gleich, damit Host (Kill) und Client (Bild) dasselbe Ergebnis haben.</summary>
+    /// <summary>Fuss oder Kopf im normalen gemeinsamen Bildausschnitt, in Lichtweite und ohne Wand dazwischen.
+    /// Gameplay uses the standard 3-unit, 16:9 view for everyone: a spectator's zoom or a different window aspect
+    /// must not freeze angels or change another player's aggression.</summary>
     private static bool AngelInSight(PlayerControl p, Vector2 feet)
     {
         var me = p.GetTruePosition();
-        var cam = Camera.main;
-        float halfH = cam != null && cam.orthographic ? cam.orthographicSize : 3f;
-        float halfW = halfH * (cam != null && cam.aspect > 0.1f ? cam.aspect : 16f / 9f);
-        halfH *= 1.05f; halfW *= 1.05f;
+        const float halfH = 3f * 1.05f, halfW = halfH * (16f / 9f);
         float radius = CrewSightRadius() + 0.6f;
         return PointInSight(me, feet, halfW, halfH, radius) || PointInSight(me, feet + new Vector2(0f, 1.6f), halfW, halfH, radius);
     }
@@ -315,7 +312,6 @@ internal sealed partial class HollowmereWorld
         if (AngelsAsleep) { _aggro.Clear(); return; }
         Array.Clear(_angelWatched, 0, _angelWatched.Length);
         var sights = new AngelSight[players.Count, _slots.Count];
-        var blinked = new bool[players.Count];
         for (int n = 0; n < players.Count; n++)
             for (int i = 0; i < _slots.Count; i++)
                 sights[n, i] = SightOf(players[n], _slots[i]);
@@ -324,7 +320,7 @@ internal sealed partial class HollowmereWorld
             for (int i = 0; i < _slots.Count; i++)
             {
                 // Blinzeln (Host, AngelMove.cs): in diesem Tick zaehlt der Blick nicht
-                if (sights[n, i] == AngelSight.Watched && _blinking.Contains(players[n].PlayerId)) { sights[n, i] = AngelSight.Away; blinked[n] = true; }
+                if (sights[n, i] == AngelSight.Watched && _blinking.Contains(players[n].PlayerId)) sights[n, i] = AngelSight.Away;
                 if (sights[n, i] == AngelSight.Watched) _angelWatched[i] = true;
             }
         if (AngelMode != 0) { SlotModeTick(players, sights); goto move; }
@@ -368,13 +364,11 @@ internal sealed partial class HollowmereWorld
         for (int n = 0; n < players.Count; n++)
             if (players[n] != null && players[n].Data != null && !players[n].Data.IsDead) { alive.Add(players[n]); keep.Add(n); }
         var s2 = new AngelSight[alive.Count, _slots.Count];
-        var b2 = new bool[alive.Count];
         for (int n = 0; n < alive.Count; n++)
         {
-            b2[n] = blinked[keep[n]];
             for (int i = 0; i < _slots.Count; i++) s2[n, i] = sights[keep[n], i];
         }
-        AngelMoveHost(alive, s2, b2);
+        AngelMoveHost(alive);
         WrathTick(alive, s2);
         BreakoutHostTick();
     }
