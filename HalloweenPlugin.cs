@@ -40,7 +40,7 @@ public class HalloweenPlugin : BasePlugin
 {
     public const string PluginGuid = "com.daunknown.unknownshalloween";
     public const string PluginName = "Unknown's Halloween";
-    public const string PluginVersion = "1.0.1";
+    public const string PluginVersion = "1.0.2";
     public static readonly System.Version Version = System.Version.Parse(PluginVersion);
     private const string AtlasGuid = "com.daunknown0.atlas";
 
@@ -119,7 +119,10 @@ public class HalloweenPlugin : BasePlugin
         // PatchAll: the costume setup there asks whether the packages are ready.
         var source = Config.Bind("Assets", "DownloadSource", "",
             "Leave empty. Test override for the asset download (only the asset repository or http://127.0.0.1:<port>/).");
-        HalloweenAssets.Start(AddComponent<HalloweenAssetHost>(), source.Value);
+        var assetHost = AddComponent<HalloweenAssetHost>();
+        HalloweenAssets.Start(assetHost, source.Value);
+        // costumes added later without a mod update (extra/costumes.json in the asset repository)
+        HalloweenExtraCostumes.Start(assetHost);
 
         // PatchAll runs the HarmonyPrepare hooks that set the costumes and the role up
         // (HalloweenCostumes.KillHook.Prepare, Xenomorph.ResetPatch.Prepare).

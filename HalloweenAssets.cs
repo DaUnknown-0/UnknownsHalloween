@@ -57,6 +57,7 @@ internal static class HalloweenAssets
     private sealed class Entry
     {
         public string Name, Sha256;
+        public string File, Url;                         // Ablage und Quelle; Url null = Katalog-Tag (Source)
         public long Size;
         public long OkLength, OkTicks;                   // bestaetigter Stand; 0 = nicht bestaetigt
         public long StatAt;                              // Environment.TickCount64 der letzten Pruefung am Ort
@@ -65,9 +66,14 @@ internal static class HalloweenAssets
         public float RetryAt;
     }
 
-    private static readonly Entry[] Entries = HalloweenAssetCatalog.Files
-        .Select(f => new Entry { Name = f.Name, Size = f.Size, Sha256 = f.Sha256 }).ToArray();
+    // Katalog der DLL; dazu kommen zur Laufzeit die Pakete der Online-Kostueme (AddExtra, HalloweenExtraCostumes).
+    // Liste und Woerterbuch nur unter Gate aendern; wer sie durchlaeuft, nimmt Snapshot().
+    private static readonly List<Entry> Entries = HalloweenAssetCatalog.Files
+        .Select(f => new Entry { Name = f.Name, Size = f.Size, Sha256 = f.Sha256, File = PathOf(f.Name) }).ToList();
     private static readonly Dictionary<string, Entry> ByName = Entries.ToDictionary(e => e.Name, StringComparer.OrdinalIgnoreCase);
+
+    private static Entry[] Snapshot() { lock (Gate) return Entries.ToArray(); }
+    private static string UrlOf(Entry e) => e.Url ?? Source + Uri.EscapeDataString(e.Name);
     private static readonly object Gate = new();
     private static readonly List<string> Queue = new();
     private static readonly List<(string Prefix, Action Run)> Waiting = new();
@@ -79,14 +85,59 @@ internal static class HalloweenAssets
     private static void Log(string s) => HalloweenPlugin.Logger?.LogInfo($"{LogPrefix} {s}");
     private static void Warn(string s) => HalloweenPlugin.Logger?.LogWarning($"{LogPrefix} {s}");
 
-    internal static int Total => Entries.Length;
+    internal static int Total { get { lock (Gate) return Entries.Count; } }
     internal static int ReadyCount { get { lock (Gate) return Entries.Count(e => e.OkLength > 0); } }
+
+    /// <summary>Ein Paket ausserhalb des DLL-Katalogs (Online-Kostuem): wird geprueft und bei Bedarf von url geladen,
+    /// liegt in file. Ein bekannter Name mit derselben Pruefsumme bleibt, wie er ist.</summary>
+    internal static void AddExtra(string name, long size, string sha256, string url, string file)
+    {
+        Entry e;
+        lock (Gate)
+        {
+            if (ByName.TryGetValue(name, out var old))
+            {
+                if (old.Sha256 == sha256) return;
+                Warn($"{name} is listed twice with different checksums, keeping the first");
+                return;
+            }
+            e = new Entry { Name = name, Size = size, Sha256 = sha256, Url = url, File = file };
+            Entries.Add(e);
+            ByName[name] = e;
+        }
+        Task.Run(() => Check(e)).ContinueWith(t =>
+        {
+            if (t.IsFaulted || !t.Result)
+            {
+                lock (Queue) if (!Queue.Contains(name)) Queue.Add(name);
+            }
+            else _stampsDirty = true;
+        });
+    }
+
+    /// <summary>Ein ersetztes Online-Paket aus dem Store nehmen (die Datei raeumt HalloweenExtraCostumes beim naechsten Start weg).</summary>
+    internal static void RemoveExtra(string name)
+    {
+        lock (Gate)
+        {
+            if (name == null || !ByName.TryGetValue(name, out var e) || e.Url == null) return;
+            Entries.Remove(e);
+            ByName.Remove(name);
+        }
+        lock (Queue) Queue.Remove(name);
+    }
 
     /// <summary>Alle Pakete, deren Name mit prefix beginnt ("hats_", "villa_", "graveyard_"), bestaetigt?</summary>
     internal static bool Ready(string prefix)
     {
         lock (Gate)
             return Entries.Where(e => e.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).All(e => e.OkLength > 0);
+    }
+
+    /// <summary>Ein einzelnes Paket (exakter Name) bestaetigt?</summary>
+    internal static bool PackageReady(string name)
+    {
+        lock (Gate) return ByName.TryGetValue(name, out var e) && e.OkLength > 0;
     }
 
     /// <summary>action sofort ausfuehren, wenn die Pakete da sind, sonst (im Hauptthread) sobald sie da sind.</summary>
@@ -155,7 +206,7 @@ internal static class HalloweenAssets
         if (e == null || !Confirmed(e)) return null;
         try
         {
-            using var fs = new FileStream(PathOf(e.Name), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var fs = new FileStream(e.File, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             fs.Seek(off, SeekOrigin.Begin);
             var data = new byte[len];
             int read = 0;
@@ -178,7 +229,7 @@ internal static class HalloweenAssets
         }
         try
         {
-            var fi = new FileInfo(PathOf(e.Name));
+            var fi = new FileInfo(e.File);
             if (fi.Exists && fi.Length == e.OkLength && fi.LastWriteTimeUtc.Ticks == e.OkTicks) { lock (Gate) e.StatAt = now; return true; }
         }
         catch { }
@@ -251,7 +302,7 @@ internal static class HalloweenAssets
                 var p = line.Split('\t');
                 if (p.Length != 4 || !ByName.TryGetValue(p[0], out var e) || p[3] != e.Sha256) continue;
                 if (!long.TryParse(p[1], out long len) || !long.TryParse(p[2], out long ticks) || len != e.Size) continue;
-                var fi = new FileInfo(PathOf(e.Name));
+                var fi = new FileInfo(e.File);
                 if (!fi.Exists || fi.Length != len || fi.LastWriteTimeUtc.Ticks != ticks) continue;
                 var idx = ReadIndex(fi.FullName, len);
                 if (idx == null) continue;
@@ -283,7 +334,7 @@ internal static class HalloweenAssets
         Task.Run(() =>
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            var bad = Entries.Where(e => !Check(e)).Select(e => e.Name).ToList();
+            var bad = Snapshot().Where(e => !Check(e)).Select(e => e.Name).ToList();
             return (bad, sw.ElapsedMilliseconds);
         }).ContinueWith(t =>
         {
@@ -306,7 +357,7 @@ internal static class HalloweenAssets
     {
         try
         {
-            var fi = new FileInfo(PathOf(e.Name));
+            var fi = new FileInfo(e.File);
             if (!fi.Exists || fi.Length != e.Size) { Unconfirm(e); return false; }
             string hash;
             using (var fs = new FileStream(fi.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
@@ -354,7 +405,9 @@ internal static class HalloweenAssets
             while (_active < Parallel && Queue.Count > 0 && scanned < Queue.Count)
             {
                 string n = Queue[0];
-                var e = ByName[n];
+                Entry e;
+                lock (Gate) ByName.TryGetValue(n, out e);
+                if (e == null) { Queue.RemoveAt(0); continue; }
                 if (Time.realtimeSinceStartup < e.RetryAt) { Queue.RemoveAt(0); Queue.Add(n); scanned++; continue; }
                 Queue.RemoveAt(0);
                 if (e.Tries >= MaxTries) continue;
@@ -369,7 +422,7 @@ internal static class HalloweenAssets
     {
         var www = new UnityWebRequest();
         www.SetMethod(UnityWebRequest.UnityWebRequestMethod.Get);
-        www.SetUrl(Source + Uri.EscapeDataString(e.Name));
+        www.SetUrl(UrlOf(e));
         www.SetRequestHeader("User-Agent", $"UnknownsHalloween/{HalloweenPlugin.PluginVersion}");
         www.downloadHandler = new DownloadHandlerBuffer();
         www.timeout = 120;
@@ -394,6 +447,12 @@ internal static class HalloweenAssets
             _loaded++;
             _stampsDirty = true;
             if (_active == 0 && ReadyCount == Total) Log($"all {Total} packages ready ({_loaded} downloaded since start)");
+            yield break;
+        }
+        if (e.Url != null && (code == 401 || code == 403 || code == 404))
+        {
+            // Online-Kostuem: Paket fehlt (noch) im Repo; nur dieses Paket aufgeben, der Rest laeuft weiter
+            Warn($"{e.Name}: {error.Trim()} at {e.Url}, skipped until the next start");
             yield break;
         }
         if (code == 401 || code == 403 || code == 404)
@@ -427,8 +486,8 @@ internal static class HalloweenAssets
         string hash;
         using (var sha = SHA256.Create()) hash = Convert.ToHexString(sha.ComputeHash(data)).ToLowerInvariant();
         if (hash != e.Sha256) return "checksum does not match";
-        Directory.CreateDirectory(Folder);
-        string path = PathOf(e.Name), tmp = path + ".part";
+        Directory.CreateDirectory(Path.GetDirectoryName(e.File));
+        string path = e.File, tmp = path + ".part";
         File.WriteAllBytes(tmp, data);
         File.Move(tmp, path, true);
         var fi = new FileInfo(path);

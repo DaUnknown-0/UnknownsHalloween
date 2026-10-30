@@ -95,6 +95,9 @@ namespace UnknownsHalloween {
             // live player keep the classic frames with painted legs.
             public bool LiveLegs;
             public Sprite[] Body, BodyAcc;
+            // Online costume (2026-10-30): listed in the asset repository's extra/costumes.json, pictures in Package.
+            public bool Online;
+            public string Package;
         }
 
         private sealed class KillScene {
@@ -119,7 +122,9 @@ namespace UnknownsHalloween {
             return i == 0 ? main : c.Alt[i - 1];
         }
 
-        private static readonly Costume[] Costumes = {
+        // Not readonly: online costumes (HalloweenExtraCostumes, 2026-10-30) are appended at runtime, after the options
+        // were created, so they never shift an option ID.
+        private static Costume[] Costumes = {
             // 2026-10-26 evening (User: "packe die alten Skins wieder rein. Engelskin bleibt."): Freddy, Jason, Xenomorph,
             // Ghostface, Predator, Sadako, Pumpkin Head, Reaper, Vampire and Medusa wear their first costumes again (frames
             // and settings of 0.1.3.13: on the real body, walking on the crewmate's own run cycle). The GPT notes below
@@ -282,6 +287,7 @@ namespace UnknownsHalloween {
                 }
                 if (mBounce != null) setBounceNode = (Action<HatParent>)Delegate.CreateDelegate(typeof(Action<HatParent>), mBounce);
                 loadHatSprite = LoadHatSprite;
+                hatsDir = mDir; hatsRegister = mRegister;
                 registerHats = () => RegisterHats(mDir, mRegister);
 
                 var harmony = new Harmony("daunknown.unknownshalloween.costumes");
@@ -308,6 +314,7 @@ namespace UnknownsHalloween {
         }
 
         private static Action registerHats;
+        private static MethodInfo hatsDir, hatsRegister;
 
         /// <summary>Costume hats are in the shop (their asset packages are there and the registration went through).</summary>
         internal static bool HatsRegistered { get; private set; }
@@ -325,20 +332,9 @@ namespace UnknownsHalloween {
                 var pending = new List<CustomHat>();
                 var byName = new Dictionary<string, Costume>();
                 foreach (var c in Costumes) {
-                    string main = $"UC_HW_{c.Key}.png", back = $"UC_HW_{c.Key}_back.png", climb = $"UC_HW_{c.Key}_climb.png";
-                    // TOR draws the registered hat itself (cosmetics menu, meeting icons) with the 450-wide calibration:
-                    // costumes on a wider canvas ship a 450 cut-out as hw_<key>_main.png (2026-10-26)
-                    string mainRes = HalloweenAssets.Exists(Res + $"hw_{c.Key}_main.png") ? $"hw_{c.Key}_main.png" : $"hw_{c.Key}_1.png";
-                    if (!Extract(mainRes, main)) continue;
-                    bool backOk = Extract($"hw_{c.Key}_back.png", back);
-                    bool climbOk = Extract($"hw_{c.Key}_climb.png", climb);
-                    OwnFiles.Add(main); OwnFiles.Add(back); OwnFiles.Add(climb);
-                    var hat = new CustomHat {
-                        Name = c.Name, Author = "DaUnknown-0", Package = "Unknown's Halloween",
-                        Resource = main, Adaptive = false, Bounce = true, Behind = backOk,
-                    };
-                    if (backOk) hat.BackResource = back;
-                    if (climbOk) hat.ClimbResource = climb;
+                    if (c.Online) continue;                          // online costumes register on their own (RegisterOnline)
+                    var hat = MakeHat(dir, c);
+                    if (hat == null) continue;
                     pending.Add(hat);
                     byName[c.Name] = c;
                 }
@@ -347,19 +343,128 @@ namespace UnknownsHalloween {
                 if (corpseHat != null) { pending.Add(corpseHat); OwnFiles.Add(HalloweenCorpse.FileName); }
                 if (pending.Count == 0) return;
                 if (!(bool)mRegister.Invoke(null, new object[] { pending })) return;
-                // Register removes hats that lost a name collision from the list it was handed.
-                foreach (var hat in pending) {
-                    if (!byName.TryGetValue(hat.Name, out var c)) continue;
-                    c.HatId = UCHats.HatIdOf(c.Name);
-                    ByHatName[c.Name] = c;
-                    if (c.HidesBody) HalloweenCorpse.BodylessHats.Add(c.Name);
-                    ByHatId[c.HatId] = c;
-                }
+                Adopt(pending, byName);
                 HatsRegistered = true;
                 KickTorHatLoader();
                 HalloweenPlugin.Logger?.LogInfo($"[Halloween] registered {ByHatName.Count} costume hat(s).");
             } catch (Exception ex) {
                 HalloweenPlugin.Logger?.LogError($"[Halloween] costume registration failed: {ex}");
+            }
+            RegisterOnline();
+        }
+
+        // One costume as a TOR hat: main picture, back and ladder picture written into TheOtherHats.
+        private static CustomHat MakeHat(string dir, Costume c) {
+            bool Extract(string res, string file) => ExtractIfNeeded(dir, Res + res, file);
+            string main = $"UC_HW_{c.Key}.png", back = $"UC_HW_{c.Key}_back.png", climb = $"UC_HW_{c.Key}_climb.png";
+            // TOR draws the registered hat itself (cosmetics menu, meeting icons) with the 450-wide calibration:
+            // costumes on a wider canvas ship a 450 cut-out as hw_<key>_main.png (2026-10-26)
+            string mainRes = HalloweenAssets.Exists(Res + $"hw_{c.Key}_main.png") ? $"hw_{c.Key}_main.png" : $"hw_{c.Key}_1.png";
+            if (!Extract(mainRes, main)) return null;
+            bool backOk = HalloweenAssets.Exists(Res + $"hw_{c.Key}_back.png") && Extract($"hw_{c.Key}_back.png", back);
+            bool climbOk = HalloweenAssets.Exists(Res + $"hw_{c.Key}_climb.png") && Extract($"hw_{c.Key}_climb.png", climb);
+            OwnFiles.Add(main); OwnFiles.Add(back); OwnFiles.Add(climb);
+            var hat = new CustomHat {
+                Name = c.Name, Author = "DaUnknown-0", Package = "Unknown's Halloween",
+                Resource = main, Adaptive = false, Bounce = true, Behind = backOk,
+            };
+            if (backOk) hat.BackResource = back;
+            if (climbOk) hat.ClimbResource = climb;
+            return hat;
+        }
+
+        // Register removes hats that lost a name collision from the list it was handed.
+        private static void Adopt(List<CustomHat> registered, Dictionary<string, Costume> byName) {
+            foreach (var hat in registered) {
+                if (!byName.TryGetValue(hat.Name, out var c)) continue;
+                c.HatId = UCHats.HatIdOf(c.Name);
+                ByHatName[c.Name] = c;
+                if (c.HidesBody) HalloweenCorpse.BodylessHats.Add(c.Name);
+                ByHatId[c.HatId] = c;
+            }
+        }
+
+        // ==================== online costumes (2026-10-30) ====================
+        //
+        // User: "so, dass ich später einfach Kostüme hinzufügen kann, ohne Updates zu benötigen". HalloweenExtraCostumes
+        // reads extra/costumes.json from the asset repository and hands every entry over here; its pictures come in their
+        // own package. Such a costume joins the shop once the regular costumes are registered AND its package is
+        // verified. No host option of its own (option IDs must stay fixed): its kill scene follows the main toggle.
+
+        private static readonly List<Costume> onlineWaiting = new();
+
+        internal static bool KnowsCostume(string key, string name) =>
+            Costumes.Any(c => c.Key == key || c.Name == name || (c.KillKey != null && c.KillKey == key));
+
+        internal static void AddOnline(HalloweenExtraCostumes.Def d) {
+            var known = Costumes.FirstOrDefault(c => c.Online && c.Key == d.Key);
+            if (known != null) { UpdateOnline(known, d); return; }
+            if (KnowsCostume(d.Key, d.Name)) {
+                HalloweenPlugin.Logger?.LogWarning($"[Halloween] online costume '{d.Key}' clashes with a known costume, skipped.");
+                return;
+            }
+            var c = new Costume {
+                Key = d.Key, Name = d.Name, Online = true, Package = d.Package,
+                HasLegs = d.HasLegs, HasAccent = d.HasAccent, HidesBody = d.HidesBody, NoLiveBob = d.NoLiveBob,
+                StillWalk = d.StillWalk, WalkFps = d.WalkFps, IdleFps = d.IdleFps, WalkIntro = d.WalkIntro,
+                KillKey = d.KillFrames > 0 ? d.Key : null, KillFrames = d.KillFrames, Flashes = d.Flashes, KillHold = d.KillHold,
+                KillerLayers = d.KillerLayers,
+            };
+            Costumes = Costumes.Append(c).ToArray();
+            lock (onlineWaiting) onlineWaiting.Add(c);
+            HalloweenAssets.WhenReady(d.Package, RegisterOnline);
+        }
+
+        // Reload (lobby join, /loadcostumes): the same key again. Behaviour applies at once; a new package replaces the old
+        // one once it is verified (frames reloaded, the shop picture rewritten). A new name needs a restart (hat IDs come from it).
+        private static void UpdateOnline(Costume c, HalloweenExtraCostumes.Def d) {
+            c.HasLegs = d.HasLegs; c.HasAccent = d.HasAccent; c.NoLiveBob = d.NoLiveBob; c.StillWalk = d.StillWalk;
+            c.WalkFps = d.WalkFps; c.IdleFps = d.IdleFps; c.WalkIntro = d.WalkIntro;
+            if (d.KillFrames > 0) { c.KillKey = d.Key; c.KillFrames = d.KillFrames; c.Flashes = d.Flashes; c.KillHold = d.KillHold; c.KillerLayers = d.KillerLayers; }
+            if (d.Name != c.Name) HalloweenPlugin.Logger?.LogInfo($"[Halloween] online costume '{c.Key}' renamed to '{d.Name}': takes effect after a restart.");
+            if (d.Package == c.Package) return;
+            string old = c.Package;
+            HalloweenAssets.WhenReady(d.Package, () => {
+                if (c.Package != old) return;                                  // overtaken by an even newer package
+                c.Package = d.Package;
+                HalloweenAssets.RemoveExtra(old);
+                c.FramesTried = c.MoveFramesTried = false;
+                c.Idle = c.Walk = c.IdleAcc = c.WalkAcc = c.Body = c.BodyAcc = null;
+                mainScene.Remove(c);
+                try {
+                    string dir = hatsDir?.Invoke(null, null) as string;
+                    if (dir != null) MakeHat(dir, c);                          // rewrites UC_HW_<key>*.png for the next start
+                } catch { }
+                HalloweenPlugin.Logger?.LogInfo($"[Halloween] online costume '{c.Key}' updated to {d.Package}.");
+            });
+        }
+
+        // Main thread (HalloweenAssets.Tick / RegisterHats): every waiting online costume whose package is there.
+        private static void RegisterOnline() {
+            if (!HatsRegistered || hatsDir == null || hatsRegister == null) return;
+            List<Costume> due;
+            lock (onlineWaiting) {
+                due = onlineWaiting.Where(c => HalloweenAssets.PackageReady(c.Package)).ToList();
+                foreach (var c in due) onlineWaiting.Remove(c);
+            }
+            if (due.Count == 0) return;
+            try {
+                string dir = hatsDir.Invoke(null, null) as string;
+                if (dir == null) return;
+                var pending = new List<CustomHat>();
+                var byName = new Dictionary<string, Costume>();
+                foreach (var c in due) {
+                    var hat = MakeHat(dir, c);
+                    if (hat == null) { HalloweenPlugin.Logger?.LogWarning($"[Halloween] online costume '{c.Key}': main picture missing, skipped."); continue; }
+                    pending.Add(hat);
+                    byName[c.Name] = c;
+                }
+                if (pending.Count == 0 || !(bool)hatsRegister.Invoke(null, new object[] { pending })) return;
+                Adopt(pending, byName);
+                KickTorHatLoader();
+                HalloweenPlugin.Logger?.LogInfo($"[Halloween] online costume(s) in the shop: {string.Join(", ", pending.Select(h => h.Name))}.");
+            } catch (Exception ex) {
+                HalloweenPlugin.Logger?.LogError($"[Halloween] online costume registration failed: {ex}");
             }
         }
 
@@ -472,12 +577,15 @@ namespace UnknownsHalloween {
                 HalloweenPlugin.Logger?.LogWarning($"[Halloween] {c.Name}: idle frames missing - hat stays static.");
                 return;
             }
-            c.Idle = new Sprite[IdleFrames];
-            HatFrameLoader.Want(c.Idle, IdleFrames, i => Res + $"hw_{c.Key}_{i + 1}.png", 0);
+            // up to 16 idle frames, as many as exist (2026-10-30: the bat stands on a single picture)
+            int idleCount = 1;
+            while (idleCount < IdleFrames && HalloweenAssets.Exists(Res + $"hw_{c.Key}_{idleCount + 1}.png")) idleCount++;
+            c.Idle = new Sprite[idleCount];
+            HatFrameLoader.Want(c.Idle, idleCount, i => Res + $"hw_{c.Key}_{i + 1}.png", 0);
             // Optional: without the masks the costume simply shows no player colour.
             if (c.HasAccent && HalloweenAssets.Exists(Res + $"hw_{c.Key}_acc_1.png")) {
-                c.IdleAcc = new Sprite[IdleFrames];
-                HatFrameLoader.Want(c.IdleAcc, IdleFrames, i => Res + $"hw_{c.Key}_acc_{i + 1}.png", 2);
+                c.IdleAcc = new Sprite[idleCount];
+                HatFrameLoader.Want(c.IdleAcc, idleCount, i => Res + $"hw_{c.Key}_acc_{i + 1}.png", 2);
             }
         }
 
@@ -559,19 +667,47 @@ namespace UnknownsHalloween {
         // material, flip and mask settings, tinted in the body colour of whoever wears the hat.
         private static readonly Dictionary<int, SpriteRenderer> accents = new();
 
+        private const string AccentName = "HalloweenAccent";
+
         private static void HideAccent(HatParent hat) {
             if (accents.Count == 0 || hat == null) return;
-            if (accents.TryGetValue(hat.GetInstanceID(), out var sr) && sr != null && sr.enabled) sr.enabled = false;
+            if (accents.TryGetValue(hat.GetInstanceID(), out var sr) && sr != null) { if (sr.enabled) sr.enabled = false; return; }
+            // not (or no longer) in the map: an accent object left on the hat must not keep showing an old mask
+            var front = hat.FrontLayer;
+            if (front == null || front.transform.childCount == 0) return;
+            var left = FindAccent(front);
+            if (left != null && left.enabled) left.enabled = false;
+        }
+
+        // 2026-10-30 (User screenshot: Predator with the pink Thing tentacles and the Angel Ghost halo on top): the map used
+        // to be cleared at 256 entries (every wardrobe chip counts), but the accent objects stayed on the hats, still
+        // enabled with the last costume's mask, and a second one was added. Now the map only drops destroyed entries,
+        // and a hat's existing accent object is always reused (and any extra one removed).
+        private static SpriteRenderer FindAccent(SpriteRenderer front) {
+            SpriteRenderer found = null;
+            var t = front.transform;
+            for (int i = t.childCount - 1; i >= 0; i--) {
+                var ch = t.GetChild(i);
+                if (ch == null || ch.name != AccentName) continue;
+                var r = ch.GetComponent<SpriteRenderer>();
+                if (found == null && r != null) { found = r; continue; }
+                UnityEngine.Object.Destroy(ch.gameObject);
+            }
+            return found;
         }
 
         private static void ShowAccent(HatParent hat, SpriteRenderer front, Sprite sprite) {
             int id = hat.GetInstanceID();
             if (!accents.TryGetValue(id, out var sr) || sr == null) {
-                if (accents.Count > 256) accents.Clear();
-                var go = new GameObject("HalloweenAccent") { layer = front.gameObject.layer };
-                go.transform.SetParent(front.transform, false);
-                go.transform.localPosition = new Vector3(0f, 0f, -0.0002f);
-                sr = go.AddComponent<SpriteRenderer>();
+                if (accents.Count > 256)
+                    foreach (var dead in accents.Where(kv => kv.Value == null).Select(kv => kv.Key).ToList()) accents.Remove(dead);
+                sr = FindAccent(front);
+                if (sr == null) {
+                    var go = new GameObject(AccentName) { layer = front.gameObject.layer };
+                    go.transform.SetParent(front.transform, false);
+                    go.transform.localPosition = new Vector3(0f, 0f, -0.0002f);
+                    sr = go.AddComponent<SpriteRenderer>();
+                }
                 accents[id] = sr;
             }
             if (sr.sprite != sprite) sr.sprite = sprite;
@@ -761,7 +897,7 @@ namespace UnknownsHalloween {
                 frame = c.Walk[(i % n + n) % n];
                 if (frame == null) running = false;                      // walk frames still loading (HatFrameLoader): idle meanwhile
             }
-            if (!running) frame = c.Idle[Mathf.FloorToInt(Time.time * c.IdleFps) % IdleFrames];
+            if (!running) frame = c.Idle[Mathf.FloorToInt(Time.time * c.IdleFps) % c.Idle.Length];
             if (frame != null && front.sprite != frame) front.sprite = frame;
 
             // The back layer holds the dark trouser openings of the standing pose. While the
@@ -792,10 +928,27 @@ namespace UnknownsHalloween {
         private static readonly Dictionary<byte, float> landStart = new();
 
         private static bool WearsStillWalk(PlayerControl pc) {
+            var c = ShownCostume(pc);
+            return c != null && c.StillWalk;
+        }
+
+        // 2026-10-30 (User: "während Camo wirklich der gesamte Skin versteckt", beim Engel blieb etwas übrig): TOR's
+        // camouflage and morph go through setLook, which changes what is DRAWN (the hat on the cosmetics layer) but not
+        // CurrentOutfit. Everything that asks "which costume does this player show" therefore reads the drawn hat, and
+        // nothing counts under a global camouflage. Before, a camouflaged angel still glided without its run cycle
+        // (StillWalkPatch) and a camouflaged killer still got his costume's kill scene.
+        private static bool GlobalCamo() {
+            try { return Camouflager.camouflageTimer > 0f || Helpers.MushroomSabotageActive(); } catch { return false; }
+        }
+
+        private static Costume ShownCostume(PlayerControl pc) {
             try {
+                if (pc == null || GlobalCamo()) return null;
+                var drawn = pc.cosmetics != null && pc.cosmetics.hat != null ? pc.cosmetics.hat.Hat : null;
+                if (drawn != null) return ByHatName.TryGetValue(drawn.name, out var c) ? c : null;
                 var hatId = pc.CurrentOutfit != null ? pc.CurrentOutfit.HatId : null;
-                return hatId != null && ByHatId.TryGetValue(hatId, out var c) && c.StillWalk;
-            } catch { return false; }
+                return hatId != null && ByHatId.TryGetValue(hatId, out var c2) ? c2 : null;
+            } catch { return null; }
         }
 
         // User 2026-10-26 ("komische Bewegungen, vor allem beim Neustarten der Animation"): the velocity drops to zero for a
@@ -958,12 +1111,14 @@ namespace UnknownsHalloween {
                 // The Xenomorph ROLE in its creature form wears the costume through setLook, which does
                 // not show up in CurrentOutfit.
                 if (Xenomorph.IsTransformed(killer.PlayerId)) return Costumes.FirstOrDefault(x => x.KillKey == "xeno" && x.HatId != null);
-                string hatId = null;
+                // What the killer LOOKS like right now - a camouflaged killer shows no costume, a morphed one the
+                // target's (the drawn hat, see ShownCostume; CurrentOutfit ignores setLook).
+                if (GlobalCamo()) return null;
                 var pc = killer.Object;
-                // What the killer LOOKS like right now - a camouflaged or morphed killer shows no costume.
-                if (pc != null && pc.CurrentOutfit != null) hatId = pc.CurrentOutfit.HatId;
-                else if (killer.DefaultOutfit != null) hatId = killer.DefaultOutfit.HatId;
-                return hatId != null && ByHatId.TryGetValue(hatId, out var c) && c.KillKey != null ? c : null;
+                Costume c = null;
+                if (pc != null) c = ShownCostume(pc);
+                else if (killer.DefaultOutfit != null && killer.DefaultOutfit.HatId != null) ByHatId.TryGetValue(killer.DefaultOutfit.HatId, out c);
+                return c != null && c.KillKey != null ? c : null;
             } catch { return null; }
         }
 

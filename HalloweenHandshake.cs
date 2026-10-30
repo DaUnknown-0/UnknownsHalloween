@@ -17,7 +17,8 @@
  *    Halloween look, task skins) do not count, a guest without the mod just does not see them.
  *  - In the round the role picks and Trick or Treat / Omens check Ready() as a second safety net.
  *
- * RPC module byte 244 on UC's channel 230 (see ID-Registry.md): Sub 0 hello [major][minor][build][revision][packs].
+ * RPC module byte 244 on UC's channel 230 (see ID-Registry.md): Sub 0 hello [major][minor][build][revision][packs],
+ * Sub 1 reload the online costume list (only from the mod author, HalloweenOwner).
  */
 
 using System;
@@ -66,9 +67,30 @@ namespace UnknownsHalloween {
             } catch (Exception e) { HalloweenPlugin.Logger?.LogWarning($"{LogPrefix} hello failed: {e.Message}"); }
         }
 
+        // Sub 1 (2026-10-30): the mod author typed /loadcostumes, everybody reloads the online costume list. The receiver checks
+        // the sender (from the transport, not the payload) against the author's PUID itself.
+        private const byte SubReloadCostumes = 1;
+
+        internal static bool SendReloadCostumes() {
+            var ac = AmongUsClient.Instance;
+            if (ac == null || PlayerControl.LocalPlayer == null || FreePlay()) return false;
+            try {
+                var w = UCRpc.Begin(RpcId);
+                w.Write(SubReloadCostumes);
+                ac.FinishRpcImmediately(w);
+                return true;
+            } catch (Exception e) { HalloweenPlugin.Logger?.LogWarning($"{LogPrefix} reload request failed: {e.Message}"); return false; }
+        }
+
         private static void Handle(MessageReader r) {
             try {
                 byte sub = r.ReadByte();
+                if (sub == SubReloadCostumes) {
+                    var from = UCRpc.Sender;
+                    if (HalloweenOwner.Is(from)) HalloweenExtraCostumes.Refresh(true, "/loadcostumes by " + (from.Data?.PlayerName ?? "?"));
+                    else HalloweenPlugin.Logger?.LogWarning($"{LogPrefix} costume reload request from {from?.Data?.PlayerName ?? "?"} ignored (not the mod author)");
+                    return;
+                }
                 if (sub != SubHello) return;
                 byte a = r.ReadByte(), b = r.ReadByte(), c = r.ReadByte(), d = r.ReadByte();
                 bool packs = r.ReadBoolean();
