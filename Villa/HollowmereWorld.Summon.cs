@@ -574,7 +574,10 @@ internal sealed partial class HollowmereWorld
     private static Sprite BeingSprite(Being b)
     {
         if (b == Being.ShadowPact) return null;                       // the pact uses the existing circle glow, no creature
-        string key = b == Being.Ghost ? "bobby" : BeingKey[(int)b];         // der Geist ist ein blasser, verzerrter Bobby-Umriss
+        string key = BeingKey[(int)b];
+        // 06.11. (Feedback DrSuspect: "ghost shouldnt be same model as bobby"): eigener Spukgeist summon_ghost.png (GPT); mit einem
+        // aelteren Asset-Paket ohne das Bild bleibt es beim blassen Bobby-Umriss von vorher
+        if (b == Being.Ghost && !HalloweenAssets.Exists(SummonRes + "summon_ghost.png")) key = "bobby";
         if (BeingSprites.TryGetValue(key, out var s) && s != null) return s;
         var res = SummonRes + $"summon_{key}.png";
         if (!HalloweenAssets.Exists(res)) return null;
