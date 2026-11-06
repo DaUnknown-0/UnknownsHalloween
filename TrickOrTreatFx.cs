@@ -1458,9 +1458,7 @@ namespace UnknownsHalloween {
                     if (pb != null) pb.OnClick.AddListener((Action)OnClick);
                     hooked = ub.Pointer;
                 }
-                if (!ub.gameObject.activeSelf) ub.gameObject.SetActive(true);
-                if (hud.PetButton != null && hud.PetButton.gameObject.activeSelf
-                    && Vector3.Distance(hud.PetButton.transform.localPosition, ub.transform.localPosition) < 0.3f) hud.PetButton.gameObject.SetActive(false);
+                PetYield.Take(hud);
                 if (iconWidth < 0f && ub.graphic != null && ub.graphic.sprite != null) iconWidth = ub.graphic.sprite.bounds.size.x;
                 ub.SetEnabled();
                 owned = true;
@@ -1494,11 +1492,9 @@ namespace UnknownsHalloween {
                     if (!owned || (current == null && currentCab == null) || __instance.UseButton == null) return;
                     if (__instance.UseButton.currentTarget != null) { owned = false; current = null; currentCab = null; return; }
                     Paint(__instance.UseButton);
-                    // Use und Pet liegen in Vanilla auf demselben Platz; schaltet das Spiel den Pet-Knopf spaeter im Frame wieder
-                    // ein, lagen SEARCH und Pet uebereinander (Feedback DrSuspect 28.10., n7). Mit UTS' Knopfreihe stehen sie nebeneinander.
-                    var pet = __instance.PetButton;
-                    if (pet != null && pet.gameObject.activeSelf && Vector3.Distance(pet.transform.localPosition, __instance.UseButton.transform.localPosition) < 0.3f)
-                        pet.gameObject.SetActive(false);
+                    // Use und Pet liegen auf demselben Platz; schaltet das Spiel den Pet-Knopf spaeter im Frame wieder ein,
+                    // lagen SEARCH und Pet uebereinander (Feedback DrSuspect 28.10., n7)
+                    PetYield.Take(__instance);
                 } catch { }
             }
         }
@@ -1546,6 +1542,32 @@ namespace UnknownsHalloween {
             current = null;
             if (TreatPlus.BagOn() && PlayerControl.LocalPlayer != null && TreatPlus.BagCount(PlayerControl.LocalPlayer.PlayerId) < TreatPlus.BagSize) TreatPlus.RequestTake(c);
             else TrickOrTreat.RequestEat(c);
+        }
+    }
+
+    /// <summary>Our Use actions come before petting (User 06.11.: E at a candy petted the pet instead). The game turns
+    /// the pet button back on after every physics step when it sees nothing to use itself (PlayerControl.FixedUpdate ->
+    /// HudManager.ToggleUseAndPetButton), i.e. before the frame's keys and clicks are handled. Petting only runs through
+    /// PetButton.DoClick -> PlayerControl.TryPet, and DoClick stops while the pet button is inactive (read in
+    /// GameAssembly). So while candy, cabinet or BOO! own the Use button, the pet button goes away right after each
+    /// physics step as well; the game shows it again by itself one physics step after the offer ends.</summary>
+    internal static class PetYield {
+        internal static void Take(HudManager hud) {
+            if (hud == null) return;
+            var ub = hud.UseButton;
+            var pet = hud.PetButton;
+            if (ub != null && !ub.gameObject.activeSelf) ub.gameObject.SetActive(true);
+            if (pet != null && pet.gameObject.activeSelf) pet.gameObject.SetActive(false);
+        }
+
+        // TOR patches PlayerControl.FixedUpdate itself, so no Il2Cpp dedup risk here
+        [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.FixedUpdate))]
+        private static class AfterPhysics {
+            private static void Postfix(PlayerControl __instance) {
+                try {
+                    if ((TreatUse.Owned || BooUse.Owned) && __instance.AmOwner && HudManager.InstanceExists) Take(HudManager.Instance);
+                } catch { }
+            }
         }
     }
 }

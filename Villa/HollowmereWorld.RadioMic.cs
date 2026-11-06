@@ -6,8 +6,10 @@
 //
 // Option 2160 "Radio Microphone": Selected Players / Everyone / Off (Standard Selected Players). Ausgewaehlt sind immer der Host
 // und die Spieler aus BepInEx/config/UnknownsHalloween/radio_mic.txt (je Zeile der SHA-256 von PUID oder Friend-Code, "#" fuer
-// Kommentare; beim ersten Start mit Mo und DrSuspect angelegt). Der Host pflegt die Liste im Chat: "/mic <Name>" schaltet einen
-// Spieler an oder aus, "/mic" zeigt sie. Er verteilt die erlaubten Spieler-Ids beim Rundenbau und nach jeder Aenderung (Sub 42).
+// Kommentare; beim ersten Start mit Mo und DrSuspect angelegt). Der Host pflegt die Liste im Lobby-Menue "Radio Microphone"
+// (HollowmereWorld.RadioMicMenu.cs, seit 06.11.) oder im Chat: "/mic <Name>" schaltet einen Spieler an oder aus, "/mic" zeigt sie.
+// Auch sich selbst kann er abschalten (Zeile "host-off"). Er verteilt die erlaubten Spieler-Ids beim Rundenbau und nach jeder
+// Aenderung (Sub 42).
 //
 // Wer darf, sieht am Funktisch "SPEAK" statt "TUNE": 3 Sekunden Aufnahme ueber Unitys Microphone, dann geht die Durchsage als
 // IMA-ADPCM (6 kHz, 4 Bit, rund 9 KB) in Teilen an alle (Sub 43 [id][teil][von][daten]); hoechstens 5 Teile pro Sekunde, damit
@@ -60,6 +62,9 @@ internal sealed partial class HollowmereWorld
 
     // ------------------------------------------------------------------ Liste (nur Host)
 
+    // 06.11. (User): der Host darf auch sich selbst abschalten; das steht als Zeile "host-off" in der Datei
+    private static bool _micHostOff;
+
     private static HashSet<string> LoadMicList()
     {
         var set = new HashSet<string>();
@@ -71,14 +76,16 @@ internal sealed partial class HollowmereWorld
                 File.WriteAllLines(MicListPath, new[]
                 {
                     "# Radio Microphone (Hollowmere): who may speak besides the host. One SHA-256 of a PUID or friend code per line.",
-                    "# Edit in the lobby with the chat command /mic <name>.",
+                    "# Edit in the lobby menu (Radio Microphone) or with the chat command /mic <name>. \"host-off\": the host may not speak either.",
                     GraveOwnerHashes[0], GraveOwnerHashes[1], GraveFishboneHashes[0], GraveFishboneHashes[1],
                 });
             }
+            _micHostOff = false;
             foreach (var line in File.ReadAllLines(MicListPath))
             {
                 string s = line.Trim();
-                if (s.Length == 64 && !s.StartsWith("#")) set.Add(s.ToLowerInvariant());
+                if (s.Equals("host-off", StringComparison.OrdinalIgnoreCase)) _micHostOff = true;
+                else if (s.Length == 64 && !s.StartsWith("#")) set.Add(s.ToLowerInvariant());
             }
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} radio_mic.txt: {e.Message}"); }
@@ -92,12 +99,31 @@ internal sealed partial class HollowmereWorld
             var lines = new List<string>
             {
                 "# Radio Microphone (Hollowmere): who may speak besides the host. One SHA-256 of a PUID or friend code per line.",
-                "# Edit in the lobby with the chat command /mic <name>.",
+                "# Edit in the lobby menu (Radio Microphone) or with the chat command /mic <name>. \"host-off\": the host may not speak either.",
             };
+            if (_micHostOff) lines.Add("host-off");
             lines.AddRange(set);
             File.WriteAllLines(MicListPath, lines);
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} radio_mic.txt not saved: {e.Message}"); }
+    }
+
+    /// <summary>Host-Sicht: steht der Spieler auf der Liste (der Host selbst, solange nicht "host-off")?</summary>
+    private static bool MicListed(PlayerControl p, HashSet<string> list) =>
+        p != null && ((p.AmOwner && !_micHostOff) || MicHashesOf(p).Any(list.Contains));
+
+    /// <summary>Host: einen Spieler an- oder abschalten, speichern, an alle schicken. null = nicht moeglich (keine Konto-Id).</summary>
+    private static bool? MicToggle(PlayerControl target)
+    {
+        var list = LoadMicList();
+        var hashes = MicHashesOf(target).ToList();
+        if (hashes.Count == 0 && !target.AmOwner) return null;
+        bool on = !MicListed(target, list);
+        foreach (var h in hashes) { if (on) list.Add(h); else list.Remove(h); }
+        if (target.AmOwner) _micHostOff = !on;
+        SaveMicList(list);
+        HostSendMicList();
+        return on;
     }
 
     private static IEnumerable<string> MicHashesOf(PlayerControl p)
@@ -125,7 +151,7 @@ internal sealed partial class HollowmereWorld
         foreach (var p in PlayerControl.AllPlayerControls.ToArray())
         {
             if (p == null || p.Data == null) continue;
-            if (p.AmOwner || MicHashesOf(p).Any(list.Contains)) MicAllowed.Add(p.PlayerId);
+            if (MicListed(p, list)) MicAllowed.Add(p.PlayerId);
         }
         try
         {
@@ -221,20 +247,28 @@ internal sealed partial class HollowmereWorld
         _micRecording = false;
         _micReady = Time.time + MicCooldown;
         float[] raw = null;
+        int rate = _micClipRate;
         try
         {
-            Microphone.End(null);
             if (_micClip != null)
             {
-                raw = new float[_micClip.samples * _micClip.channels];
-                _micClip.GetData(raw, 0);
+                // 06.11. (User: nichts zu hoeren): unter Il2Cpp kopiert ein float[] als Argument in ein neues natives Array,
+                // GetData fuellte nur diese Kopie und raw blieb stumm. Darum ins native Array lesen und danach umkopieren.
+                var buf = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<float>(_micClip.samples * _micClip.channels);
+                _micClip.GetData(buf, 0);
+                raw = new float[buf.Length];
+                for (int i = 0; i < raw.Length; i++) raw[i] = buf[i];
                 if (_micClip.channels > 1) raw = Mono(raw, _micClip.channels);
+                if (_micClip.frequency > 0) rate = _micClip.frequency;
             }
+            Microphone.End(null);
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} radio: reading the microphone failed: {e.Message}"); }
         if (raw == null || raw.Length == 0) return;
+        float peak = 0f;
+        foreach (var v in raw) peak = Mathf.Max(peak, Mathf.Abs(v));
 
-        var pcm = Normalize(Resample(raw, _micClipRate, MicRate));
+        var pcm = Normalize(Resample(raw, rate, MicRate));
         byte[] adpcm = ImaEncode(pcm);
         var lp = PlayerControl.LocalPlayer;
         if (lp == null) return;
@@ -252,7 +286,8 @@ internal sealed partial class HollowmereWorld
             MicOutgoing.Enqueue(part);
         }
         PlayVoice(pcm);
-        HalloweenPlugin.Logger.LogInfo($"{LogPrefix} radio: {pcm.Length / (float)MicRate:0.0} s recorded, {adpcm.Length} bytes in {total} parts");
+        HalloweenPlugin.Logger.LogInfo($"{LogPrefix} radio: {pcm.Length / (float)MicRate:0.0} s recorded at {rate} Hz, peak {peak:0.000}" +
+                                       $"{(peak < 0.01f ? " (silent: microphone muted?)" : "")}, {adpcm.Length} bytes in {total} parts");
     }
 
     // ------------------------------------------------------------------ Empfang
@@ -311,9 +346,18 @@ internal sealed partial class HollowmereWorld
                 float s = voice ? pcm[i - pad] * 0.9f + noise * 0.035f : noise * 0.2f;
                 outBuf[i] = Mathf.Clamp(s * 1.3f, -0.8f, 0.8f);
             }
-            var clip = AudioClip.Create("hollowmere_radio_voice", outBuf.Length, 1, MicRate, false);
-            clip.SetData(outBuf, 0);
+            // abgespielt mit 24 kHz, linear hochgerechnet: 6 kHz als Clip-Rate ist fuer die Audio-Ausgabe ungewoehnlich
+            const int up = 4;
+            var play = new float[outBuf.Length * up];
+            for (int i = 0; i < play.Length; i++)
+            {
+                int a = i / up, b = Math.Min(a + 1, outBuf.Length - 1);
+                play[i] = Mathf.Lerp(outBuf[a], outBuf[b], (i % up) / (float)up);
+            }
+            var clip = AudioClip.Create("hollowmere_radio_voice", play.Length, 1, MicRate * up, false);
+            clip.SetData(play, 0);
             SoundManager.Instance.PlaySound(clip, false, vol);
+            HalloweenPlugin.Logger.LogInfo($"{LogPrefix} radio voice: {pcm.Length / (float)MicRate:0.0} s at volume {vol:0.00}");
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} radio voice failed: {e.Message}"); }
     }
@@ -463,7 +507,6 @@ internal sealed partial class HollowmereWorld
                     __instance.AddChat(lp, "Radio Microphone: only the host can change who may speak.");
                     return false;
                 }
-                var list = LoadMicList();
                 string arg = text.Length > 5 ? text.Substring(5).Trim() : "";
                 var players = PlayerControl.AllPlayerControls.ToArray().Where(p => p != null && p.Data != null).ToList();
                 if (arg.Length > 0)
@@ -471,16 +514,14 @@ internal sealed partial class HollowmereWorld
                     var target = players.FirstOrDefault(p => string.Equals(p.Data.PlayerName, arg, StringComparison.OrdinalIgnoreCase))
                                  ?? players.FirstOrDefault(p => p.Data.PlayerName.IndexOf(arg, StringComparison.OrdinalIgnoreCase) >= 0);
                     if (target == null) { __instance.AddChat(lp, $"Radio Microphone: no player called \"{arg}\" here."); return false; }
-                    var hashes = MicHashesOf(target).ToList();
-                    if (hashes.Count == 0) { __instance.AddChat(lp, $"Radio Microphone: {target.Data.PlayerName} has no account id."); return false; }
-                    bool on = !hashes.Any(list.Contains);
-                    foreach (var h in hashes) { if (on) list.Add(h); else list.Remove(h); }
-                    SaveMicList(list);
-                    HostSendMicList();
-                    __instance.AddChat(lp, $"Radio Microphone: {target.Data.PlayerName} {(on ? "may speak now" : "may no longer speak")}.");
+                    bool? on = MicToggle(target);
+                    if (on == null) { __instance.AddChat(lp, $"Radio Microphone: {target.Data.PlayerName} has no account id."); return false; }
+                    __instance.AddChat(lp, $"Radio Microphone: {target.Data.PlayerName} {(on.Value ? "may speak now" : "may no longer speak")}.");
+                    MicMenu.RefreshIfOpen();
                     return false;
                 }
-                var names = players.Where(p => p.AmOwner || MicHashesOf(p).Any(list.Contains)).Select(p => p.Data.PlayerName);
+                var list = LoadMicList();
+                var names = players.Where(p => MicListed(p, list)).Select(p => p.Data.PlayerName);
                 string mode = MicMode == 1 ? "everyone" : MicMode == 2 ? "off" : "selected players";
                 __instance.AddChat(lp, $"Radio Microphone ({mode}): {string.Join(", ", names)}. Toggle someone with /mic <name>.");
                 return false;

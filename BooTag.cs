@@ -381,8 +381,7 @@ namespace UnknownsHalloween {
                     if (pb != null) pb.OnClick.AddListener((Action)OnClick);
                     hooked = ub.Pointer;
                 }
-                if (!ub.gameObject.activeSelf) ub.gameObject.SetActive(true);
-                if (hud.PetButton != null && hud.PetButton.gameObject.activeSelf) hud.PetButton.gameObject.SetActive(false);
+                PetYield.Take(hud);
                 if (iconWidth < 0f && ub.graphic != null && ub.graphic.sprite != null) iconWidth = ub.graphic.sprite.bounds.size.x;
                 ub.SetEnabled();
                 owned = true;

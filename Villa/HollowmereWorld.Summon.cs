@@ -812,6 +812,9 @@ internal sealed partial class HollowmereWorld
         HalloweenUI.Heading(_tTitle);
         _pagePics = new UnityEngine.UI.Image[3];
         _picNames = new TextMeshProUGUI[3];
+        // 06.11. (User: weisses Bild beim Neuoeffnen): die Kerzen-Nummern starben mit dem alten Buch; ShowCandleCircle griff
+        // auf die zerstoerten Labels zu, warf, und ShowPage setzte danach kein Bild mehr (leeres Image = weisses Feld)
+        _candleNums = Array.Empty<TextMeshProUGUI>();
         for (int i = 0; i < 3; i++)
         {
             var g = new GameObject($"Pic{i}");
@@ -897,6 +900,7 @@ internal sealed partial class HollowmereWorld
             _candleSprite = tex != null
                 ? Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f)
                 : PaintCandleCircle();
+            _candleSprite.hideFlags |= HideFlags.HideAndDontSave | HideFlags.DontUnloadUnusedAsset;
         }
         img.enabled = true;
         img.sprite = _candleSprite;
