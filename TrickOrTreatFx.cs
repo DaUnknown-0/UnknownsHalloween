@@ -1565,7 +1565,15 @@ namespace UnknownsHalloween {
         private static class AfterPhysics {
             private static void Postfix(PlayerControl __instance) {
                 try {
-                    if ((TreatUse.Owned || BooUse.Owned) && __instance.AmOwner && HudManager.InstanceExists) Take(HudManager.Instance);
+                    if (!__instance.AmOwner || !HudManager.InstanceExists) return;
+                    var hud = HudManager.Instance;
+                    // 06.11. (User: "man muss erst den Pet-Knopf druecken, um Suessigkeiten aufzuheben"): while the pet
+                    // button shows, the game never calls UseButton.SetTarget, so the Use button kept its last target (a
+                    // console from before, the lobby laptop) and every offer here saw "the game has a target" until a pet
+                    // flipped the swap once. Clear it the way the game does every step for players without a pet.
+                    var ub = hud.UseButton;
+                    if (ub != null && __instance.CanMove && __instance.closest == null && ub.currentTarget != null) ub.SetTarget(null);
+                    if (TreatUse.Owned || BooUse.Owned) Take(hud);
                 } catch { }
             }
         }
