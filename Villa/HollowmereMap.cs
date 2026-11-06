@@ -87,6 +87,7 @@ internal static class HollowmereMap
         (TaskTypes.CleanToilet, 4, "UpperEngine/Campfire/0", SystemTypes.UpperEngine),        // Marshmallows (n62)
         (TaskTypes.PutAwayPistols, 4, "UpperEngine/CampGenerator/0", SystemTypes.UpperEngine),// Generator im Crew Camp (n67)
         (TaskTypes.PolishRuby, 4, "MainHall/Catering/0", SystemTypes.MainHall),               // Essen und Trinken (n56)
+        (TaskTypes.PickUpTowels, 4, "Storage/FeedPlant/0", SystemTypes.Storage),              // Riesenpflanze fuettern (n23, 05.11.)
     };
 
     private static AtlasMapDef Make()
@@ -174,6 +175,8 @@ internal static class HollowmereMap
         // Airship-Reiter (28.10.)
         { TaskTypes.ResetBreakers, "valves" }, { TaskTypes.FixShower, "watering" }, { TaskTypes.CleanToilet, "roast" },
         { TaskTypes.PutAwayPistols, "generator" }, { TaskTypes.PolishRuby, "lunch" },
+        // 05.11. (Feedback 28.10., n23): die Riesenpflanze im Gewaechshaus fuettern
+        { TaskTypes.PickUpTowels, "feed" },
     };
 
     private static Dictionary<string, string> TaskArt() => new()
@@ -240,6 +243,9 @@ internal static class HollowmereMap
         { "lunch:task_trash_brochure.png", "task_villa_sandwich.png" }, { "lunch:task_trash_ticket.png", "task_villa_cookie.png" },
         { "lunch:task_trash_bottle.png", "task_villa_soda.png" }, { "lunch:task_trash_jar.png", "task_villa_coffee.png" },
         { "lunch:task_trash_wrapper.png", "task_villa_napkin.png" }, { "lunch:task_trash_apple.png", "task_villa_peel.png" },
+        // Feed the Plant (05.11.): Fleisch an jedes der vier Maeuler halten
+        { "feed:task_hold_center.png", "task_villa_feed_plant.png" }, { "feed:task_hold_off.png", "task_villa_feed_hungry.png" },
+        { "feed:task_hold_on.png", "task_villa_feed_fed.png" }, { "feed:task_hold_tool.png", "task_villa_feed_meat.png" },
     };
 
     private static Dictionary<string, string> TaskText() => new()
@@ -252,6 +258,7 @@ internal static class HollowmereMap
         { "watering:HOLD ON EACH ONE", "WATER EACH PLANT" }, { "watering:DONE", "ALL WATERED" },
         { "roast:HOLD ON EACH ONE", "TOAST EACH ONE" }, { "roast:DONE", "PERFECTLY GOLDEN" },
         { "lunch:PAPER", "FOOD" }, { "lunch:GLASS", "DRINKS" }, { "lunch:OTHER", "TRASH" },
+        { "feed:HOLD ON EACH ONE", "FEED EVERY MOUTH" }, { "feed:DONE", "FED AND HAPPY" },
     };
 
     private static Dictionary<TaskTypes, string> TaskNames() => new()
@@ -284,5 +291,6 @@ internal static class HollowmereMap
         { TaskTypes.CleanToilet, "Roast Marshmallows" },
         { TaskTypes.PutAwayPistols, "Tune the Generator" },
         { TaskTypes.PolishRuby, "Grab Lunch" },
+        { TaskTypes.PickUpTowels, "Feed the Plant" },
     };
 }

@@ -497,8 +497,9 @@ def headstone(p, c, cx, yb, form, w, h, col, rnd, idx):
     return yb
 
 
-def _feldgrab(p, c, x0, y0, x1, y1, idx, rnd, form=None, bed=True):
-    """Grab im Feld: Stein am Nordende (y1), davor die Grabstelle bis y0. Grundflaeche = ganze Grabstelle."""
+def _feldgrab(p, c, x0, y0, x1, y1, idx, rnd, form=None, bed=True, stone=True):
+    """Grab im Feld: Stein am Nordende (y1), davor die Grabstelle bis y0. Grundflaeche = ganze Grabstelle.
+    stone=False: nur Bett und Grabschmuck, den Stein setzt der Boden als GPT-Grabmal ein (FIELD_STONES)."""
     cx = (x0 + x1) / 2
     form = form or FORMS[idx % len(FORMS)]
     col = shade(STONES[(idx * 7 + 3) % len(STONES)], rnd.uniform(0.9, 1.05))
@@ -508,7 +509,7 @@ def _feldgrab(p, c, x0, y0, x1, y1, idx, rnd, form=None, bed=True):
     if bed:
         style = ("mound", "curb", "ivy", "mound", "flowers", "curb")[(idx * 5 + 1) % 6]
         grave_bed(c, x0 + 0.04, x1 - 0.04, stone_y - 0.04, y0 + 0.04, style, rnd, seed=idx)
-    top = headstone(p, c, cx, stone_y, form, w, h, col, rnd, idx)
+    top = headstone(p, c, cx, stone_y, form, w, h, col, rnd, idx) if stone else stone_y
     if bed:                                                                           # Grabschmuck auf dem Bett
         u = (idx * 13) % 5
         my = stone_y - 0.35
@@ -694,8 +695,80 @@ import graveyard_art2  # noqa: F401,E402  (Einrichtung: Kapelle, Sargkammer, Bru
 import graveyard_art3  # noqa: F401,E402  (Krematorium, Verwaltung, Torhaus, Waechterhaus, im Freien)
 
 
+# Objekte aus einem fertigen Bild statt prozedural (06.11.2026, Rundgang: Torhaus und Laternenschuppen waren fast leer, GPT hat
+# neue Einrichtung gezeichnet). Datei in tools/graveyard_assets/, Hoehe des ganzen Sprites in Metern; Unterkante auf der Standlinie.
+IMAGE_PROPS = {
+    "torwinde": ("raven_torwinde.png", 1.5),
+    "waechtertisch": ("raven_waechtertisch.png", 1.2),
+    "anschlagbrett": ("raven_anschlagbrett.png", 1.6),
+    "schubkarre": ("raven_schubkarre.png", 0.9),
+    "steinbank": ("raven_steinbank.png", 0.75),
+    "schluesselbrett": ("raven_schluesselbrett.png", 1.3),
+    "kranzwagen": ("raven_kranzwagen.png", 1.1),
+    "kistenstapel": ("raven_kistenstapel.png", 1.3),
+    "laternenregal": ("raven_laternenregal.png", 1.9),
+    "oelfaesser": ("raven_oelfaesser.png", 1.1),
+    "dochtwerkbank": ("raven_dochtwerkbank.png", 1.25),
+    "laternengestell": ("raven_laternengestell.png", 1.6),
+    # zweiter GPT-Bogen (Grabmaeler, gegen die immer gleichen Steine): Requisiten auf der Wiese der Alten Graeber
+    "gruft_klein": ("raven_grab_06.png", 1.7),
+    "frisches_grab": ("raven_grab_12.png", 0.85),
+    "keltenkreuz": ("raven_grab_01.png", 1.35),
+}
+# Grabmaeler fuer die Grabfelder im Boden (graveyard_floor.grave_fields): jedes dritte Feldgrab bekommt eines statt des
+# gezeichneten Steins. Datei, Hoehe in Metern.
+FIELD_STONES = [("raven_grab_01.png", 1.25), ("raven_grab_02.png", 1.3), ("raven_grab_03.png", 1.2), ("raven_grab_04.png", 1.1),
+                ("raven_grab_05.png", 1.05), ("raven_grab_07.png", 0.95), ("raven_grab_08.png", 0.75), ("raven_grab_09.png", 0.7),
+                ("raven_grab_10.png", 0.85), ("raven_grab_11.png", 0.9)]
+
+
+def field_stone(k, ppm):
+    """Grabmal k aus FIELD_STONES als Bild in ppm-Groesse (Unterkante = Standlinie), None ohne Datei."""
+    file, height = FIELD_STONES[k % len(FIELD_STONES)]
+    path = os.path.join(_IMG_DIR_FIELD, file)
+    if not os.path.exists(path):
+        return None
+    src = Image.open(path).convert("RGBA")
+    h = int(round(height * ppm))
+    return src.resize((max(1, int(round(src.width * h / src.height))), h), Image.LANCZOS)
+
+
+_IMG_DIR_FIELD = os.path.join(HERE, "graveyard_assets")
+_IMG_DIR = os.path.join(HERE, "graveyard_assets")
+
+
+def _image_prop(kind_, shape, ppm):
+    """Sprite aus IMAGE_PROPS (wie villa_art._image_prop): Unterkante auf der Standlinie, mittig ueber der Fussflaeche, weicher
+    Schatten darunter."""
+    file, height = IMAGE_PROPS[kind_]
+    path = os.path.join(_IMG_DIR, file)
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"{file} missing in graveyard_assets")
+    from PIL import ImageFilter
+    x0, y0, x1, y1 = A.shape_bounds(shape)
+    src = Image.open(path).convert("RGBA")
+    h = int(round(height * ppm))
+    w = int(round(src.width * h / src.height))
+    im = src.resize((w, h), Image.LANCZOS)
+    pad = int(0.12 * ppm)
+    canvas = Image.new("RGBA", (w + 2 * pad, h + pad), (0, 0, 0, 0))
+    sh = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    ImageDraw.Draw(sh).ellipse([pad + w * 0.06, h - 0.16 * ppm, pad + w * 0.97, h + 0.07 * ppm], fill=(0, 0, 0, 105))
+    canvas.alpha_composite(sh.filter(ImageFilter.GaussianBlur(0.06 * ppm)))
+    canvas.alpha_composite(im, (pad, 0))
+    cx = (x0 + x1) / 2
+    return canvas, cx - canvas.width / 2 / ppm, y0 - pad / ppm, y0
+
+
+for _k, _v in IMAGE_PROPS.items():
+    PROP_H.setdefault(_k, _v[1])
+    _KIND_FN.setdefault(_k, None)          # gen_graveyard fragt "kind in _KIND_FN"; gezeichnet wird in draw() aus dem Bild
+
+
 def draw(kind_, shape, idx, ppm, ctx=None, variant=None, **kw):
     """Ein Objekt als Sprite: (RGBA-Bild, welt_x_links, welt_y_unten, standlinie_y)."""
+    if kind_ in IMAGE_PROPS:
+        return _image_prop(kind_, shape, ppm)
     x0, y0, x1, y1 = A.shape_bounds(shape)
     h = PROP_H[kind_]
     p = Prop(x0, y0, x1, y1, h, ppm, pad=PROP_PAD.get(kind_, 0.3))

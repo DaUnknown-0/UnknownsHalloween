@@ -131,18 +131,27 @@ PROPS = [
     ("ofen", ("rect", -21.6, -13.0, -19.0, -11.2), "opaque"),
     ("kohlen", ("rect", -15.5, -11.3, -14.3, -10.45), "glass"),
     ("aschewagen", ("rect", -17.6, -16.65, -16.6, -15.9), "glass"),
+    ("kistenstapel", ("rect", -15.3, -16.9, -14.3, -16.5), "glass"),           # 06.11. GPT
 
     # Caretaker's Office: Schreibtisch, Aktenschrank, Ofen
     ("schreibtisch", ("rect", -10.6, -11.85, -9.1, -11.25), "glass"),
     ("aktenschrank", ("rect", -7.5, -11.75, -6.65, -11.2), "glass"),
     ("kanonenofen", ("circle", -5.65, -16.35, 0.3), "glass"),
+    ("schluesselbrett", ("rect", -10.85, -15.65, -10.05, -15.35), "glass"),   # 06.11. GPT
 
-    # Gatehouse: Waechterpult, Laternenstaender
-    ("waechterpult", ("rect", 1.65, -13.05, 2.75, -12.35), "glass"),
+    # Gatehouse: Waechtertisch (06.11. GPT, statt des gemalten Waechterpults), Laternenstaender
+    ("waechtertisch", ("rect", 1.65, -13.05, 2.75, -12.35), "glass"),
     ("laternenpfahl", ("circle", -2.45, -12.55, 0.14), "glass"),
+    # 06.11. (Rundgang: Torhaus fast leer): GPT-Einrichtung aus graveyard_assets (graveyard_art.IMAGE_PROPS)
+    ("torwinde", ("rect", -0.8, -17.9, 0.8, -17.45), "glass"),
+    ("anschlagbrett", ("rect", 1.45, -15.95, 2.6, -15.65), "glass"),
+    ("kranzwagen", ("rect", -1.9, -15.35, -0.75, -15.0), "glass"),
+    ("schubkarre", ("rect", -2.8, -16.4, -1.95, -16.1), "glass"),
 
-    # Lantern Shed: Oelfass (Regale und Werkbank sind die Konsolen selbst)
-    ("fass", ("circle", 10.5, -16.5, 0.28), "glass"),
+    # Lantern Shed: Oelfaesser (06.11. GPT, statt des einzelnen Fasses), Laternenregal, Laternengestell in der Mitte
+    ("oelfaesser", ("rect", 10.0, -16.75, 10.9, -16.35), "glass"),
+    ("laternenregal", ("rect", 6.3, -15.6, 7.3, -15.3), "glass"),
+    ("laternengestell", ("rect", 7.7, -14.6, 9.7, -14.3), "glass"),
 
     # Watchman's Lodge: Bett, Ofen, Tisch
     ("bett", ("rect", 15.3, -17.75, 16.35, -16.0), "glass"),
@@ -155,6 +164,11 @@ PROPS = [
     # Old Graves: acht Grabsteine, Engel in der Mitte
     *[("grabstein", ("rect", x - 0.5, y - 0.2, x + 0.5, y + 0.2), "glass") for x in (0.5, 3.0, 5.5, 8.0) for y in (10.4, 15.8)],
     ("engel", ("circle", 4.25, 13.1, 0.42), "glass"),
+    # 06.11. (Rundgang: die Wiese wirkte leer): GPT-Grabmaeler und eine Steinbank in den freien Ecken
+    ("gruft_klein", ("rect", -2.6, 13.9, -1.2, 14.4), "glass"),
+    ("frisches_grab", ("rect", -2.4, 9.4, -1.3, 9.8), "glass"),
+    ("keltenkreuz", ("rect", 1.5, 14.4, 2.1, 14.7), "glass"),
+    ("steinbank", ("rect", 9.4, 14.2, 10.6, 14.5), "glass"),
 
     # Raven Roost: toter Baum (Stamm sperrt Sicht)
     ("rabenbaum", ("circle", -9.5, 2.0, 0.4), "opaque"),

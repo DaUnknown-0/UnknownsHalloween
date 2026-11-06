@@ -101,6 +101,7 @@ internal sealed partial class HollowmereWorld
         _graceArmed = false;
         CloseBook();
         DixiReset();                                                       // HollowmereWorld.Dixi.cs
+        MicReset();                                                        // HollowmereWorld.RadioMic.cs
         if (_toastRoot != null) { Object.Destroy(_toastRoot); _toastRoot = null; }
     }
 
@@ -285,6 +286,7 @@ internal sealed partial class HollowmereWorld
         {
             if (_demonKillsLeft <= 0) return;
             if (p == null || p.Data == null || p.Data.IsDead || p.Data.Disconnected || p.inVent) continue;
+            if (DixiProtects(p)) continue;   // 05.11.: im Dixi versteckt
             if (Vector2.Distance(p.GetTruePosition(), RitualCenter) > DemonReach) continue;
             if (_poisoned.Any(x => x.Pid == p.PlayerId)) continue;
             _demonKillsLeft--;
@@ -740,7 +742,9 @@ internal sealed partial class HollowmereWorld
     private TextMeshProUGUI[] _picNames = Array.Empty<TextMeshProUGUI>();
     private TextMeshProUGUI _tTitle, _tLine, _tNote, _tNav;
     private GameObject _bPrev, _bNext;
-    private static Sprite _bookSprite;
+    private static Sprite _bookSprite, _candleSprite;
+    private int _candlePage = -1;
+    private TextMeshProUGUI[] _candleNums = Array.Empty<TextMeshProUGUI>();
 
     private void OpenBook(byte book)
     {
@@ -750,6 +754,11 @@ internal sealed partial class HollowmereWorld
         _bookForImpostor = PlayerControl.LocalPlayer != null && IsImpostor(PlayerControl.LocalPlayer);
         _pages.Clear();
         string unreadWarning = UnreadSummonKills ? "It will tear them apart." : "It appears without harming them.";
+        // 05.11. (Feedback 29.10.): vorne der Kerzenkreis mit den Nummern, die Warnung als eigene Seite mit dem Spukgeist
+        _candlePage = book == 255 ? -1 : 0;
+        if (book != 255)
+            _pages.Add(("The Candle Circle", Array.Empty<Being>(), "Top = 1, then clockwise",
+                "Five candles stand on the pentagram in the Seance Parlour. Count from the top candle clockwise. Only the right order calls a guardian; any other wakes a demon."));
         if (book == 255)
             _pages.Add(("The pages are blank", Array.Empty<Being>(), "", "The ink fades before your eyes. Too many have read this book already."));
         else if (SummonMode == 0)
@@ -757,7 +766,7 @@ internal sealed partial class HollowmereWorld
             _pages.Add(("The Guardians", new[] { Being.Tyrael, Being.Castiel, Being.Bobby }, "4 - 1 - 3 - 5 - 2", "Light the candles in this order and one of them will answer."));
             _pages.Add(("The Demons", new[] { Being.Diablo, Being.Baal, Being.Mephisto }, "any other order", "Diablo and Baal burn whoever comes close, Mephisto poisons them."));
             _pages.Add(("Cthulhu", new[] { Being.Cthulhu }, "An uncertain call", "A failed ritual can also call Cthulhu. His stormfire flashes like lightning and leaves its victims charred."));
-            _pages.Add(("A warning", Array.Empty<Being>(), "Read before you call", "Whoever lights the last candle without having read this book calls a restless ghost. " + unreadWarning));
+            _pages.Add(("The Restless Ghost", new[] { Being.Ghost }, "Read before you call", "Whoever lights the last candle without having read this book calls a restless ghost. " + unreadWarning));
         }
         else
         {
@@ -774,7 +783,7 @@ internal sealed partial class HollowmereWorld
                 "An ancient horror. Stormfire strikes like lightning, chars nearby victims, and armours the traitors.",
             };
             foreach (var b in list) _pages.Add((BeingName[(int)b], new[] { b }, string.Join(" - ", HardCodes[b]), notes[(int)b]));
-            _pages.Add(("A warning", Array.Empty<Being>(), "Any other order wakes a demon", "Whoever lights the last candle without having read a book calls a restless ghost. " + unreadWarning));
+            _pages.Add(("The Restless Ghost", new[] { Being.Ghost }, "Any other order wakes a demon", "Whoever lights the last candle without having read a book calls a restless ghost. " + unreadWarning));
         }
 
         if (HollowmereSummonRules.ShowPactPage(_bookForImpostor, book != 255))
@@ -847,9 +856,11 @@ internal sealed partial class HollowmereWorld
         if (_bPrev != null) _bPrev.SetActive(_bookPage > 0);
         if (_bNext != null) _bNext.SetActive(_bookPage < _pages.Count - 1);
         int n = p.Pics.Length;
+        ShowCandleCircle(_bookPage == _candlePage);
         for (int i = 0; i < _pagePics.Length; i++)
         {
             var img = _pagePics[i];
+            if (i == 0 && _bookPage == _candlePage) continue;
             if (i >= n) { img.enabled = false; HalloweenUI.SetText(_picNames[i], ""); continue; }
             img.enabled = true;
             img.sprite = BeingSprite(p.Pics[i]);
@@ -859,6 +870,78 @@ internal sealed partial class HollowmereWorld
             rt.sizeDelta = new Vector2(w, h);
             rt.anchoredPosition = new Vector2(n == 1 ? 0f : (i - 1) * 225f, n == 1 ? -10f : 0f);
         }
+    }
+
+    /// <summary>Kerzenkreis-Seite: der Stern mit fuenf Kerzen im ersten Bildplatz, die Nummern als Text darueber (oben = 1, dann im
+    /// Uhrzeigersinn, wie im Seance Parlour). Ein geliefertes Bild villa_extra/book_candles.png ersetzt die Zeichnung, die Nummern bleiben.</summary>
+    private void ShowCandleCircle(bool on)
+    {
+        if (_pagePics.Length == 0) return;
+        var img = _pagePics[0];
+        if (_candleNums.Length == 0)
+        {
+            _candleNums = new TextMeshProUGUI[5];
+            for (int k = 0; k < 5; k++)
+            {
+                _candleNums[k] = HalloweenUI.Label(img.gameObject, (k + 1).ToString(), 46f, new Color32(140, 18, 18, 255), new Vector2(0.5f, 0.5f),
+                                                   new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(60f, 60f),
+                                                   TMPro.TextAlignmentOptions.Center);
+                HalloweenUI.Heading(_candleNums[k]);
+            }
+        }
+        foreach (var t in _candleNums) t.gameObject.SetActive(on);
+        if (!on) return;
+        if (_candleSprite == null)
+        {
+            var tex = HwArt.LoadTexture("villa_extra", "book_candles.png");
+            _candleSprite = tex != null
+                ? Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f)
+                : PaintCandleCircle();
+        }
+        img.enabled = true;
+        img.sprite = _candleSprite;
+        HalloweenUI.SetText(_picNames[0], "");
+        const float size = 500f;
+        img.rectTransform.sizeDelta = new Vector2(size, size);
+        img.rectTransform.anchoredPosition = new Vector2(0f, 10f);
+        for (int k = 0; k < 5; k++)
+        {
+            float a = (90f - 72f * k) * Mathf.Deg2Rad;                     // 1 oben, dann im Uhrzeigersinn
+            _candleNums[k].rectTransform.anchoredPosition = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (size * 0.5f * 1.14f);   // ausserhalb der Kerzen
+        }
+    }
+
+    /// <summary>Gezeichneter Kerzenkreis (520 x 520): Ring und Pentagramm in getrocknetem Blut, an jeder Spitze eine Kerze.</summary>
+    private static Sprite PaintCandleCircle()
+    {
+        const int S = 520;
+        var c = new Vector2(S / 2f, S / 2f);
+        var tips = new Vector2[5];
+        for (int k = 0; k < 5; k++) { float a = (90f - 72f * k) * Mathf.Deg2Rad; tips[k] = c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 178f; }
+        return GraveyardWorld.Painted(S, S, new Vector2(0.5f, 0.5f), (x, y) =>
+        {
+            var p = new Vector2(x, y);
+            var blood = new Color32(128, 20, 18, 255);
+            // Kerzen: Wachs, Docht, Flamme
+            foreach (var t in tips)
+            {
+                var d = p - t;
+                if (Mathf.Abs(d.x) <= 11f && d.y >= -26f && d.y <= 6f) return new Color32(236, 226, 196, 255);
+                if (Mathf.Abs(d.x) <= 1.5f && d.y > 6f && d.y <= 11f) return new Color32(40, 30, 25, 255);
+                float fx = d.x / 7f, fy = (d.y - 20f) / 11f;
+                if (fx * fx + fy * fy <= 1f) return fy > 0.2f ? new Color32(255, 214, 90, 255) : new Color32(255, 150, 40, 255);
+            }
+            float r = Vector2.Distance(p, c);
+            if (Mathf.Abs(r - 205f) <= 4f || Mathf.Abs(r - 190f) <= 2f) return blood;
+            for (int k = 0; k < 5; k++)
+            {
+                var a = tips[k]; var b = tips[(k + 2) % 5];
+                var ab = b - a;
+                float u = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
+                if (Vector2.Distance(p, a + ab * u) <= 3.5f) return blood;
+            }
+            return new Color32(0, 0, 0, 0);
+        });
     }
 
     private void BookTick()

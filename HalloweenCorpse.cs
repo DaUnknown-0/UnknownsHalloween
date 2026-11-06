@@ -187,6 +187,7 @@ namespace UnknownsHalloween {
             }
 
             if (!hidden.TryGetValue(id, out var h)) {
+                if (body.transform.localScale == Vector3.zero) return true;     // see HideBodyOnly: another mod's hat restores it this frame
                 h = new Hidden {
                     Body = body.transform, BodyScale = body.transform.localScale,
                     Front = front.transform, FrontPos = front.transform.localPosition,
@@ -246,6 +247,9 @@ namespace UnknownsHalloween {
             try { off = pc != null && (pc.Data == null || pc.Data.IsDead || pc.inVent || pc.inMovingPlat); } catch { }
             if (body == null || off || co.CurrentBodyType != PlayerBodyTypes.Normal) { Restore(id); return; }
             if (!hidden.TryGetValue(id, out var h)) {
+                // another mod's whole-figure hat (worn just before) may still have the body at scale 0 in this frame: taking
+                // that as the original would leave the crewmate invisible later; its own restore comes this frame
+                if (body.transform.localScale == Vector3.zero) return;
                 h = new Hidden { Body = body.transform, BodyScale = body.transform.localScale };
                 try { if (co.skin != null) { h.Skin = co.skin.transform; h.SkinScale = h.Skin.localScale; } } catch { }
                 try { if (co.visor != null) { h.Visor = co.visor.transform; h.VisorScale = h.Visor.localScale; } } catch { }

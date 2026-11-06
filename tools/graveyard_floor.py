@@ -36,7 +36,7 @@ ROOM_MAT = {   # Gebaeude: (Material, Seed, Ton, Extra)
     "coffins": ("dielen", 4, 1.0, {"base": (110, 96, 80)}),
     "well": ("kopfstein", 5, 1.0, {}),
     "mausoleum": ("marmor", 6, 0.95, {}),
-    "morgue": ("kacheln", 7, 0.95, {}),
+    "morgue": ("kacheln", 7, 0.6, {}),         # 06.11.: war 0.95, die hellen Fliesen stachen aus der Nacht heraus
     "crematorium": ("ziegel", 8, 0.8, {"base": (104, 70, 60)}),
     "office": ("dielen", 9, 1.0, {"base": (112, 92, 74)}),
     "gatehouse": ("kopfstein", 10, 0.95, {}),
@@ -249,10 +249,23 @@ def grave_fields(C, A_, rnd, ppm):
             placed.append((y, "busch", ("rect", x - r, y - r * 0.5, x + r, y + r * 0.5), idx))
             idx += 1
     placed.sort(key=lambda t: -t[0])                                                  # Norden zuerst
+    # 06.11. (Rundgang: "immer gleiche Steine"): jedes dritte Feldgrab bekommt ein GPT-Grabmal (Kreuz, Obelisk, Engel, Lamm ...)
+    # statt des gezeichneten Steins; Bett und Grabschmuck bleiben gezeichnet
+    pick = random.Random(606)
+    swapped = 0
     for _y, kd, shp, i in placed:
+        if kd == "feldgrab" and pick.random() < 0.34:
+            stone = GA.field_stone(pick.randrange(len(GA.FIELD_STONES)), ppm)
+            if stone is not None:
+                im, wx, wy, _b = GA.draw(kd, shp, i, ppm, stone=False)
+                C.paste_sprite(im, wx, wy)
+                cx, stone_y = (shp[1] + shp[3]) / 2, shp[4] - 0.25
+                C.paste_sprite(stone, cx - stone.width / 2 / ppm, stone_y)
+                swapped += 1
+                continue
         im, wx, wy, _b = GA.draw(kd, shp, i, ppm)
         C.paste_sprite(im, wx, wy)
-    print(f"  grave fields: {sum(1 for p in placed if p[1] == 'feldgrab')} graves, {len(trees)} trees")
+    print(f"  grave fields: {sum(1 for p in placed if p[1] == 'feldgrab')} graves ({swapped} GPT monuments), {len(trees)} trees")
 
 
 # ------------------------------------------------------------------ 3: Boeden
@@ -338,6 +351,75 @@ def curbs(C, A_, rnd):
                 d.line([P(*q[0]), P(*q[1])], fill=(168, 170, 180, 200), width=max(1, C.px(0.02)))
                 t += s
     C.overlay(fn)
+
+
+def path_detail(C, A_, rnd):
+    """06.11. (Rundgang: "Kieswege flach, ohne Detail"): Pfuetzen mit Mondglanz, Moos- und Unkrautflecken, Laub und einzelne
+    lose Trittplatten, nur auf den Kieswegen (Ebene mit der Wegmaske beschnitten)."""
+    g = A_.paths.buffer(-0.06)
+    if g.is_empty:
+        return
+    r = C.bbox_px(g, 0.05)
+    layer = Image.new("RGBA", (r[2] - r[0], r[3] - r[1]), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer, "RGBA")
+    P = lambda x, y: (C.P(x, y)[0] - r[0], C.P(x, y)[1] - r[1])
+    pg = prep(g)
+    x0, y0, x1, y1 = g.bounds
+
+    def blob(cx, cy, rx, ry, n=14, j=0.18):
+        pts = []
+        for k in range(n):
+            a = 2 * math.pi * k / n
+            s = 1 + rnd.uniform(-j, j)
+            pts.append((cx + rx * s * math.cos(a), cy + ry * s * math.sin(a)))
+        return pts
+
+    puddles = 0
+    for _ in range(6000):
+        if puddles >= 70:
+            break
+        x, y = rnd.uniform(x0, x1), rnd.uniform(y0, y1)
+        rx, ry = rnd.uniform(0.22, 0.55), rnd.uniform(0.1, 0.24)
+        if not pg.contains(box(x - rx, y - ry, x + rx, y + ry)):
+            continue
+        d.polygon([P(*q) for q in blob(x, y, rx, ry)], fill=(30, 40, 56, 175))
+        d.line([P(x - rx * 0.6, y + ry * 0.35), P(x + rx * 0.2, y + ry * 0.55)], fill=(150, 172, 205, 110), width=C.px(0.025))
+        puddles += 1
+    for _ in range(160):                                                             # Moos und Unkraut
+        x, y = rnd.uniform(x0, x1), rnd.uniform(y0, y1)
+        if not pg.contains(Point(x, y)):
+            continue
+        rr = rnd.uniform(0.08, 0.26)
+        col = rnd.choice([(58, 84, 60, 95), (72, 98, 66, 80), (46, 66, 52, 110)])
+        d.polygon([P(*q) for q in blob(x, y, rr, rr * 0.7, n=10, j=0.35)], fill=col)
+    stones = 0
+    for _ in range(3000):                                                            # lose Trittplatten
+        if stones >= 34:
+            break
+        x, y = rnd.uniform(x0, x1), rnd.uniform(y0, y1)
+        w, h = rnd.uniform(0.22, 0.38), rnd.uniform(0.16, 0.26)
+        if not pg.contains(box(x - w, y - h, x + w, y + h)):
+            continue
+        t = rnd.uniform(0.85, 1.1)
+        d.polygon([P(*q) for q in blob(x, y, w, h, n=8, j=0.12)], fill=tuple(int(v * t) for v in (104, 106, 114)) + (235,),
+                  outline=(34, 34, 40, 220))
+        d.line([P(x - w * 0.7, y + h * 0.5), P(x + w * 0.5, y + h * 0.7)], fill=(160, 164, 176, 150), width=max(1, C.px(0.015)))
+        stones += 1
+    for _ in range(1400):                                                            # Laub
+        x, y = rnd.uniform(x0, x1), rnd.uniform(y0, y1)
+        if not pg.contains(Point(x, y)):
+            continue
+        a = rnd.uniform(0, math.pi)
+        col = rnd.choice(GA.LEAF)
+        q = [(x + 0.05 * math.cos(a), y + 0.05 * math.sin(a)), (x - 0.02 * math.sin(a), y + 0.02 * math.cos(a)),
+             (x - 0.05 * math.cos(a), y - 0.05 * math.sin(a)), (x + 0.02 * math.sin(a), y - 0.02 * math.cos(a))]
+        d.polygon([P(*v) for v in q], fill=tuple(col[:3]) + (200,))
+    m = C.mask(g, r).filter(ImageFilter.GaussianBlur(max(1, 0.03 * C.ppm)))
+    layer.putalpha(ImageChops.multiply(layer.getchannel("A"), m))
+    base = C.img.crop(r).convert("RGBA")
+    base.alpha_composite(layer)
+    C.img.paste(base.convert("RGB"), r[:2])
+    print(f"  path detail: {puddles} puddles, {stones} flagstones")
 
 
 # ------------------------------------------------------------------ 4: Bodendeko je Raum
@@ -744,6 +826,7 @@ def render(ctx, ppm):
     print("  decor")
     decor(C, A_, ppm, rnd)
     curbs(C, A_, rnd)
+    path_detail(C, A_, random.Random(616))                     # eigener Zufall: alles andere bleibt, wie es war
     ambient(C, ctx.walk)
     print("  walls")
     wall_tops(C, A_, ppm, rnd)

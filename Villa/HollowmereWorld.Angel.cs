@@ -466,6 +466,7 @@ internal sealed partial class HollowmereWorld
 
     private static void KillByAngel(PlayerControl p)
     {
+        if (DixiProtects(p)) return;   // 05.11.: im Dixi versteckt
         try
         {
             byte pid = p.PlayerId;

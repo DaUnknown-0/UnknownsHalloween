@@ -339,6 +339,9 @@ IMAGE_CONSOLES = {
     "Catering": ("villa_catering.png", 1.35),             # Essen und Trinken, Vorplatz (n56)
     "PressureValve": ("villa_druckventil.png", 1.25),      # Kesseldruck ablassen, Heizungskeller (n64)
     "CampGenerator": ("villa_generator.png", 1.2),        # Generator im Crew Camp statt in der Kueche (n67)
+    # 05.11. (GPT-Bogen 24): vollstaendiger Admin-Tisch (Feedback 29.10. "Hier fehlt ein Stueck Tisch"), Futtereimer an der Riesenpflanze
+    "AdminTable": ("villa_admintisch.png", 1.3),
+    "FeedPlant": ("villa_futtereimer.png", 0.8),
 }
 
 

@@ -157,6 +157,7 @@ FIXED_LARGE = {
     "UpperEngine/Campfire/0": (5.2, 29.05),               # Marshmallows am Lagerfeuer (n62)
     "UpperEngine/CampGenerator/0": (9.2, 24.95),          # Generator im Crew Camp statt in der Kueche (n67)
     "MainHall/Catering/0": (18.8, 29.15),                 # Essen und Trinken, zwei Tische am Vorplatz (n56)
+    "Storage/FeedPlant/0": (46.6, 5.9),                   # 05.11.: Futtereimer vor der Riesenpflanze (n23 "Fuettern")
 }
 FIXED_BOTH_EXTRA = {
     "Security/DivertPowerConsole/1": (12.6, 21.2),       # Regie
@@ -456,7 +457,7 @@ HITBOX = {
     ("beistelltisch", ("circle", 31.3, 15.6, 0.25)): ("circle", 31.3, 15.45, 0.22),
     ("buecherregal", ("rect", 31.0, 18.25, 33.6, 18.7)): ("rect", 31.45, 18.25, 33.15, 18.7),
     ("schreibtisch", ("rect", 29.0, 22.7, 31.4, 23.6)): ("rect", 29.45, 22.7, 30.95, 23.6),
-    ("kamerakran", ("rect", 35.0, 3.0, 37.5, 5.0)): ("rect", 35.1, 4.1, 36.6, 5.0),
+    ("kamerakran", ("rect", 35.0, 3.0, 37.5, 5.0)): ("rect", 35.45, 4.5, 36.45, 5.0),  # 05.11. (Feedback 29.10. "hitbox too big"): nur das Fahrgestell, Arm und Kamera frei
     ("urne", ("circle", 37.0, 10.0, 0.4)): ("circle", 37.0, 9.9, 0.32),
     ("kuebelpflanze", ("rect", 34.3, 7.0, 34.9, 8.0)): ("rect", 34.3, 7.4, 35.1, 8.0),
     ("kuebelpflanze", ("rect", 34.3, 22.0, 34.9, 23.0)): ("rect", 34.3, 22.4, 35.1, 23.0),
@@ -509,6 +510,8 @@ HITBOX = {
     ("dixi", ("rect", 10.8, 24.4, 11.7, 25.6)): ("rect", 10.65, 24.5, 11.85, 25.6),       # n14: Kabine 85 %, Sockel breiter als die alte Sperre (H02)
     ("schneiderpuppe", ("circle", 28.4, 2.7, 0.3)): ("circle", 28.4, 2.75, 0.14),         # n21: nur der Staender, man kommt dahinter vorbei
     ("lesesessel", ("rect", 8.0, 15.2, 8.9, 16.0)): ("rect", 8.1, 15.5, 8.8, 16.0),       # n23: Sitzflaeche statt Rueckenlehne
+    # 05.11. (Feedback 29.10. "hitbox of camper is far too big"): nur die Karosserie unten mit den Raedern, wie beim Jeep
+    ("van", ("rect", 12.6, 24.6, 15.4, 26.3)): ("rect", 12.75, 25.35, 15.25, 26.3),
 }
 
 

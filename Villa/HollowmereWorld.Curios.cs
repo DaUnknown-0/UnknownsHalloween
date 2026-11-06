@@ -31,6 +31,7 @@ internal sealed partial class HollowmereWorld
     {
         var lp = PlayerControl.LocalPlayer;
         if (lp == null || lp.Data == null || lp.Data.IsDead || MeetingHud.Instance != null) return;
+        if (MicOffer()) return;   // 05.11.: wer ins Funkgeraet sprechen darf, bekommt dort "SPEAK" statt "TUNE"
         bool ready = Time.time >= _curioReady;
         if (AtlasMaps.CanReach(PhonographSpot, CurioReach))
             AtlasMaps.OfferUse(ready ? "PLAY" : $"WAIT {Mathf.CeilToInt(_curioReady - Time.time)}", "task_villa_btn_secret.png", () => UseCurio(0), enabled: ready);

@@ -137,6 +137,13 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
                 new[] { "Instant Kill", "No Kill" }, null, false, null, "Hollowmere Manor");
             // 28.10. (n52): im Dixi-Klo des Crew Camps verstecken (HollowmereWorld.Dixi.cs)
             DixiHide = CustomOption.Create(1956, CustomOption.CustomOptionType.General, "Hide In The Portable Toilet", true, null, false, null, "Hollowmere Manor");
+            // 05.11. (Feedback 29.10.): drinnen kein Kill; wie lange am Stueck und wie lange danach gesperrt, stellt der Host ein
+            DixiTime = new CustomOption(1958, CustomOption.CustomOptionType.General, "Hiding Time",
+                new object[] { "10s", "15s", "20s", "30s", "45s", "60s", "Unlimited" }, "20s", DixiHide, false);
+            DixiCooldown = CustomOption.Create(1959, CustomOption.CustomOptionType.General, "Hiding Cooldown", 30f, 0f, 60f, 5f, DixiHide);
+            // 05.11. (n85, User-Entscheidung): echte 3-s-Durchsage am Funktisch; wer darf, pflegt der Host mit /mic (HollowmereWorld.RadioMic.cs)
+            RadioMic = CustomOption.Create(2160, CustomOption.CustomOptionType.General, "Radio Microphone",
+                new[] { "Selected Players", "Everyone", "Off" }, null, false, null, "Hollowmere Manor");
             AngelReplayRegister();
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogError($"{LogPrefix} options failed: {e}"); }
@@ -349,6 +356,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         try { GraveTick(); } catch { }
         try { DixiTick(); } catch (Exception e) { RitualError(e); }
         try { CurioTick(); } catch (Exception e) { RitualError(e); }
+        try { MicTick(); } catch (Exception e) { RitualError(e); }
         AnimTick();
         ArmorTick();
         ClockTick(dt);
@@ -903,6 +911,8 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             else if (p == "candle") _diagTasks.Add("candle");
             else if (p == "angels") _diagTasks.Add("angels");
             else if (p == "summon") _diagTasks.Add("summon");      // Buch lesen, blaettern, Kerzen 4-1-3-5-2 (Summon.cs)
+            else if (p == "dixi") _diagTasks.Add("dixi");          // 05.11.: verstecken, Kill-Schutz, Tuer, Sperre (Dixi.cs)
+            else if (p == "mic") _diagTasks.Add("mic");            // 05.11.: Funk-Kodierung und Mikrofon (RadioMic.cs)
         }
         if (_diagTasks.Count == 0) return;
         // erst nach den Ansichtsfotos von Atlas (AtlasMapShot teleportiert den Spieler ~20 s lang herum und laesst
@@ -930,6 +940,8 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         if (task == "candle") { DiagCandle(lp); return; }
         if (task == "angels") { DiagAngels(lp); return; }
         if (task == "summon") { DiagSummon(lp); return; }
+        if (task == "dixi") { DiagDixi(lp); return; }
+        if (task == "mic") { DiagMic(lp); return; }
         int idx = Array.FindIndex(_secrets, s => s.Key == task.Substring(7));
         if (idx < 0)
         {
