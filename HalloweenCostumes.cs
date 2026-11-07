@@ -1064,6 +1064,19 @@ namespace UnknownsHalloween {
             } catch { return false; }
         }
 
+        // 2026-11-07 (Liora: "mit dem Ghost skin hat der Chameleon Modifier nicht funktioniert"): TOR's Chameleon counts a
+        // player as moving while any animation other than idle plays. A still-walk costume keeps the idle pose while
+        // walking, so a Chameleon in it never counted as moving: he stayed visible, or stayed faded while walking. The
+        // real velocity marks the move instead (only for Chameleons: any other entry would fade that player's name).
+        private static void MarkChameleonMoved(PlayerControl pc) {
+            try {
+                var moved = Chameleon.lastMoved;
+                if (moved == null || Chameleon.chameleon == null) return;
+                foreach (var c in Chameleon.chameleon)
+                    if (c != null && c.PlayerId == pc.PlayerId) { moved[pc.PlayerId] = Time.time; return; }
+            } catch { }
+        }
+
         // HandleAnimation picks run or idle from body.velocity. For a still-walk costume the velocity is
         // zero for the duration of this one call, so the game itself settles on the idle animation
         // (no run cycle, no bob, no switching back and forth); the physics step runs elsewhere and is
@@ -1078,6 +1091,7 @@ namespace UnknownsHalloween {
                     var pc = __instance.myPlayer;
                     if (pc == null || pc.onLadder || pc.inVent || pc.inMovingPlat || !WearsStillWalk(pc)) return;
                     __state = __instance.body.velocity;
+                    if (__state.Value.sqrMagnitude > 0.01f) MarkChameleonMoved(pc);
                     __instance.body.velocity = Vector2.zero;
                 } catch { __state = null; }
             }
@@ -1644,7 +1658,7 @@ namespace UnknownsHalloween {
         // "1" = everything, "role" = only the Xenomorph role steps, "corpse" = the corpse probe (HalloweenCorpse).
         private static readonly string DiagMode = Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "";
         private static readonly bool DiagOn = DiagMode == "1" || DiagMode == "role" || DiagMode == "corpse" || DiagMode == "spider" || DiagMode == "masquerade" || DiagMode == "banshee"
-                                             || DiagMode.StartsWith("costumes:", StringComparison.Ordinal);
+                                             || DiagMode == "chameleon" || DiagMode.StartsWith("costumes:", StringComparison.Ordinal);
         private static bool diagHideHat;
         private static string diagRectTag;
         private static float diagWalk, diagWalkY;
@@ -1786,6 +1800,46 @@ namespace UnknownsHalloween {
                 Add(0.5f, () => DiagShot("banshee_1"));
                 Add(0.8f, () => DiagShot("banshee_2"));
                 Add(1.5f, () => DiagShot("banshee_after"));
+                Add(1.0f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag: all done"));
+                Add(0f, () => Application.Quit());
+                diagSteps = steps;
+                return;
+            }
+            if (DiagMode == "chameleon") {
+                // 2026-11-07: the local player as Chameleon in a still-walk costume (Angel Ghost) and in a normal one
+                // (Ghostface): standing must fade, walking must show him again.
+                void Vis(string tag) {
+                    try {
+                        bool idle = lp.MyPhysics.Animations.Animator.GetCurrentAnimation() == lp.MyPhysics.Animations.group.IdleAnim;
+                        float hatA = lp.cosmetics.hat != null && lp.cosmetics.hat.FrontLayer != null ? lp.cosmetics.hat.FrontLayer.color.a : -1f;
+                        float bodyA = lp.cosmetics.currentBodySprite.BodySprite.color.a;
+                        float still = Chameleon.lastMoved != null && Chameleon.lastMoved.TryGetValue(lp.PlayerId, out float lm) ? Time.time - lm : -1f;
+                        float speed = lp.MyPhysics.body.velocity.magnitude;
+                        HalloweenPlugin.Logger?.LogInfo(FormattableString.Invariant(
+                            $"[Halloween] diag chameleon {tag}: visibility {Chameleon.visibility(lp.PlayerId):F2}, hat alpha {hatA:F2}, body alpha {bodyA:F2}, idle anim {idle}, still {still:F2} s (game time), speed {speed:F2}, fps {1f / Mathf.Max(Time.smoothDeltaTime, 1e-4f):F0}"));
+                    } catch (Exception e) { HalloweenPlugin.Logger?.LogWarning($"[Halloween] diag chameleon {tag}: {e.Message}"); }
+                }
+                Add(3.0f, () => {
+                    if (Chameleon.lastMoved == null) Chameleon.lastMoved = new Dictionary<byte, float>();
+                    if (!Chameleon.chameleon.Any(c => c != null && c.PlayerId == lp.PlayerId)) Chameleon.chameleon.Add(lp);
+                });
+                foreach (var key in new[] { "angel", "ghostface" }) {
+                    var c = Costumes.FirstOrDefault(x => x.Key == key && x.HatId != null);
+                    if (c == null) continue;
+                    float dir = key == "angel" ? 0.65f : -0.65f;      // there and back, away from the cafeteria tables
+                    Add(0.5f, () => { try { if (Minigame.Instance != null) Minigame.Instance.Close(); } catch { } lp.RpcSetHat(c.HatId); });
+                    // Add(wait, act): the action runs first, the wait comes after it
+                    Add(0.6f, () => { diagWalk = dir; });
+                    Add(5.0f, () => { diagWalk = 0f; });
+                    Add(0.1f, () => Vis(key + " stood 5 s"));
+                    Add(0.1f, () => DiagShot("cham_" + key + "_stand"));
+                    Add(1.5f, () => { diagWalk = dir; });
+                    Add(1.5f, () => Vis(key + " walking 1.5 s"));
+                    Add(0.1f, () => Vis(key + " walking 3 s"));
+                    Add(0.1f, () => DiagShot("cham_" + key + "_walk"));
+                    Add(5.0f, () => { diagWalk = 0f; });
+                    Add(0.1f, () => Vis(key + " stopped 5 s"));
+                }
                 Add(1.0f, () => HalloweenPlugin.Logger?.LogInfo("[Halloween] diag: all done"));
                 Add(0f, () => Application.Quit());
                 diagSteps = steps;
@@ -2003,6 +2057,8 @@ namespace UnknownsHalloween {
                     if (ShipStatus.Instance == null || lp == null) { diagAt = -1f; return; }
                     float now = Time.realtimeSinceStartup;
                     if (diagAt < 0f) { diagAt = now + 8f; return; }
+                    // freeplay has no role assignment, so TOR's own per-frame Chameleon pass stays off: drive it here
+                    if (DiagMode == "chameleon" && diagSteps != null) try { Chameleon.update(); } catch { }
                     if (now < diagAt) return;
                     if (diagSteps == null) DiagBuild(lp);
                     if (diagStep >= diagSteps.Count) return;

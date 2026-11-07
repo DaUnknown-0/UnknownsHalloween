@@ -411,10 +411,12 @@ DECOR = [
     (("rect", 2.9, 0.2, 5.5, 0.6), "topfregal", B),                  # n69: groesser
     (("rect", 24.3, 5.95, 25.6, 6.95), "tonband_boden", B),          # n73: groesser, frei vor dem Regal
     (("rect", 32.1, 4.25, 32.9, 4.45), "sternkarte", B),             # n82: kleine Sternkarte an der Sternwarten-Wand
-    # n13 + Feedback 2 Nr. 3: drei Doctor-Gemaelde (Crewmates im Kostuem) und die Katze; ganz im Raum, nicht halb in der Wand
-    (("rect", 23.85, 15.5, 24.05, 16.5), "portrait_dame", B),
-    (("rect", 23.85, 16.95, 24.05, 17.95), "portrait_maedchen", B),
-    (("rect", 24.95, 14.4, 25.15, 15.4), "portrait_offizier", B),
+    # n13 + Feedback 2 Nr. 3: drei Doctor-Gemaelde (Crewmates im Kostuem) und die Katze; ganz im Raum, nicht halb in der Wand.
+    # 07.11. (DrSuspect 06.11. "dr who pics closer to wall"): Rahmen buendig an der Wand-Innenkante (23,2 / 25,8) wie die Katze;
+    # in den g.cs nur Position und Tauschbild-Schluessel nachgezogen, Bilder unveraendert
+    (("rect", 23.72, 15.5, 23.92, 16.5), "portrait_dame", B),
+    (("rect", 23.71, 16.95, 23.91, 17.95), "portrait_maedchen", B),
+    (("rect", 25.09, 14.4, 25.29, 15.4), "portrait_offizier", B),
     (("rect", 25.07, 23.0, 25.27, 23.8), "portrait_katze", B),       # 29.10. abends: buendig an der Ostwand (Innenkante 25,8), weiter als Wandbild montiert
          # Fountain Court, rotes Wasser + Schleierstatue (vor dem Brunnen)
     (("rect", 44.6, 27.75, 45.4, 28.1), "kraehen", L),               # Graveyard, vor der Gruftwand links vom Tor (29.10. abends n11: vorhandene GPT-Kraehen, 0,8 m hoch)
