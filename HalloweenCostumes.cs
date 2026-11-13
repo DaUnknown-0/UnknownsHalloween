@@ -899,12 +899,27 @@ namespace UnknownsHalloween {
             }
         }
 
+        // hat.name crosses into Il2Cpp and allocates a new managed string on every read, and the hat
+        // updates read it for every hat every frame. HatData objects live for the session, so the name
+        // is cached by object pointer (also used by HalloweenCorpse).
+        private static readonly Dictionary<IntPtr, string> hatNameCache = new Dictionary<IntPtr, string>();
+        internal static string HatNameOf(HatData hat) {
+            if (hat == null) return null;
+            IntPtr key = hat.Pointer;
+            if (!hatNameCache.TryGetValue(key, out var name)) {
+                if (hatNameCache.Count > 4096) hatNameCache.Clear();
+                name = hat.name;
+                hatNameCache[key] = name;
+            }
+            return name;
+        }
+
         // Returns whether the accent layer is showing for this hat in this frame.
         private static bool HatLateUpdateCore(HatParent __instance) {
             if (__instance == null) return false;
             var hat = __instance.Hat;
             Costume c = null;
-            bool ours = hat != null && ByHatName.TryGetValue(hat.name, out c);
+            bool ours = hat != null && ByHatName.TryGetValue(HatNameOf(hat), out c);
             if (!ours || !c.NoLiveBob) ReleaseBob(__instance);      // hat changed: the next hat bobs normally again
             if (!ours) return false;
 
@@ -1043,7 +1058,7 @@ namespace UnknownsHalloween {
             try {
                 if (pc == null || GlobalCamo()) return null;
                 var drawn = pc.cosmetics != null && pc.cosmetics.hat != null ? pc.cosmetics.hat.Hat : null;
-                if (drawn != null) return ByHatName.TryGetValue(drawn.name, out var c) ? c : null;
+                if (drawn != null) return ByHatName.TryGetValue(HatNameOf(drawn), out var c) ? c : null;
                 var hatId = pc.CurrentOutfit != null ? pc.CurrentOutfit.HatId : null;
                 return hatId != null && ByHatId.TryGetValue(hatId, out var c2) ? c2 : null;
             } catch { return null; }
@@ -1165,8 +1180,13 @@ namespace UnknownsHalloween {
             HalloweenPlugin.Logger?.LogInfo($"[Halloween] the creature look had reached the saved outfit - restored '{back}'.");
         }
 
+        private static float nextLockTick;
         private static void TickLock() {
             try {
+                // customization.Hat allocates a string per read and GuardSavedHat runs a LINQ lookup:
+                // four checks a second instead of every frame.
+                if (Time.time < nextLockTick) return;
+                nextLockTick = Time.time + 0.25f;
                 var customization = AmongUs.Data.DataManager.Player?.Customization;
                 if (customization == null) return;
                 GuardSavedHat(customization);

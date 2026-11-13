@@ -88,6 +88,11 @@ namespace UnknownsHalloween {
                 if (Camouflager.camouflageTimer > 0f || Helpers.MushroomSabotageActive()) return true;
                 if (Morphling.morphTimer > 0f && Morphling.morphling == p) return true;
                 if (Xenomorph.IsTransformed(p.PlayerId)) return true;
+                // UC looks drawn through the same setLook pipeline: they also win over the mask, or the
+                // two writers take turns every few frames (wolf form practically invisible).
+                if (UnknownsCollection.Werewolf.active && UnknownsCollection.Werewolf.wolfForm && UnknownsCollection.Werewolf.werewolf == p) return true;
+                if (UnknownsCollection.HunterFx.SkinAttached && UnknownsCollection.Hunter.hunter == p) return true;
+                if (UnknownsCollection.Skinwalker.IsDisguised(p)) return true;
             } catch { }
             return false;
         }
@@ -110,7 +115,9 @@ namespace UnknownsHalloween {
                     phase = 0;
                     return;
                 }
-                if (!On(Mode, false) || !(introDone || Diag)) {
+                // Zombie Outbreak dresses players in its own corpse look; both at once fight over the
+                // same cosmetics, so the outbreak (a game mode with its own win) takes the round.
+                if (!On(Mode, false) || !(introDone || Diag) || ZombieOutbreak.OptionOn) {
                     if (masked) RestoreAll();
                     return;
                 }

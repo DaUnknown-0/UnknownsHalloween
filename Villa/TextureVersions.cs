@@ -45,6 +45,9 @@ internal static class TextureVersions
 
     private static readonly Dictionary<string, string> Chosen = new();        // Karte -> Fassungs-Id
     private static readonly Dictionary<int, string> Applied = new();          // Textur-InstanceID -> Fassungs-Id
+    // Textur-InstanceID + Fassungs-Id, deren Kopie scheiterte (Format/Groesse weicht ab, fehlt im Paket): sonst stuende die
+    // Textur nie in Applied, und Tick laese und dekodierte das ganze Paket alle 30 Frames von vorn, solange die Karte lebt.
+    private static readonly HashSet<(int Tex, string Id)> Failed = new();
     private static readonly HashSet<string> Verified = new();                 // Pakete mit gepruefter Pruefsumme
     private static readonly HashSet<string> MismatchLogged = new();
     internal static bool Busy { get; private set; }
@@ -75,7 +78,8 @@ internal static class TextureVersions
         foreach (var (map, id) in Chosen.ToList())
         {
             // frisch geladene Texturen (neue Runde) zeigen die installierte Fassung und stehen nicht in Applied
-            if (LiveTextures(map).Any(t => (Applied.TryGetValue(t.Tex.GetInstanceID(), out var a) ? a : InstalledId) != id))
+            if (LiveTextures(map).Any(t => (Applied.TryGetValue(t.Tex.GetInstanceID(), out var a) ? a : InstalledId) != id
+                                           && !Failed.Contains((t.Tex.GetInstanceID(), id))))
             {
                 var v = Of(map).FirstOrDefault(x => x.Id == id);
                 if (v.Id != null && (v.File == null || PackageReady(v.File, v.Size))) Choose(map, id);
@@ -155,8 +159,12 @@ internal static class TextureVersions
             while (!decode.IsCompleted) yield return null;
             var p = decode.IsFaulted ? null : decode.Result;
             if (tex != null && p != null && Copy(p, tex)) { Applied[tex.GetInstanceID()] = v.Id; copied++; }
-            else if (tex != null && MismatchLogged.Add(v.Id + atx))
-                Warn($"{atx}: {(p == null ? "missing in this version" : $"{p.Width}x{p.Height} {p.Format}/{p.Mips} vs {tex.width}x{tex.height} {tex.format}/{tex.mipmapCount}")}, kept");
+            else
+            {
+                if (tex != null) Failed.Add((tex.GetInstanceID(), v.Id));
+                if (tex != null && MismatchLogged.Add(v.Id + atx))
+                    Warn($"{atx}: {(p == null ? "missing in this version" : $"{p.Width}x{p.Height} {p.Format}/{p.Mips} vs {tex.width}x{tex.height} {tex.format}/{tex.mipmapCount}")}, kept");
+            }
             done++;
             Progress = done / (float)live.Count;
             yield return null;

@@ -229,6 +229,10 @@ namespace UnknownsHalloween {
                 }
                 yield return null;
             }
+            // The finished state machine stays referenced by its Il2CppInterop coroutine bridge, which never dies:
+            // drop what it captured, or every meeting kept its MeetingHud graph alive (multi-client test 2026-11-12).
+            hud = null; root = null; flames = null; frames = null; skipBat = null; bat = null; pins = null;
+            swapped.Clear();
         }
 
         private static readonly int BodyColorId = Shader.PropertyToID("_BodyColor");

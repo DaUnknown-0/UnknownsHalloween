@@ -322,6 +322,37 @@ internal sealed partial class HollowmereWorld
             {
                 if (target == null || target == __instance || !DixiProtects(target)) return true;
                 HalloweenPlugin.Logger.LogInfo($"{LogPrefix} dixi: murder of {target.Data?.PlayerName} by {__instance?.Data?.PlayerName} blocked (hiding)");
+                _guardBlocked = target.PlayerId;
+                return false;
+            }
+            catch { return true; }
+        }
+
+        // nach allen Postfixen dieses Aufrufs: die Markierung gilt nur fuer genau einen MurderPlayer
+        private static void Finalizer() => _guardBlocked = byte.MaxValue;
+    }
+
+    // Opfer, dessen MurderPlayer der Guard gerade blockt (byte.MaxValue = keins).
+    private static byte _guardBlocked = byte.MaxValue;
+
+    /// <summary>HarmonyX ruft die Postfixe auch dann, wenn ein Prefix das Original abbricht. TORs Mord-Postfix kennt keinen
+    /// Tot-Check: ohne diesen Patch gaebe es fuer das lebende Opfer einen GameHistory-Tod (Medium, Seer, Export), den
+    /// Erstkill-Namen, Sidekick-/Pursuer-Befoerderung und den echten Tod des Lover-Partners. Bei geblocktem Mord wird
+    /// davon nur das Zuruecksetzen des Moerders ausgefuehrt, das TORs Prefix (Team Impostor, IsDead false) verlangt.</summary>
+    [HarmonyPatch(typeof(TheOtherRoles.Patches.MurderPlayerPatch), nameof(TheOtherRoles.Patches.MurderPlayerPatch.Postfix))]
+    private static class DixiTorPostfixGuard
+    {
+        [HarmonyPriority(Priority.First)]
+        private static bool Prefix([HarmonyArgument(0)] PlayerControl killer, [HarmonyArgument(1)] PlayerControl target)
+        {
+            try
+            {
+                if (target == null || target.PlayerId != _guardBlocked || target.Data == null || target.Data.IsDead) return true;
+                if (killer != null && killer.Data != null)
+                {
+                    if (TheOtherRoles.Patches.MurderPlayerPatch.resetToCrewmate) killer.Data.Role.TeamType = RoleTeamTypes.Crewmate;
+                    if (TheOtherRoles.Patches.MurderPlayerPatch.resetToDead) killer.Data.IsDead = true;
+                }
                 return false;
             }
             catch { return true; }

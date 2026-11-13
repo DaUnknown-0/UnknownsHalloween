@@ -308,6 +308,34 @@ internal sealed partial class HollowmereWorld
         }
     }
 
+    /// <summary>Host: Vergiftete sterben, bevor das Meeting steht. So raeumt der Meeting-Start die Leiche mit ab und
+    /// die Stimmkarte zeigt den Tod. Der Melder selbst bleibt aussen vor: ein toter Melder oeffnet kein Meeting,
+    /// ihn holt weiter der Weg in SummonTick.</summary>
+    private void HostPoisonBeforeMeeting(byte reporterId)
+    {
+        if (_poisoned.Count == 0 || !AmHost) return;
+        for (int i = _poisoned.Count - 1; i >= 0; i--)
+        {
+            byte pid = _poisoned[i].Pid;
+            if (pid == reporterId) continue;
+            _poisoned.RemoveAt(i);
+            HostKill(pid, 1, false);
+        }
+    }
+
+    [HarmonyLib.HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.ReportDeadBody))]
+    private static class PoisonBeforeMeetingPatch
+    {
+        [HarmonyLib.HarmonyPriority(HarmonyLib.Priority.Last)]
+        public static void Prefix(PlayerControl __instance, bool __runOriginal)
+        {
+            if (!__runOriginal || __instance == null || MeetingHud.Instance != null) return;
+            if (__instance.Data == null || __instance.Data.IsDead) return;
+            try { _current?.HostPoisonBeforeMeeting(__instance.PlayerId); }
+            catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} poison before meeting failed: {e.Message}"); }
+        }
+    }
+
     /// <summary>art: 0 Feuer, 1 Gift, 2 Geist (Leiche in zwei Haelften), 4 Blitzfeuer.</summary>
     private void HostKill(byte pid, int kind, bool announce)
     {

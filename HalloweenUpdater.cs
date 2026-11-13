@@ -120,6 +120,7 @@ namespace UnknownsHalloween {
             // GitHub rejects UA-less clients - set a distinct one.
             www.SetRequestHeader("User-Agent", $"UnknownsHalloween/{HalloweenPlugin.PluginVersion}");
             www.downloadHandler = new DownloadHandlerBuffer();
+            www.timeout = UnknownsNet.RequestTimeout;
             var operation = www.SendWebRequest();
 
             while (!operation.isDone) {
@@ -197,6 +198,7 @@ namespace UnknownsHalloween {
             www.SetMethod(UnityWebRequest.UnityWebRequestMethod.Get);
             www.SetUrl(asset.DownloadUrl);
             www.downloadHandler = new DownloadHandlerBuffer();
+            www.timeout = UnknownsNet.DownloadTimeout;
             var operation = www.SendWebRequest();
 
             while (!operation.isDone) {
@@ -210,6 +212,17 @@ namespace UnknownsHalloween {
             }
 
             if (www.isNetworkError || www.isHttpError) {
+                _updateState = 3;
+                if (!managerMode && popup != null) {
+                    popup.TextAreaTMP.text = "Update failed.";
+                    if (button != null) button.SetActive(true);
+                }
+                _busy = false;
+                yield break;
+            }
+            // Only a PE image may replace the plugin (UnknownsNet.IsPluginImage).
+            byte[] payload = www.downloadHandler.data;
+            if (!UnknownsNet.IsPluginImage(payload)) {
                 _updateState = 3;
                 if (!managerMode && popup != null) {
                     popup.TextAreaTMP.text = "Update failed.";
@@ -250,7 +263,7 @@ namespace UnknownsHalloween {
             Task persistTask = null;
             var hasError = false;
             try {
-                persistTask = File.WriteAllBytesAsync(filePath, www.downloadHandler.data);
+                persistTask = File.WriteAllBytesAsync(filePath, payload);
             } catch (Exception e) {
                 HalloweenPlugin.Logger?.LogError(
                     $"[Halloween] Update failed: could not write the downloaded file ({e.Message}).");

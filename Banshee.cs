@@ -414,11 +414,13 @@ namespace UnknownsHalloween {
                              p == PlayerControl.LocalPlayer ? null : new TheOtherRoles.Objects.Arrow(Color.white));
                         marks[p.PlayerId] = m;
                     }
-                    // the colour the player SHOWS right now (camouflage, masquerade, morph stay intact)
+                    // the colour the player SHOWS right now, read from the drawn cosmetics: TOR's setLook
+                    // (camouflage, morph, masquerade, wolf form) leaves CurrentOutfit untouched, so that
+                    // one would hand everybody the true colours during a camouflage
                     Color body = Color.white;
                     try {
-                        int cid = p.CurrentOutfit != null ? p.CurrentOutfit.ColorId : p.Data.DefaultOutfit.ColorId;
-                        body = Palette.PlayerColors[cid];
+                        int cid = p.cosmetics != null ? p.cosmetics.ColorId : p.Data.DefaultOutfit.ColorId;
+                        if (cid >= 0 && cid < Palette.PlayerColors.Length) body = Palette.PlayerColors[cid];
                     } catch { }
                     bool isBanshee = p == source;
                     var world = (Vector3)p.GetTruePosition() + new Vector3(0f, 0.35f, 0f);

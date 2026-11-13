@@ -14,7 +14,9 @@
 // Wer darf, sieht am Funktisch "SPEAK" statt "TUNE": 3 Sekunden Aufnahme ueber Unitys Microphone, dann geht die Durchsage als
 // IMA-ADPCM (6 kHz, 4 Bit, rund 9 KB) in Teilen an alle (Sub 43 [id][teil][von][daten]); hoechstens 5 Teile pro Sekunde, damit
 // der Server keinen Schub sieht. Alle in Hoerweite des Funktischs hoeren sie mit Rauschen und Knacken. 30 s Abklingzeit je
-// Spieler, Empfaenger pruefen Erlaubnis und Abstand selbst. Nichts wird gespeichert.
+// Spieler, Empfaenger pruefen Erlaubnis, ob der Sprecher lebt, und halten je Sprecher nur eine offene Durchsage (den Abstand
+// zum Funktisch prueft nur der Sender: die Teile kommen erst nach der Aufnahme, der Sprecher darf sich dabei bewegen).
+// Nichts wird gespeichert.
 
 using System;
 using System.Collections.Generic;
@@ -300,7 +302,7 @@ internal sealed partial class HollowmereWorld
             var ids = new List<byte>();
             for (int i = 0; i < n; i++) ids.Add(reader.ReadByte());
             var sender = UCRpc.Sender;
-            if (sender == null || AmongUsClient.Instance == null || sender.OwnerId != AmongUsClient.Instance.HostId) return true;
+            if (!UnknownsNet.SenderIsHost(sender)) return true;
             MicAllowed.Clear();
             foreach (var id in ids) MicAllowed.Add(id);
             return true;
@@ -309,6 +311,7 @@ internal sealed partial class HollowmereWorld
         byte[] part = reader.ReadBytesAndSize();
         var from = UCRpc.Sender;
         if (part == null || part.Length < 7 || from == null || part[0] != from.PlayerId || !MicMayUse(from)) return true;
+        if (from.Data == null || from.Data.IsDead) return true;   // kein Geist spricht zu den Lebenden
         ushort msg = (ushort)(part[1] | part[2] << 8);
         int idx = part[3], total = part[4];
         if (total < 1 || total > 20 || idx >= total) return true;
@@ -317,6 +320,8 @@ internal sealed partial class HollowmereWorld
         {
             // eine neue Durchsage desselben Spielers erst nach der Abklingzeit
             if (MicLastFrom.TryGetValue(from.PlayerId, out float last) && Time.time - last < MicCooldown - 5f) return true;
+            // je Sprecher nur eine offene Durchsage: nie vollendete Teile anderer Nachrichten-Ids verfallen
+            foreach (var stale in MicIncoming.Keys.Where(k => k.Pid == from.PlayerId).ToList()) MicIncoming.Remove(stale);
             MicIncoming[key] = parts = new byte[total][];
         }
         parts[idx] = part.Skip(6).ToArray();

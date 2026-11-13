@@ -17,8 +17,10 @@
 // Mitternachtsuhr: der Host zaehlt (Option 1964, Standard 90 s; steht waehrend Meeting, Rauswurf und
 // kritischer Sabotage), 5 s vorher Vorwarnung (Sub 3/0: Ticken, Pendel schwingt), dann der Schlag (Sub 3/1):
 // drei Gongs, 3 s Lichtflackern (Sichtradius und Scheinwerfer), alle offenen Tueren fuer n Sekunden zu
-// (Option 1965; der Host schaltet die Tueren direkt, SetDoorway + Doors-System dirty, damit die Tuer-
-// Abklingzeiten der Impostor unberuehrt bleiben), und die Portraets der Galerie blicken in Richtung der
+// (Option 1965; der Host schaltet die Tueren ueber das Tuer-System der Karte: Skeld-Tueren per
+// AutoDoorsSystemType.SetDoor mit Dirty-Bit je Tuer, sonst SetDoorway + DoorsSystemType dirty; die
+// Sabotage-Abklingzeit der Tuer wird danach zurueckgesetzt, damit die Impostor-Tuersabotage unberuehrt
+// bleibt), und die Portraets der Galerie blicken in Richtung der
 // zuletzt gemeldeten Leiche (Option 1966, Prefix auf PlayerControl.StartMeeting merkt sich die Leiche).
 //
 // Tauschbilder: der Generator legt je Prop Varianten in den Konsolen-Atlas ("Prop/<Art>/<x>/<y>/<Variante>",
@@ -836,6 +838,30 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} doors dirty failed: {e.Message}"); }
     }
 
+    /// <summary>
+    /// Host: eine Tuer so schalten, dass alle Clients es sehen. Auf Skeld-Karten (Atlas) ist das
+    /// Tuer-System AutoDoorsSystemType, kein DoorsSystemType: dort setzt nur SetDoor das Dirty-Bit der
+    /// Tuer, ein blosses SetDoorway bliebe beim Host. AutoOpenDoor.SetDoorway(false) setzt ausserdem
+    /// ClosedTimer und CooldownTimer; die Sabotage-Abklingzeit kommt zurueck, und der ClosedTimer reicht
+    /// ueber die Uhrzeit hinaus, damit die Tuer nicht vor OpenDoors von selbst aufgeht.
+    /// </summary>
+    private static void SetDoorSynced(PlainDoor pd, bool open, float closedSecs)
+    {
+        var auto = pd.TryCast<AutoOpenDoor>();
+        AutoDoorsSystemType ads = null;
+        var ship = ShipStatus.Instance;
+        if (auto != null && ship != null && ship.Systems.TryGetValue(SystemTypes.Doors, out ISystemType sys) && sys != null)
+            ads = sys.TryCast<AutoDoorsSystemType>();
+        if (auto == null || ads == null) { pd.SetDoorway(open); return; }
+        float cooldown = auto.CooldownTimer;
+        ads.SetDoor(auto, open);
+        if (!open)
+        {
+            auto.CooldownTimer = cooldown;
+            auto.ClosedTimer = Mathf.Max(auto.ClosedTimer, closedSecs + 1f);
+        }
+    }
+
     private void ShutDoors()
     {
         float secs = DoorSecs;
@@ -849,7 +875,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             {
                 var pd = d != null ? d.TryCast<PlainDoor>() : null;
                 if (pd == null || !pd.Open) continue;
-                pd.SetDoorway(false);
+                SetDoorSynced(pd, false, secs);
                 _shut.Add(pd);
             }
             DoorsDirty();
@@ -864,7 +890,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         int n = 0;
         foreach (var pd in _shut)
         {
-            try { if (pd != null && !pd.Open) { pd.SetDoorway(true); n++; } } catch { }
+            try { if (pd != null && !pd.Open) { SetDoorSynced(pd, true, 0f); n++; } } catch { }
         }
         _shut.Clear();
         DoorsDirty();

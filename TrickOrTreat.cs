@@ -14,12 +14,12 @@
  *    after eating (host option); timed effects end when a meeting starts.
  *
  * Network: module byte 238 on UC's channel 230 (like the Banshee on 237). Host-authoritative:
- *   Sub 0 spawn     host -> all   [seed int][kinds ushort][effects uint][phase][n] n x [x short*100][y short*100][kind]
+ *   Sub 0 spawn     host -> all   [seed int][kinds ushort][effects ulong][phase][n] n x [x short*100][y short*100][kind]
  *   Sub 1 eat req   any  -> host  [phase][candy]
  *   Sub 2 eaten     host -> all   [phase][candy][player][effect][p1][p2][impostor]
  *   Sub 3 shield    killer -> all [target][effect]   (a candy shield took a kill)
  *   Sub 4 recomplete host -> all  [player][n] n x [task id uint]   (after the Extra Chore task rebuild)
- *   Sub 5 rules     host -> all   [on][count][meetings][range][kinds ushort][effects uint]   (menu settings)
+ *   Sub 5 rules     host -> all   [on][count][meetings][range][kinds ushort][effects ulong]   (menu settings)
  *   Sub 6 cabinets  host -> all   [n] n x [x short*100][y short*100]   (own maps: the cabinets of the round, once)
  *   Sub 7 search    any  -> host  [phase][cabinet]
  *   Sub 8 searched  host -> all   [phase][cabinet][player][candy or 255]   (the cabinet stands open; a candy follows as Sub 2)
@@ -126,15 +126,18 @@ namespace UnknownsHalloween {
         private static readonly System.Random rnd = new System.Random();
 
         // ---- helpers ----
-        internal static bool AmHost() => AmongUsClient.Instance != null && AmongUsClient.Instance.AmHost;
-        internal static bool IsAlive(PlayerControl p) => p != null && p.Data != null && !p.Data.IsDead && !p.Data.Disconnected;
-        internal static bool InMeeting() => MeetingHud.Instance != null || ExileController.Instance != null;
+        // These run every frame from Tick: Unity's == / != returns a bool that Il2CppInterop boxes on the
+        // il2cpp heap, so the checks use the managed reference plus the native pointer instead (2026-11-13).
+        internal static bool Live(UnityEngine.Object o) => !ReferenceEquals(o, null) && o.m_CachedPtr != IntPtr.Zero;
+        internal static bool AmHost() => Live(AmongUsClient.Instance) && AmongUsClient.Instance.AmHost;
+        internal static bool IsAlive(PlayerControl p) => Live(p) && !ReferenceEquals(p.Data, null) && p.Data.m_CachedPtr != IntPtr.Zero && !p.Data.IsDead && !p.Data.Disconnected;
+        internal static bool InMeeting() => Live(MeetingHud.Instance) || Live(ExileController.Instance);
         internal static bool FreePlay() { try { return AmongUsClient.Instance != null && AmongUsClient.Instance.NetworkMode == NetworkModes.FreePlay; } catch { return false; } }
         internal static bool InRound() {
             try {
                 var ac = AmongUsClient.Instance;
-                return ac != null && (ac.GameState == InnerNet.InnerNetClient.GameStates.Started || ac.NetworkMode == NetworkModes.FreePlay)
-                    && ShipStatus.Instance != null && PlayerControl.LocalPlayer != null;
+                return Live(ac) && (ac.GameState == InnerNet.InnerNetClient.GameStates.Started || ac.NetworkMode == NetworkModes.FreePlay)
+                    && Live(ShipStatus.Instance) && Live(PlayerControl.LocalPlayer);
             } catch { return false; }
         }
         internal static bool? LangOverride;           // the self test writes both languages
@@ -199,6 +202,9 @@ namespace UnknownsHalloween {
         // ================================================================ RPC
         internal static void Send(byte sub, Action<MessageWriter> write) {
             if (FreePlay()) return;                         // nobody to tell
+            // Joining a lobby, the host's OnGameJoined broadcast runs before its own player object exists:
+            // UCRpc.Begin needs LocalPlayer.NetId. The lobby resend (every 20 s) delivers the rules then.
+            if (AmongUsClient.Instance == null || PlayerControl.LocalPlayer == null) return;
             try {
                 var w = UCRpc.Begin(RpcId);
                 w.Write(sub);
@@ -666,9 +672,18 @@ namespace UnknownsHalloween {
             if (!ok) return;
             var ids = done.Take(255).ToList();
             byte pid = p.PlayerId;
+            // Die Nach-Erledigungen sind kein Crew-Fortschritt: UC's Auditor und Gambler sollen sie nicht als frisch
+            // erledigte Tasks zaehlen (gemeinsame Liste in UCTaskCount).
+            try { ExpectRecomplete(pid, ids); }
+            catch (Exception e) { HalloweenPlugin.Logger?.LogInfo($"{LogPrefix} Extra Chore: UC without the shared re-completion list ({e.GetType().Name})."); }
             Send(SubRecomplete, w => { w.Write(pid); w.Write((byte)ids.Count); foreach (var id in ids) w.Write(id); });
             ApplyRecomplete(pid, ids);
         }
+
+        // Eigene Methode ohne Inlining: mit einer aelteren UC-Fassung (ohne UCTaskCount.ExpectRecomplete) scheitert erst der
+        // JIT dieser Methode, und der Aufrufer faengt das ab.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void ExpectRecomplete(byte pid, List<uint> ids) => UCTaskCount.ExpectRecomplete(pid, ids);
 
         // The eater's own client re-completes once the reset has landed (Gambler's RecompleteTick).
         private static readonly List<uint> recompleteIds = new();

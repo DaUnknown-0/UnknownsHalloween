@@ -49,8 +49,7 @@ namespace UnknownsHalloween {
                 const float W = 1340f, H = 1010f, Pad = 34f, Pic = 840f;
                 var card = HalloweenUI.CenterPanel(carveRoot, new Vector2(W, H));
                 HalloweenUI.Title(card, "Pumpkin Carving", 16f, 34f, LobbyGames.Pumpkin);
-                HalloweenUI.Button(card, "X", new Vector2(-HalloweenUI.FrameW - 12f, -HalloweenUI.FrameW - 12f), new Vector2(54f, 54f), HalloweenUI.Red, () => CloseCarve(),
-                    out _, new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), 36f);
+                HalloweenUI.CloseButton(card, "", () => CloseCarve());
 
                 // the pumpkin and the grid on its carving area (x 136-376, y 156-396 of 512)
                 float s = Pic / LobbyArt.PumpkinSize;
@@ -86,7 +85,7 @@ namespace UnknownsHalloween {
                 HalloweenUI.Text(card, T("Left mouse button: tool. Right mouse button: erase. The carved parts glow on your lantern.",
                                          "Linke Maustaste: Werkzeug. Rechte Maustaste: radieren. Was du ausschneidest, leuchtet auf deiner Laterne."),
                     18f, HalloweenUI.Muted, new Vector2(x, y), new Vector2(colW, 120f));
-                HalloweenUI.Button(card, T("Done", "Fertig"), new Vector2(x, -H + 44f + 70f), new Vector2(colW, 70f), HalloweenUI.Green, Submit,
+                HalloweenUI.Button(card, T("Done", "Fertig"), new Vector2(x, -H + 44f + 70f), new Vector2(colW, 70f), HalloweenUI.OnColor, Submit,
                     out _, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), 30f);
                 Paint();
             } catch (Exception e) {
@@ -215,8 +214,7 @@ namespace UnknownsHalloween {
                 float H = PumpkinCarving.VotePhase == 2 ? 760f : 190f + rowsShown * 246f + 30f;
                 var card = HalloweenUI.CenterPanel(voteRoot, new Vector2(W, H));
                 HalloweenUI.Title(card, T("Pumpkin Vote", "Kürbis-Wahl"), 16f, 34f, LobbyGames.Pumpkin);
-                HalloweenUI.Button(card, "X", new Vector2(-HalloweenUI.FrameW - 12f, -HalloweenUI.FrameW - 12f), new Vector2(54f, 54f), HalloweenUI.Red, () => CloseVote(),
-                    out _, new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), 36f);
+                HalloweenUI.CloseButton(card, "", () => CloseVote());
                 var lp = PlayerControl.LocalPlayer;
                 byte me = lp != null ? lp.PlayerId : PumpkinCarving.None;
 

@@ -208,6 +208,9 @@ namespace UnknownsHalloween {
         // ================================================================ RPC
         internal static void Send(byte sub, Action<MessageWriter> write) {
             if (TrickOrTreat.FreePlay()) return;
+            // Joining a lobby, the host's OnGameJoined broadcast runs before its own player object exists:
+            // UCRpc.Begin needs LocalPlayer.NetId. The lobby resend (every 20 s) delivers the rules then.
+            if (AmongUsClient.Instance == null || PlayerControl.LocalPlayer == null) return;
             try {
                 var w = UCRpc.Begin(RpcId);
                 w.Write(sub);

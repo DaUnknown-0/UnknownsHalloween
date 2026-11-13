@@ -40,7 +40,7 @@ public class HalloweenPlugin : BasePlugin
 {
     public const string PluginGuid = "com.daunknown.unknownshalloween";
     public const string PluginName = "Unknown's Halloween";
-    public const string PluginVersion = "1.1.3.1";
+    public const string PluginVersion = "1.1.3.2";
     public static readonly System.Version Version = System.Version.Parse(PluginVersion);
     private const string AtlasGuid = "com.daunknown0.atlas";
 
@@ -161,7 +161,7 @@ internal static class HalloweenVersionDisplayPatch
     [HarmonyPriority(Priority.Low)]
     public static void Postfix(PingTracker __instance)
     {
-        if (__instance == null || __instance.text == null) return;
+        if (ReferenceEquals(__instance, null) || ReferenceEquals(__instance.text, null) || __instance.text.m_CachedPtr == System.IntPtr.Zero) return;   // no Unity ==: it boxes a bool per call (il2cpp heap), every frame in every mod
         string text = __instance.text.text;
         if (string.IsNullOrEmpty(text)) return;
 

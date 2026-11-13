@@ -3,7 +3,7 @@
 
 /*
  * HalloweenUI - a copy of the pieces of Useful TOR Stuff's VanillaUI that the Trick or Treat menu needs
- * (deep blue cards, thick pale outline, capsule buttons, the game's fonts). Copied, not referenced:
+ * (since 13.11. the game's own menu sprites via HalloweenGameSkin, the drawn shapes as stand-in). Copied, not referenced:
  * Unknown's Halloween must not depend on UTS. Keep the look in step with UsefulTORStuff/VanillaUI.cs.
  */
 
@@ -55,6 +55,8 @@ namespace UnknownsHalloween {
                     if (go == null) { modals.RemoveAt(i); continue; }
                     if (alive) open = true;
                 }
+                // a menu of another mod (shared list, 2026-11-13) holds this lock as well
+                if (!open) { try { open = ModalRegistry.AnyOpen(); } catch { } }
                 if (open && !openCache) LogBlock();
                 openCache = open;
                 return open;
@@ -133,14 +135,16 @@ namespace UnknownsHalloween {
             }
         }
 
-        internal static readonly Color Frame = new Color(0.72f, 0.78f, 0.84f);         // thick pale outline
-        internal static readonly Color Body = new Color(0.09f, 0.11f, 0.15f);
-        internal static readonly Color Field = new Color(0.14f, 0.17f, 0.22f);          // section boxes, rows
-        internal static readonly Color FieldLight = new Color(0.21f, 0.26f, 0.33f);     // selected / hovered row
+        // neutral greys of the game's settings window since 2026-11-13 (as Forgotten Fixes' VanillaUI); with the game's
+        // sprites loaded (HalloweenGameSkin) Panel, Title, Button and CloseButton draw with them
+        internal static readonly Color Frame = new Color(0.71f, 0.71f, 0.71f);         // thick pale outline
+        internal static readonly Color Body = new Color(0.07f, 0.07f, 0.07f);
+        internal static readonly Color Field = new Color(0.17f, 0.17f, 0.17f);          // section boxes, rows
+        internal static readonly Color FieldLight = new Color(0.27f, 0.27f, 0.27f);     // selected / hovered row
         internal static readonly Color TitleColor = Color.white;
         internal static readonly Color TextColor = Color.white;
-        internal static readonly Color Muted = new Color(0.66f, 0.72f, 0.80f);
-        internal static readonly Color Rule = new Color(0.30f, 0.36f, 0.44f);
+        internal static readonly Color Muted = new Color(0.70f, 0.70f, 0.70f);
+        internal static readonly Color Rule = new Color(0.35f, 0.35f, 0.35f);
         internal static readonly Color Shadow = new Color(0f, 0f, 0f, 0.55f);
         internal static readonly Color BackdropColor = new Color(0f, 0f, 0f, 0.72f);
         // buttons
@@ -149,7 +153,9 @@ namespace UnknownsHalloween {
         internal static readonly Color Green = new Color(0.30f, 0.74f, 0.42f);
         internal static readonly Color Amber = new Color(0.94f, 0.66f, 0.18f);
         internal static readonly Color Red = new Color(0.86f, 0.28f, 0.32f);
-        internal static readonly Color Grey = new Color(0.36f, 0.42f, 0.50f);           // neutral
+        internal static readonly Color Grey = new Color(0.40f, 0.40f, 0.42f);           // neutral
+        /// <summary>"On" / confirm: the settings window's own teal plate in the game look, green in the drawn one.</summary>
+        internal static Color OnColor => HalloweenGameSkin.Ready ? Teal : Green;
         internal static readonly Color Blue = new Color(0.30f, 0.56f, 0.90f);
         internal static readonly Color Pink = new Color(0.90f, 0.42f, 0.74f);
         // status text
@@ -176,6 +182,7 @@ namespace UnknownsHalloween {
             if (blocking) {
                 ray.blockingObjects = GraphicRaycaster.BlockingObjects.All;
                 modals.Add(go);                          // counts as an open menu while alive and active (ModalOpen)
+                ModalRegistry.Add(go);                   // and for the other mods' locks (shared list)
                 checkedFrame = -1;
             }
             return go;
@@ -203,6 +210,20 @@ namespace UnknownsHalloween {
             var rt = Rect(go, anchor, anchor, pivot);
             rt.sizeDelta = size; rt.anchoredPosition = pos;
 
+            if (HalloweenGameSkin.Ready) {
+                // the settings window picture where the shape fits it (about 2:1), else the black field with the light frame
+                float aspect = size.y > 0 ? size.x / size.y : 2f;
+                var img = go.AddComponent<Image>();
+                var bg = HalloweenGameSkin.Sprite("IMAGE-PanelBG");
+                if (aspect >= 1.55f && aspect <= 2.6f && bg != null) { img.sprite = bg; img.type = Image.Type.Simple; img.color = Color.white; }
+                else {
+                    img.sprite = HalloweenGameSkin.Sprite("IMAGE-FieldCube");
+                    img.type = Image.Type.Sliced; img.pixelsPerUnitMultiplier = 0.8f; img.color = Frame;
+                }
+                img.raycastTarget = true;
+                return go;
+            }
+
             // hard offset shadow, dark body, thick pale outline on top (the game's heavy-outline look)
             Stretch(Named(Rounded(go, Shadow, RadiusPanel), "Shadow")).anchoredPosition = new Vector2(8, -10);
             var body = Rounded(go, Body, RadiusPanel);
@@ -216,8 +237,25 @@ namespace UnknownsHalloween {
             Panel(root, size, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero);
 
         public static float Title(GameObject panel, string text, float top = 16f, float size = 34f, Color? color = null) {
-            // a slanted tab in the accent colour hanging from the top-left corner, the title on it
             float h = size * 1.2f + 14f;
+            if (HalloweenGameSkin.Ready) {
+                // the settings window's: Brook, white, upper case, a divider under it
+                float x = FrameW + 30f;
+                var gt = Label(panel, text, size * 1.45f, TitleColor, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, 1),
+                               new Vector2(x, -FrameW - top + 4f), new Vector2(-x - 120f, h), TMPro.TextAlignmentOptions.Left,
+                               TMPro.FontStyles.UpperCase);
+                Heading(gt);
+                gt.enableWordWrapping = false; gt.enableAutoSizing = true; gt.fontSizeMin = 14f; gt.fontSizeMax = size * 1.45f;
+                var div = new GameObject("TitleDivider");
+                div.transform.SetParent(panel.transform, false);
+                var drt = Rect(div, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0.5f, 1));
+                drt.anchoredPosition = new Vector2(0, -FrameW - top - h); drt.sizeDelta = new Vector2(-2 * (FrameW + 26f), 3f);
+                var di = div.AddComponent<Image>();
+                var ds = HalloweenGameSkin.Sprite("IMAGE-TitleDivider");
+                di.sprite = ds ?? Solid(); di.color = ds != null ? Color.white : Rule; di.raycastTarget = false;
+                return -FrameW - top - h - 8f;
+            }
+            // a slanted tab in the accent colour hanging from the top-left corner, the title on it
             float w = Mathf.Clamp(text.Length * size * 0.62f + 90f, 260f, 760f);
             var tab = new GameObject("TitleTab");
             tab.transform.SetParent(panel.transform, false);
@@ -259,6 +297,24 @@ namespace UnknownsHalloween {
             var rt = Rect(go, anchorMin ?? new Vector2(0.5f, 0), anchorMax ?? new Vector2(0.5f, 0), pivot ?? new Vector2(0.5f, 0));
             rt.anchoredPosition = pos; rt.sizeDelta = size;
 
+            if (HalloweenGameSkin.Ready) {
+                // the settings window's button plate, flat (no gloss)
+                var plate = new GameObject("Fill");
+                plate.transform.SetParent(go.transform, false);
+                Stretch(plate);
+                var pimg = plate.AddComponent<Image>();
+                pimg.raycastTarget = false;
+                Plate(pimg, color);
+                if (fontSize <= 0f) fontSize = Mathf.Clamp(size.y * 0.62f, 15f, 36f);
+                text = Label(go, label, fontSize, PlateText(color), Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f),
+                             Vector2.zero, new Vector2(-18, -4), TMPro.TextAlignmentOptions.Center, TMPro.FontStyles.UpperCase);
+                Heading(text);
+                text.enableAutoSizing = true; text.fontSizeMin = 11; text.fontSizeMax = fontSize;
+                text.enableWordWrapping = false;
+                Hover(go, Mathf.Clamp(Mathf.RoundToInt(size.y * 0.3f), 6, 18), onClick);
+                return go;
+            }
+
             // a capsule: flat colour, hard drop shadow, a darker outline of the same hue
             int radius = Mathf.Clamp(Mathf.RoundToInt(size.y / 2f) - 1, 4, 30);
             Stretch(Named(Rounded(go, Shadow, radius), "Shadow")).anchoredPosition = new Vector2(3, -5);
@@ -288,6 +344,25 @@ namespace UnknownsHalloween {
         /// corner (the label is kept for callers, the X needs none).
         /// </summary>
         public static GameObject CloseButton(GameObject panel, string label, Action onClose, float width = 240f) {
+            var exit = HalloweenGameSkin.Ready ? HalloweenGameSkin.Sprite("BUTTON-ExitStandard") : null;
+            if (exit != null) {
+                // the white X of the settings menu, on the top-right corner
+                var x = new GameObject("Close");
+                x.transform.SetParent(panel.transform, false);
+                var xrt = Rect(x, new Vector2(1, 1), new Vector2(1, 1), new Vector2(0.5f, 0.5f));
+                xrt.anchoredPosition = new Vector2(-6f, -6f); xrt.sizeDelta = new Vector2(78f, 78f);
+                var ximg = x.AddComponent<Image>();
+                ximg.sprite = exit; ximg.preserveAspect = true; ximg.raycastTarget = true;
+                var xb = x.AddComponent<Button>();
+                xb.targetGraphic = ximg;
+                var hover = HalloweenGameSkin.Sprite("BUTTON-ExitHover");
+                if (hover != null) {
+                    xb.transition = Selectable.Transition.SpriteSwap;
+                    var st = xb.spriteState; st.highlightedSprite = hover; st.pressedSprite = hover; xb.spriteState = st;
+                }
+                xb.onClick.AddListener((UnityEngine.Events.UnityAction)(() => onClose()));
+                return x;
+            }
             var go = Button(panel, "X", new Vector2(-FrameW - 10f, -FrameW - 10f), new Vector2(54f, 54f), Red, onClose,
                             out var text, new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), 40f);
             go.name = "Close";
@@ -299,12 +374,81 @@ namespace UnknownsHalloween {
         public static void Recolor(GameObject button, Color color) {
             if (button == null) return;
             var fill = button.transform.Find("Fill");
-            if (fill != null) fill.GetComponent<Image>().color = color;
+            var fimg = fill != null ? fill.GetComponent<Image>() : null;
+            bool plate = fimg != null && fimg.sprite != null && (fimg.sprite.name == "CTAInactive" || fimg.sprite.name == "CTAActive");
+            if (plate) Plate(fimg, color);
+            else if (fimg != null) fimg.color = color;
             var edge = button.transform.Find("Edge");
             if (edge != null) edge.GetComponent<Image>().color = Darker(color);
             var t = button.GetComponentInChildren<TMPro.TextMeshProUGUI>();
-            if (t != null) t.color = LabelColor(color);
+            if (t != null) t.color = plate ? PlateText(color) : LabelColor(color);
         }
+
+        /// <summary>
+        /// A section heading: the settings window's slanted grey bar with the label in italic upper case and a divider
+        /// running on (drawn: bold text). Positioned by its top-left corner; returns the bar's label.
+        /// </summary>
+        public static TMPro.TextMeshProUGUI SectionBar(GameObject parent, string text, Vector2 topLeft, float width, float barWidth = 520f) {
+            var bar = HalloweenGameSkin.Sprite("IMAGE-Subheader");
+            if (!HalloweenGameSkin.Ready || bar == null)
+                return Text(parent, text, 24f, Color.white, topLeft, new Vector2(width, 34f), TMPro.FontStyles.Bold);
+            var go = new GameObject("Section");
+            go.transform.SetParent(parent.transform, false);
+            var rt = Rect(go, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1));
+            rt.anchoredPosition = topLeft; rt.sizeDelta = new Vector2(width, 40f);
+            var b = new GameObject("Bar");
+            b.transform.SetParent(go.transform, false);
+            var brt = Rect(b, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f));
+            brt.sizeDelta = new Vector2(barWidth, 40f);
+            var bi = b.AddComponent<Image>();
+            bi.sprite = bar; bi.type = Image.Type.Sliced; bi.pixelsPerUnitMultiplier = 1.6f; bi.raycastTarget = false;
+            var t = Label(b, text, 24f, Color.white, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero,
+                          TMPro.TextAlignmentOptions.Left, TMPro.FontStyles.UpperCase | TMPro.FontStyles.Italic);
+            t.rectTransform.offsetMin = new Vector2(18f, 0f); t.rectTransform.offsetMax = new Vector2(-30f, 0f);
+            t.enableWordWrapping = false; t.enableAutoSizing = true; t.fontSizeMin = 12f; t.fontSizeMax = 24f;
+            var ds = HalloweenGameSkin.Sprite("IMAGE-TitleDivider");
+            if (ds != null) {
+                var d = new GameObject("Divider");
+                d.transform.SetParent(go.transform, false);
+                var drt = Rect(d, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f));
+                drt.anchoredPosition = new Vector2(barWidth + 6f, 0f); drt.sizeDelta = new Vector2(Mathf.Max(0f, width - barWidth - 6f), 3f);
+                var di = d.AddComponent<Image>(); di.sprite = ds; di.raycastTarget = false;
+            }
+            return t;
+        }
+
+        /// <summary>The settings window's black value box with the white frame, the value centred in it (drawn: plain text).</summary>
+        public static TMPro.TextMeshProUGUI ValueBox(GameObject parent, string value, Vector2 topLeft, Vector2 size, float fontSize = 24f) {
+            var box = HalloweenGameSkin.Sprite("BUTTON-CheckboxInactive");
+            if (!HalloweenGameSkin.Ready || box == null)
+                return Text(parent, value, fontSize, Color.white, topLeft + new Vector2(0f, -4f), size, TMPro.FontStyles.Bold, TMPro.TextAlignmentOptions.Center);
+            var go = new GameObject("Value");
+            go.transform.SetParent(parent.transform, false);
+            var rt = Rect(go, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1));
+            rt.anchoredPosition = topLeft; rt.sizeDelta = size;
+            var img = go.AddComponent<Image>();
+            img.sprite = box; img.type = Image.Type.Sliced; img.pixelsPerUnitMultiplier = 2.2f; img.raycastTarget = false;
+            var t = Label(go, value, fontSize, Color.white, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-12f, -4f),
+                          TMPro.TextAlignmentOptions.Center, TMPro.FontStyles.Bold);
+            t.enableWordWrapping = false; t.enableAutoSizing = true; t.fontSizeMin = 11f; t.fontSizeMax = fontSize;
+            return t;
+        }
+
+        // Teal = the settings window's plate (dark teal label), TealBright = its selected plate; other colours tint
+        // the light plate (as Forgotten Fixes' VanillaUI)
+        private static bool Near(Color a, Color b) => Mathf.Abs(a.r - b.r) + Mathf.Abs(a.g - b.g) + Mathf.Abs(a.b - b.b) < 0.06f;
+
+        private static void Plate(Image img, Color color) {
+            bool teal = Near(color, Teal), bright = Near(color, TealBright);
+            var sp = HalloweenGameSkin.Sprite(teal ? "CTAInactive" : "CTAActive");
+            img.sprite = sp ?? RoundedSprite(12);
+            img.type = Image.Type.Sliced;
+            img.pixelsPerUnitMultiplier = 0.9f;
+            img.color = teal || bright ? Color.white : color;
+        }
+
+        private static Color PlateText(Color color) =>
+            Near(color, Teal) || Near(color, TealBright) ? HalloweenGameSkin.TabText : LabelColor(color);
 
         private static Color Darker(Color c) => new Color(c.r * 0.55f, c.g * 0.55f, c.b * 0.55f, c.a);
 

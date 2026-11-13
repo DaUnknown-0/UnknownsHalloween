@@ -154,8 +154,9 @@ namespace UnknownsHalloween {
             if (hat == null) return false;
             var (co, pc) = OwnerOf(hat);
             int id = co != null ? co.GetInstanceID() : 0;
-            bool isCorpse = hat.Hat != null && hat.Hat.name == HatName;
-            if (!isCorpse && hat.Hat != null && BodylessHats.Contains(hat.Hat.name)) {
+            string hatName = HalloweenCostumes.HatNameOf(hat.Hat);
+            bool isCorpse = hatName != null && hatName == HatName;
+            if (!isCorpse && hatName != null && BodylessHats.Contains(hatName)) {
                 HideBodyOnly(hat, co, pc, id);
                 return false;   // the costume code still animates the frames
             }

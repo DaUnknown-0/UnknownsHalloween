@@ -397,6 +397,32 @@ internal static class HalloweenAssets
 
     // ------------------------------------------------------------------ Takt (Hauptthread)
 
+    private static float _preferAt;
+    private static string _preferred;
+
+    // The host chose a map of this plugin while its packages are still in the queue here (behind three dozen
+    // costume packages): those go to the front, so the map joins Atlas and the start unblocks as early as possible.
+    private static void PreferRequestedMap()
+    {
+        string key;
+        try { key = RequestedMapKey(); } catch { return; }       // older Atlas without RequestedKey
+        if (string.IsNullOrEmpty(key)) return;
+        string prefix = key + "_";
+        int moved = 0;
+        lock (Queue)
+        {
+            var mine = Queue.Where(n => n.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (mine.Count == 0 || Queue.Take(mine.Count).SequenceEqual(mine)) return;
+            foreach (var n in mine) Queue.Remove(n);
+            Queue.InsertRange(0, mine);
+            moved = mine.Count;
+        }
+        if (_preferred != key) { _preferred = key; Log($"host chose '{key}': {moved} package(s) moved to the front of the download queue"); }
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static string RequestedMapKey() => UnknownsAtlas.AtlasMaps.RequestedKey;
+
     internal static void Tick()
     {
         if (_host == null) return;
@@ -419,6 +445,11 @@ internal static class HalloweenAssets
             Task.Run(() => { Cleanup(); _saving = false; });
         }
         if (_unavailable) return;
+        if (Time.realtimeSinceStartup >= _preferAt)
+        {
+            _preferAt = Time.realtimeSinceStartup + 1f;
+            PreferRequestedMap();
+        }
         lock (Queue)
         {
             int scanned = 0;

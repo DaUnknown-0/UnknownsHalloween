@@ -443,7 +443,7 @@ HITBOX = {
     ("waschzuber", ("circle", 9.0, 1.3, 0.55)): ("ellipse", 8.93, 1.25, 0.53, 0.38),
     ("seance_tisch", ("ellipse", 13.0, 1.95, 1.4, 0.85)): ("ellipse", 13.0, 2.15, 0.82, 0.47),   # 28.10. n77: kleiner, 29.10. abends nochmal 86 %
     ("funktisch", ("rect", 23.3, 0.25, 25.5, 0.85)): ("rect", 23.8, 0.25, 25.0, 0.85),
-    ("kleiderstange", ("rect", 28.5, 0.3, 30.4, 0.7)): ("rect", 28.5, 0.45, 30.4, 1.05),
+    ("kleiderstange", ("rect", 28.5, 0.3, 30.4, 0.7)): ("rect", 28.8, 0.45, 30.1, 1.05),   # 08.11.: Gestell 28,8 bis 30,1
     ("teleskop", ("circle", 28.6, 6.0, 0.55)): ("ellipse", 28.62, 5.95, 0.38, 0.22),
     ("lesetisch", ("rect", 4.9, 16.1, 6.1, 16.9)): ("rect", 5.15, 16.5, 5.85, 16.9),
     ("kirchenbank", ("rect", 5.8, 20.9, 7.8, 21.35)): ("rect", 6.15, 20.9, 7.45, 21.35),
@@ -457,7 +457,7 @@ HITBOX = {
     ("billardtisch", ("rect", 28.5, 10.2, 31.3, 11.7)): ("rect", 28.7, 10.2, 31.1, 11.7),
     ("kamin", ("rect", 30.5, 13.85, 32.8, 14.45)): ("rect", 30.75, 13.85, 32.55, 14.45),
     ("beistelltisch", ("circle", 31.3, 15.6, 0.25)): ("circle", 31.3, 15.45, 0.22),
-    ("buecherregal", ("rect", 31.0, 18.25, 33.6, 18.7)): ("rect", 31.45, 18.25, 33.15, 18.7),
+    ("buecherregal", ("rect", 31.0, 18.25, 33.6, 18.7)): ("rect", 31.0, 18.25, 33.6, 18.7),  # 08.11.: GPT-Regal 2,66 m breit
     ("schreibtisch", ("rect", 29.0, 22.7, 31.4, 23.6)): ("rect", 29.45, 22.7, 30.95, 23.6),
     ("kamerakran", ("rect", 35.0, 3.0, 37.5, 5.0)): ("rect", 35.45, 4.5, 36.45, 5.0),  # 05.11. (Feedback 29.10. "hitbox too big"): nur das Fahrgestell, Arm und Kamera frei
     ("urne", ("circle", 37.0, 10.0, 0.4)): ("circle", 37.0, 9.9, 0.32),
@@ -465,7 +465,7 @@ HITBOX = {
     ("kuebelpflanze", ("rect", 34.3, 22.0, 34.9, 23.0)): ("rect", 34.3, 22.4, 35.1, 23.0),
     ("absperrung", ("rect", 13.0, 29.35, 15.0, 29.65)): ("rect", 13.45, 29.35, 14.55, 29.65),
     ("getraenketisch", ("rect", 20.1, 28.95, 22.1, 29.75)): ("rect", 20.3, 29.25, 21.9, 29.75),
-    ("lichtstativ", ("circle", 22.5, 25.5, 0.3)): ("ellipse", 22.62, 25.55, 0.5, 0.25),
+    ("lichtstativ", ("circle", 22.5, 25.5, 0.3)): ("ellipse", 22.37, 25.55, 0.5, 0.25),  # 08.11.: gespiegelt (FLIP), Beine westlich
     ("lichtstativ", ("circle", 15.8, 28.6, 0.3)): ("ellipse", 15.92, 28.65, 0.5, 0.25),
     ("campingtisch", ("rect", 6.0, 26.2, 7.8, 27.0)): ("rect", 6.35, 26.3, 7.45, 27.0),
     ("kabeltrommel", ("circle", 5.0, 34.6, 0.45)): ("ellipse", 5.35, 34.5, 0.52, 0.32),

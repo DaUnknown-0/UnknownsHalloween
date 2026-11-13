@@ -34,7 +34,7 @@ internal sealed partial class HollowmereWorld
         private static PlayerControl[] Players() => PlayerControl.AllPlayerControls.ToArray()
             .Where(p => p != null && p.Data != null && !p.Data.Disconnected).OrderBy(p => p.PlayerId).ToArray();
 
-        private static bool IsHostPlayer(PlayerControl p) => AmongUsClient.Instance != null && p.OwnerId == AmongUsClient.Instance.HostId;
+        private static bool IsHostPlayer(PlayerControl p) => UnknownsNet.SenderIsHost(p);
 
         internal static void Open()
         {

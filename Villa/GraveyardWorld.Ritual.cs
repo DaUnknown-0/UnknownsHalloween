@@ -496,6 +496,22 @@ internal sealed partial class GraveyardWorld
         }
     }
 
+    // Die Opferliste gilt nur fuer die Runde, in der der Daemon getoetet hat. Geleert wurde sie bisher nur beim Bau einer
+    // Ritual-Karte; nach einem Kartenwechsel machten die Patches hier aus jedem Selbst-Tod dieser Spieler-Id "The Demon"
+    // (Geisterzeile, Endbildschirm, HwDeathCause, kein Kill-Overlay). TOR ruft resetVariables am Spielende NACH dem Bau
+    // der Endbildschirm-Zeilen und beim Rollenverteilen auf; dazu der Lobbywechsel.
+    [HarmonyPatch(typeof(RPCProcedure), nameof(RPCProcedure.resetVariables))]
+    private static class DemonVictimsResetPatch
+    {
+        public static void Postfix() => DemonVictims.Clear();
+    }
+
+    [HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnGameJoined))]
+    private static class DemonVictimsLobbyPatch
+    {
+        public static void Postfix() => DemonVictims.Clear();
+    }
+
     // Kein Vanilla-Overlay ("toetet sich selbst"); die Szene spielt MarkVictim. Zuerst, damit die Kostuem-Szenen still bleiben.
     [HarmonyPatch(typeof(KillOverlay), nameof(KillOverlay.ShowKillAnimation), typeof(NetworkedPlayerInfo), typeof(NetworkedPlayerInfo))]
     private static class DemonOverlayPatch

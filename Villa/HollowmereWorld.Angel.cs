@@ -572,6 +572,20 @@ internal sealed partial class HollowmereWorld
         }
     }
 
+    // Wie DemonVictims: nur fuer die laufende Runde, sonst greifen die Patches hier nach einem Kartenwechsel
+    // an fremden Selbst-Toden derselben Spieler-Id.
+    [HarmonyPatch(typeof(RPCProcedure), nameof(RPCProcedure.resetVariables))]
+    private static class AngelVictimsResetPatch
+    {
+        public static void Postfix() => AngelVictims.Clear();
+    }
+
+    [HarmonyPatch(typeof(AmongUsClient), nameof(AmongUsClient.OnGameJoined))]
+    private static class AngelVictimsLobbyPatch
+    {
+        public static void Postfix() => AngelVictims.Clear();
+    }
+
     [HarmonyPatch(typeof(RoleInfo), nameof(RoleInfo.GetRolesString))]
     private static class AngelRoleStringPatch
     {

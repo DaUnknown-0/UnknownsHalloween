@@ -238,11 +238,13 @@ namespace UnknownsHalloween {
                 HalloweenUI.Backdrop(root, Close);
                 var card = HalloweenUI.CenterPanel(root, new Vector2(W, H));
                 float y = HalloweenUI.Title(card, "Trick or Treat", 16f, 34f, TrickOrTreat.Orange);
-                // the pumpkin pail (candy_menu_icon.png) right of the title tab
-                Icon(card, TreatFx.MenuIcon(), new Vector2(HalloweenUI.FrameW + 18f + Mathf.Clamp(14 * 34f * 0.62f + 90f, 260f, 760f) + 14f, -HalloweenUI.FrameW - 6f), 72f,
-                     new Vector2(0, 1));
-                HalloweenUI.Button(card, "X", new Vector2(-HalloweenUI.FrameW - 12f, -HalloweenUI.FrameW - 12f), new Vector2(54f, 54f), HalloweenUI.Red, Close,
-                    out _, new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), 36f);
+                // the pumpkin pail (candy_menu_icon.png): right of the title tab, in the game look left of the X
+                if (HalloweenGameSkin.Ready)
+                    Icon(card, TreatFx.MenuIcon(), new Vector2(-70f, -HalloweenUI.FrameW - 6f), 72f, new Vector2(1, 1));
+                else
+                    Icon(card, TreatFx.MenuIcon(), new Vector2(HalloweenUI.FrameW + 18f + Mathf.Clamp(14 * 34f * 0.62f + 90f, 260f, 760f) + 14f, -HalloweenUI.FrameW - 6f), 72f,
+                         new Vector2(0, 1));
+                HalloweenUI.CloseButton(card, "", Close);
                 HalloweenUI.Text(card, edit
                         ? T("Host settings: saved and sent to every player.", "Host-Einstellungen: gespeichert und an alle Spieler geschickt.")
                         : T("Read only: the host decides.", "Nur lesen: der Host entscheidet."),
@@ -259,7 +261,7 @@ namespace UnknownsHalloween {
                 y -= 14f;
                 float x = Pad;
                 HalloweenUI.Button(card, r.Enabled ? T("On", "An") : T("Off", "Aus"), new Vector2(x, y), new Vector2(170f, 56f),
-                    r.Enabled ? HalloweenUI.Green : HalloweenUI.Grey, Do(() => r.Enabled = !r.Enabled), out _, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1));
+                    r.Enabled ? On : HalloweenUI.Grey, Do(() => r.Enabled = !r.Enabled), out _, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1));
                 x += 200f;
                 Stepper(card, ref x, y, T("Candies per meeting", "Süßigkeiten pro Meeting"), r.Count.ToString(),
                     Do(() => r.Count = Mathf.Max(1, r.Count - 1)), Do(() => r.Count = Mathf.Min(20, r.Count + 1)), edit);
@@ -267,7 +269,7 @@ namespace UnknownsHalloween {
                     Do(() => r.Meetings = Mathf.Max(1, r.Meetings - 1)), Do(() => r.Meetings = Mathf.Min(3, r.Meetings + 1)), edit);
                 HalloweenUI.Text(card, T("Pickup range", "Aufhebe-Reichweite"), 18f, HalloweenUI.Muted, new Vector2(x, y + 2f), new Vector2(240f, 24f));
                 HalloweenUI.Button(card, (TrickOrTreat.De() ? RangeNamesDe : RangeNames)[Mathf.Clamp(r.Range, 0, 2)], new Vector2(x, y - 22f), new Vector2(200f, 44f),
-                    HalloweenUI.Blue, Do(() => r.Range = (r.Range + 1) % 3), out _, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1));
+                    On, Do(() => r.Range = (r.Range + 1) % 3), out _, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1));
                 x += 230f;
                 HalloweenUI.Text(card, T("Deadly candy", "Tödliche Süßigkeit"), 18f, HalloweenUI.Muted, new Vector2(x, y + 2f), new Vector2(300f, 24f));
                 var pb = HalloweenUI.Button(card, "Midnight Bonbon", new Vector2(x, y - 22f), new Vector2(300f, 44f),
@@ -302,7 +304,7 @@ namespace UnknownsHalloween {
                     int kk = k;
                     bool on = (r.Kinds & (1u << k)) != 0;
                     var pos = new Vector2(Pad + (k % kCols) * (kw + 12f), y - (k / kCols) * 62f);
-                    var b = HalloweenUI.Button(card, TrickOrTreat.KindNames[k], pos, new Vector2(kw, 52f), on ? HalloweenUI.Green : HalloweenUI.Grey,
+                    var b = HalloweenUI.Button(card, TrickOrTreat.KindNames[k], pos, new Vector2(kw, 52f), on ? On : HalloweenUI.Grey,
                         Do(() => { uint m = r.Kinds ^ (1u << kk); if (m != 0) r.Kinds = m; }), out var txt, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), 19f);
                     txt.rectTransform.offsetMin = new Vector2(52f, 0f);
                     if (!on) txt.color = HalloweenUI.Muted;
@@ -346,11 +348,14 @@ namespace UnknownsHalloween {
         }
 
         private static void RuleToggle(GameObject card, ref float x, float y, string label, bool on, Action flip) {
-            HalloweenUI.Button(card, label, new Vector2(x, y), new Vector2(360f, 48f), on ? HalloweenUI.Green : HalloweenUI.Grey, flip,
+            HalloweenUI.Button(card, label, new Vector2(x, y), new Vector2(360f, 48f), on ? On : HalloweenUI.Grey, flip,
                 out var txt, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), 19f);
             if (!on) txt.color = HalloweenUI.Muted;
             x += 380f;
         }
+
+        // "on" in the game look is the settings window's own teal plate; the drawn look keeps its green
+        private static Color On => HalloweenGameSkin.Ready ? HalloweenUI.Teal : HalloweenUI.Green;
 
         private static Color Dim(Color c) => new Color(c.r * 0.62f, c.g * 0.62f, c.b * 0.62f, 1f);
 
@@ -358,18 +363,18 @@ namespace UnknownsHalloween {
             HalloweenUI.Text(card, label, 18f, HalloweenUI.Muted, new Vector2(x, y + 2f), new Vector2(300f, 24f));
             var c = edit ? HalloweenUI.Teal : HalloweenUI.Grey;
             HalloweenUI.Button(card, "-", new Vector2(x, y - 22f), new Vector2(50f, 44f), c, minus, out _, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), 30f);
-            HalloweenUI.Text(card, value, 24f, Color.white, new Vector2(x + 56f, y - 30f), new Vector2(150f, 34f), TMPro.FontStyles.Bold, TMPro.TextAlignmentOptions.Center);
+            HalloweenUI.ValueBox(card, value, new Vector2(x + 58f, y - 22f), new Vector2(146f, 44f));
             HalloweenUI.Button(card, "+", new Vector2(x + 212f, y - 22f), new Vector2(50f, 44f), c, plus, out _, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), 30f);
             x += 310f;
         }
 
         // A section heading with "all on" / "all off"; returns the y below it.
         private static float Section(GameObject card, float y, string title, Action allOn, Action allOff) {
-            HalloweenUI.Text(card, title, 24f, Color.white, new Vector2(Pad, y), new Vector2(1000f, 34f), TMPro.FontStyles.Bold);
+            HalloweenUI.SectionBar(card, title, new Vector2(Pad, y), W - 2 * Pad - 340f, 760f);
             float bx = -Pad;
             HalloweenUI.Button(card, T("All off", "Alle aus"), new Vector2(bx, y + 2f), new Vector2(150f, 38f), HalloweenUI.Grey, allOff,
                 out _, new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), 18f);
-            HalloweenUI.Button(card, T("All on", "Alle an"), new Vector2(bx - 162f, y + 2f), new Vector2(150f, 38f), HalloweenUI.Green, allOn,
+            HalloweenUI.Button(card, T("All on", "Alle an"), new Vector2(bx - 162f, y + 2f), new Vector2(150f, 38f), On, allOn,
                 out _, new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), 18f);
             return y - 48f;
         }
