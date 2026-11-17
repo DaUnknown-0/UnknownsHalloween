@@ -157,8 +157,30 @@ namespace UnknownsHalloween {
                 Post(typeof(UCGuesser), "AllInfos", nameof(GuesserInfosPostfix));
                 Post(typeof(UCGuesser), "Sync", nameof(GuesserSyncPostfix));
                 Post(typeof(TeslaVersionHandshake), "AnyUCRoleEnabled", nameof(HandshakePostfix));
+                RegisterAttackRule();
             } catch (Exception e) {
                 HalloweenPlugin.Logger?.LogError($"[Xenomorph] self registration failed: {e}");
+            }
+        }
+
+        // Forgotten Fixes prüft eingehende Kill-RPCs von Gästen (Audit 16.11.). Der Xenomorph meldet seine
+        // Angriffsregel selbst über den AppDomain-Slot "UTS.AttackRules" an (UsefulTORStuff.UTSAttackRules),
+        // ohne Compile-Abhängigkeit und unabhängig von der Ladereihenfolge.
+        private static void RegisterAttackRule() {
+            try {
+                var domain = AppDomain.CurrentDomain;
+                List<object> list;
+                lock (typeof(AppDomain)) {
+                    list = domain.GetData("UTS.AttackRules") as List<object>;
+                    if (list == null) { list = new List<object>(); domain.SetData("UTS.AttackRules", list); }
+                }
+                Func<PlayerControl, PlayerControl, bool?> rule = (source, target) =>
+                    source != null && active && xenomorph == source
+                        ? source != target && IsTransformed(source.PlayerId)
+                        : (bool?)null;
+                lock (list) list.Add(rule);
+            } catch (Exception e) {
+                HalloweenPlugin.Logger?.LogWarning($"[Xenomorph] attack rule registration failed: {e.Message}");
             }
         }
 
