@@ -2382,8 +2382,9 @@ IMAGE_PROPS = {"baer": ("villa_baer.png", 3.0),
                "kronleuchter_boden": ("villa_kronleuchter_boden.png", 2.2),
                "ruestung": ("villa_ruestung.png", 2.3),
                # Wandbilder: dritter Wert = Abstand der Bildunterkante ueber der Standlinie (haengt an der Wand)
-               "portrait_dame": ("villa_portrait_dame.png", 1.3, 0.85), "portrait_offizier": ("villa_portrait_offizier.png", 1.3, 0.85),
-               "portrait_katze": ("villa_portrait_katze.png", 1.25, 0.85), "portrait_maedchen": ("villa_portrait_maedchen.png", 1.3, 0.85),
+               # 17.11.: die Doctor-Gemaelde haengen an der 1 m hohen Stirnflaeche der dicken Kaminzimmer-Nordwand, kleiner und tiefer
+               "portrait_dame": ("villa_portrait_dame.png", 0.82, 0.08), "portrait_offizier": ("villa_portrait_offizier.png", 0.82, 0.08),
+               "portrait_katze": ("villa_portrait_katze.png", 1.25, 0.85), "portrait_maedchen": ("villa_portrait_maedchen.png", 0.82, 0.08),
                "statue_schleier": ("villa_statue_schleier.png", 2.4),
                "kronleuchter": ("villa_kronleuchter.png", 1.25, 5.3),        # haengt: Standlinie an der Suedwand der Gruft
                "laternenpfahl": ("villa_laternenpfahl.png", 2.5),
@@ -2401,7 +2402,35 @@ IMAGE_PROPS = {"baer": ("villa_baer.png", 3.0),
                "kisten": ("villa_kisten.png", 1.5),
                "catering": ("villa_catering.png", 1.35), "getraenketisch": ("villa_getraenke.png", 1.35),
                "dixi": ("villa_dixi.png", 2.05),
-               "kraehen": ("villa_kraehen.png", 0.8)}      # 29.10. abends: Kabine etwa 85 % (n14)
+               "kraehen": ("villa_kraehen.png", 0.8),      # 29.10. abends: Kabine etwa 85 % (n14)
+               # 17.11.: Obergeschoss (GPT-Boegen 25/26, D:/KI/sdcpp/villa_qwen/gpt_assets_1117.py)
+               "himmelbett": ("villa_himmelbett.png", 2.4), "kleiderschrank": ("villa_kleiderschrank.png", 1.9),
+               "nachttisch": ("villa_nachttisch.png", 0.95), "wiege": ("villa_wiege.png", 1.0),
+               "schaukelpferd": ("villa_schaukelpferd.png", 1.0), "spielzeugkiste": ("villa_spielzeugkiste.png", 0.95),
+               "badewanne": ("villa_badewanne.png", 1.3), "waschtisch": ("villa_waschtisch.png", 1.35),
+               "toilette": ("villa_toilette.png", 1.7), "naehtisch": ("villa_naehtisch.png", 1.15),
+               "stoffregal": ("villa_stoffregal.png", 1.5), "koffer": ("villa_koffer.png", 1.3),
+               "dienstbotentreppe": ("villa_dienstbotentreppe.png", 1.9), "treppensperre_reste": ("villa_treppensperre_reste.png", 0.8),
+               "puppenstuhl": ("villa_puppenstuhl.png", 1.0), "vogelkaefig": ("villa_vogelkaefig.png", 1.9),
+               "pfosten": ("villa_pfosten.png", 1.3),
+               "familienportrait": ("villa_familienportrait.png", 0.8, 0.06),       # Wandbild, Nordwand des Dachbodens
+               "fotoleine": ("villa_fotoleine.png", 0.55, 0.3),                    # Leine mit Fotos, Nordwand der Dunkelkammer
+               "spielzeugregal": ("villa_spielzeugregal.png", 0.5, 0.0),           # Wandbord, Nordwand der Kinderstube
+               # 18.11.: Dekoration Obergeschoss (GPT-Boegen 27/28)
+               "teddy": ("villa_teddy.png", 0.55), "spielzeug_boden": ("villa_spielzeug_boden.png", 0.4),
+               "puppenhaus": ("villa_puppenhaus.png", 1.1), "wandleuchter": ("villa_wandleuchter.png", 0.7, 1.0),
+               "bilder_gruppe": ("villa_bilder_gruppe.png", 0.5, 1.0), "kleiderhaufen": ("villa_kleiderhaufen.png", 0.45),
+               "koffer_offen": ("villa_koffer_offen.png", 0.6), "hutstaender": ("villa_hutstaender.png", 1.7),
+               "paravent": ("villa_paravent.png", 1.4), "frisierkommode": ("villa_frisierkommode.png", 1.5),
+               "klavier": ("villa_klavier.png", 1.6), "truhe": ("villa_truhe.png", 0.8),
+               "kinderbett": ("villa_kinderbett.png", 1.2), "vergroesserer": ("villa_vergroesserer.png", 1.2),
+               "chemikalienregal": ("villa_chemikalienregal.png", 1.4), "handtuchhalter": ("villa_handtuchhalter.png", 1.1),
+               "duschvorhang": ("villa_duschvorhang.png", 1.6), "garnregal": ("villa_garnregal.png", 0.6, 0.3),
+               "stoffballen_boden": ("villa_stoffballen_boden.png", 0.5), "spinnennetz_gross": ("villa_spinnennetz_gross.png", 1.2, 0.6),
+               "spiegel_tuch": ("villa_spiegel_tuch.png", 1.9), "kinderwagen": ("villa_kinderwagen.png", 1.2),
+               "gemaelde_hausherrin": ("villa_gemaelde_hausherrin.png", 1.4, 0.85), "konsolentisch": ("villa_konsolentisch.png", 1.1)}
+NO_SHADOW.update({"familienportrait", "fotoleine", "spielzeugregal", "teddy", "spielzeug_boden", "wandleuchter", "bilder_gruppe",
+                  "kleiderhaufen", "garnregal", "stoffballen_boden", "spinnennetz_gross", "gemaelde_hausherrin"})   # Wandschmuck, Bodenkram
 # Arten ohne eigenen Zeichner, die nur aus dem Bild kommen (Hoehe fuer KINDS/PROP_H)
 for _k, _v in list(IMAGE_PROPS.items()):
     PROP_H.setdefault(_k, _v[1])

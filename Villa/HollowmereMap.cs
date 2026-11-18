@@ -10,6 +10,8 @@
 //
 // Groesse: Host-Option 1960 (Small = nur das Haus, Large = mit Garten, Friedhof und Gruft). Atlas ruft die
 // Factory vor jedem Kartenbau neu auf, die Option gilt also ab der naechsten Runde.
+// Obergeschoss (17.11.): Host-Option 1970, fuer beide Groessen; WithUpper fuegt Villa/VillaUpper.g.cs ein (eigene Flaeche
+// noerdlich des Hauses, Treppen ohne Knopf in HollowmereWorld.Stairs, Sperre vor der Freitreppe weg).
 
 using System;
 using System.Collections.Generic;
@@ -26,6 +28,7 @@ internal static class HollowmereMap
     private const string ResourceNamespace = "UnknownsHalloween.Resources";
 
     public static CustomOption Size;
+    public static CustomOption UpperFloor;
 
     internal static void Register()
     {
@@ -35,6 +38,11 @@ internal static class HollowmereMap
                 new[] { "Small", "Large" }, null, true, null, "Hollowmere Manor");
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogError($"[Halloween/Villa] size option failed: {e}"); }
+        try
+        {
+            UpperFloor = CustomOption.Create(1970, CustomOption.CustomOptionType.General, "Hollowmere Upper Floor", true, null, false, null, "Hollowmere Manor");
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogError($"[Halloween/Villa] upper floor option failed: {e}"); }
 
         // Mechaniken brauchen Atlas-API 2 (AtlasMapDef.World, ab Atlas 1.0.0.2). AtlasMaps.ApiVersion ist eine
         // Konstante und wird hier eingebacken, also zur Laufzeit am Feld pruefen: mit aelterem Atlas waere jeder
@@ -68,6 +76,11 @@ internal static class HollowmereMap
         ((Size != null && Size.getSelection() == 1) ||
          (Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("villalarge"));
 
+    // Diagnose: UC_HALLOWEEN_DIAG=villanoup schaltet das Obergeschoss ab, villaup erzwingt es
+    internal static bool Upper =>
+        !(Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("villanoup") &&
+        (UpperFloor == null || UpperFloor.getBool() || (Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("villaup"));
+
     // "Make Burger" aus Airship am Herd der Kueche (Kueche = LowerEngine); Atlas laedt dafuer Airship mit.
     // 28.10. (Feedback DrSuspect): weitere Airship-Aufgaben als Reiter. Airship ist ohnehin geladen, die Reiter kosten also keine
     // Ladezeit; bis auf den Tresor (Airship-Original, n33) zeigen sie Atlas-Minispiele mit Villa-Grafik (CustomTasks unten).
@@ -89,6 +102,14 @@ internal static class HollowmereMap
         (TaskTypes.PolishRuby, 4, "MainHall/Catering/0", SystemTypes.MainHall),               // Essen und Trinken (n56)
         (TaskTypes.PickUpTowels, 4, "Storage/FeedPlant/0", SystemTypes.Storage),              // Riesenpflanze fuettern (n23, 05.11.)
     };
+    // Obergeschoss (17.11.): hinter die Listen beider Groessen gehaengt, die Reihenfolge davor bleibt
+    private static readonly (TaskTypes, int, string, SystemTypes)[] BorrowedUpper =
+    {
+        (TaskTypes.SortRecords, 4, "VaultRoom/SortRecords/0", SystemTypes.VaultRoom),          // Attic
+        (TaskTypes.DevelopPhotos, 4, "Cockpit/DevelopPhotos/0", SystemTypes.Cockpit),          // Darkroom
+        (TaskTypes.DressMannequin, 4, "Armory/DressMannequin/0", SystemTypes.Armory),          // Sewing Room
+        (TaskTypes.RewindTapes, 4, "Office/RewindTapes/0", SystemTypes.Office),                // Master Bedroom
+    };
 
     private static AtlasMapDef Make()
     {
@@ -108,11 +129,104 @@ internal static class HollowmereMap
         d.CustomTasks = CustomTasks();
         d.TaskArt = TaskArt();
         d.TaskText = TaskText();
+        bool upper = Upper;
+        if (upper) WithUpper(d, Large);
         // Mechaniken (Geheimgaenge, Uhr, Kerzen): je Bau ein frisches Objekt, Atlas ruft es ueber IAtlasMapWorld
-        d.World = Large
-            ? new HollowmereWorld(d, VillaLarge.Secrets, VillaLarge.Clock, VillaLarge.DarkRooms)
-            : new HollowmereWorld(d, VillaSmall.Secrets, VillaSmall.Clock, VillaSmall.DarkRooms);
+        var dark = Large ? VillaLarge.DarkRooms : VillaSmall.DarkRooms;
+        if (upper) dark = Cat(dark, VillaUpper.DarkRooms);
+        var world = Large
+            ? new HollowmereWorld(d, VillaLarge.Secrets, VillaLarge.Clock, dark)
+            : new HollowmereWorld(d, VillaSmall.Secrets, VillaSmall.Clock, dark);
+        if (upper) world.SetStairs(VillaUpper.Stairs);
+        d.World = world;
+        HalloweenPlugin.Logger.LogInfo($"[Halloween/Villa] building {(Large ? "large" : "small")} {(upper ? "with" : "without")} the upper floor");
         return d;
+    }
+
+    private static T[] Cat<T>(T[] a, T[] b)
+    {
+        var r = new T[(a?.Length ?? 0) + (b?.Length ?? 0)];
+        a?.CopyTo(r, 0);
+        b?.CopyTo(r, a?.Length ?? 0);
+        return r;
+    }
+
+    /// <summary>Obergeschoss einfuegen (Option 1970): Flaeche, Raeume, Objekte, Aufgaben, Vents und eine Kamera oben; unten fallen
+    /// die Kollision der Freitreppe und die Sperre weg (Bretterhaufen seitlich), die Dienstbotentreppe kommt in die Kueche.</summary>
+    private static void WithUpper(AtlasMapDef d, bool large)
+    {
+        var dropO = new HashSet<int>(large ? VillaUpper.LargeDropOpaque : VillaUpper.SmallDropOpaque);
+        var dropG = new HashSet<int>(large ? VillaUpper.LargeDropGlass : VillaUpper.SmallDropGlass);
+        var op = new List<Vector2[]>();
+        var casts = new List<bool>();
+        for (int i = 0; i < d.Opaque.Length; i++)
+        {
+            if (dropO.Contains(i)) continue;
+            op.Add(d.Opaque[i]);
+            casts.Add(d.OpaqueCastsShadow == null || i >= d.OpaqueCastsShadow.Length || d.OpaqueCastsShadow[i]);
+        }
+        op.AddRange(VillaUpper.Opaque);
+        casts.AddRange(VillaUpper.OpaqueCastsShadow);
+        d.Opaque = op.ToArray();
+        d.OpaqueCastsShadow = casts.ToArray();
+        var gl = new List<Vector2[]>();
+        for (int i = 0; i < d.Glass.Length; i++) if (!dropG.Contains(i)) gl.Add(d.Glass[i]);
+        gl.AddRange(VillaUpper.Glass);
+        d.Glass = gl.ToArray();
+
+        d.Walls = Cat(d.Walls, VillaUpper.Walls);
+        d.ShadowWalls = Cat(d.ShadowWalls, VillaUpper.ShadowWalls);
+        d.Rooms = Cat(d.Rooms, VillaUpper.Rooms);
+        d.Hallways = Cat(d.Hallways, VillaUpper.Hallways);
+        d.FloorTiles = Cat(d.FloorTiles, VillaUpper.FloorTiles);
+
+        // Objekte: Sperre -> Bretterhaufen (gleicher Index, PropTops bleiben gueltig), Freitreppe nach hinten sortiert
+        var props = d.Props.Clone() as (string Kind, int Atlas, int X, int Y, int W, int H, float WorldX, float WorldY, float BaseY, float FootX0, float FootX1)[];
+        int sperre = large ? VillaUpper.LargeSperreProp : VillaUpper.SmallSperreProp;
+        int treppe = large ? VillaUpper.LargeTreppeProp : VillaUpper.SmallTreppeProp;
+        if (sperre >= 0 && sperre < props.Length) props[sperre] = VillaUpper.ReplaceProp;
+        if (treppe >= 0 && treppe < props.Length) props[treppe].BaseY = VillaUpper.FreitreppeBaseY;
+        int ground = props.Length;
+        d.Props = Cat(props, VillaUpper.Props);
+        var topsField = typeof(AtlasMapDef).GetField("PropTops");
+        if (topsField != null)
+        {
+            var tops = new Dictionary<int, float>((topsField.GetValue(d) as Dictionary<int, float>) ?? new Dictionary<int, float>());
+            tops.Remove(sperre);
+            foreach (var kv in VillaUpper.PropTops) tops[ground + kv.Key] = kv.Value;
+            topsField.SetValue(d, tops);
+        }
+        foreach (var k in VillaUpper.NoFadeKinds) d.NoFadeKinds.Add(k);
+
+        // Konsolenbilder: gleicher Schluessel oben gewinnt (Vent 10 liegt klein im Dachboden statt im Garten)
+        var sprites = new List<(string Key, int Atlas, int X, int Y, int W, int H, float PivotX, float PivotY)>();
+        var up = large ? VillaUpper.LargeConsoleSprites : VillaUpper.SmallConsoleSprites;
+        var upKeys = new HashSet<string>();
+        foreach (var s in up) upKeys.Add(s.Key);
+        foreach (var s in d.ConsoleSprites) if (!upKeys.Contains(s.Key)) sprites.Add(s);
+        sprites.AddRange(up);
+        d.ConsoleSprites = sprites.ToArray();
+
+        d.Consoles = new Dictionary<string, Vector2>(d.Consoles);
+        foreach (var kv in VillaUpper.Consoles) d.Consoles[kv.Key] = kv.Value;
+        d.ForeignTasks = Cat(d.ForeignTasks, BorrowedUpper);
+
+        d.Vents = new Dictionary<int, Vector2>(d.Vents);
+        foreach (var kv in large ? VillaUpper.LargeVents : VillaUpper.SmallVents) d.Vents[kv.Key] = kv.Value;
+        d.VentNetworks = large ? VillaUpper.LargeVentNetworks : VillaUpper.SmallVentNetworks;
+
+        var cams = d.Cameras.Clone() as Vector2[];
+        int ci = large ? VillaUpper.LargeCameraIndex : VillaUpper.SmallCameraIndex;
+        if (ci >= 0 && ci < cams.Length) cams[ci] = large ? VillaUpper.LargeCameraPos : VillaUpper.SmallCameraPos;
+        d.Cameras = cams;
+
+        d.MinX = large ? VillaUpper.LargeMinX : VillaUpper.SmallMinX;
+        d.MinY = large ? VillaUpper.LargeMinY : VillaUpper.SmallMinY;
+        d.MaxX = large ? VillaUpper.LargeMaxX : VillaUpper.SmallMaxX;
+        d.MaxY = large ? VillaUpper.LargeMaxY : VillaUpper.SmallMaxY;
+        d.MapLabels = large ? VillaUpper.LargeMapLabels : VillaUpper.SmallMapLabels;
+        d.MinimapFile = large ? "villa_minimap_large_up.png" : "villa_minimap_small_up.png";
+        d.ViewSpots = Cat(d.ViewSpots, new Vector2[] { new(0f, 22.0f) });
     }
 
     private static AtlasMapDef FromSmall() => new()
@@ -292,5 +406,10 @@ internal static class HollowmereMap
         { TaskTypes.PutAwayPistols, "Tune the Generator" },
         { TaskTypes.PolishRuby, "Grab Lunch" },
         { TaskTypes.PickUpTowels, "Feed the Plant" },
+        // Obergeschoss (17.11.)
+        { TaskTypes.SortRecords, "Sort the Family Records" },
+        { TaskTypes.DevelopPhotos, "Develop the Set Photos" },
+        { TaskTypes.DressMannequin, "Dress the Mannequin" },
+        { TaskTypes.RewindTapes, "Rewind the Ghost Tapes" },
     };
 }

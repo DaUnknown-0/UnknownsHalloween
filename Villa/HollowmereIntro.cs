@@ -15,6 +15,7 @@
 // ignoriert.
 
 using System;
+using System.IO;
 using System.Runtime.CompilerServices;
 using Hazel;
 using UnknownsCollection;
@@ -40,7 +41,25 @@ internal static class HollowmereIntro
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void RegisterWithAtlas()
     {
-        UnknownsAtlas.AtlasCinematic.RegisterIntro(HollowmereMap.Key, name => HalloweenAssets.Read(HalloweenAssets.ResRoot + Pack + name));
+        UnknownsAtlas.AtlasCinematic.RegisterIntro(HollowmereMap.Key, name => { DiagShot(name); return HalloweenAssets.Read(HalloweenAssets.ResRoot + Pack + name); });
+    }
+
+    // Autotest (UC_HALLOWEEN_DIAG mit "introshots", 17.11.): Atlas' eigene Intro-Diagnose fotografiert nur bis 52 s; das neue Ende
+    // (zweite Etage, Bilder 1322..1621) wird hier beim Laden einzelner Bilder mitfotografiert.
+    private static readonly bool DiagShots = (Environment.GetEnvironmentVariable("UC_HALLOWEEN_DIAG") ?? "").Contains("introshots");
+
+    private static void DiagShot(string name)
+    {
+        if (!DiagShots) return;
+        if (name is not ("f1330.jpg" or "f1360.jpg" or "f1380.jpg" or "f1420.jpg" or "f1470.jpg" or "f1540.jpg" or "f1600.jpg" or "f1640.jpg")) return;
+        try
+        {
+            string dir = Path.Combine(BepInEx.Paths.GameRootPath, "AtlasShots");
+            Directory.CreateDirectory(dir);
+            UnityEngine.ScreenCapture.CaptureScreenshot(Path.Combine(dir, "hw_intro_" + Path.GetFileNameWithoutExtension(name) + ".png"));
+            HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag shot at {name}");
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} diag shot failed: {e.Message}"); }
     }
 
     private static void HandleRpc(MessageReader reader)

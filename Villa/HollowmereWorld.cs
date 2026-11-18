@@ -247,6 +247,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         _passing = false;
         _clockAt = -1f; _warned = false; _shut.Clear(); _sounds.Clear(); _strikes = 0; _lastStrike = -1f;
         _flickerUntil = _pendulumUntil = 0f;
+        StairsReset();
         for (int i = 0; i < _secrets.Length; i++)
         {
             var s = _secrets[i];
@@ -363,6 +364,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         ArmorTick();
         ClockTick(dt);
         CandleTick(dt);
+        try { StairsTick(); } catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} stairs: {e.Message}"); }
         if (_passing) { PassTick(dt); return; }
         DiagTick();
         if (OfferSecrets()) return;
@@ -939,6 +941,8 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             else if (p == "summon") _diagTasks.Add("summon");      // Buch lesen, blaettern, Kerzen 4-1-3-5-2 (Summon.cs)
             else if (p == "dixi") _diagTasks.Add("dixi");          // 05.11.: verstecken, Kill-Schutz, Tuer, Sperre (Dixi.cs)
             else if (p == "mic") _diagTasks.Add("mic");            // 05.11.: Funk-Kodierung und Mikrofon (RadioMic.cs)
+            else if (p == "stairs") _diagTasks.Add("stairs");      // 17.11.: Treppen ins Obergeschoss hoch und runter (Stairs.cs)
+            else if (p == "uptour") _diagTasks.Add("uptour");      // 18.11.: Rundgang mit Fotos durch alle Raeume oben (Stairs.cs)
         }
         if (_diagTasks.Count == 0) return;
         // erst nach den Ansichtsfotos von Atlas (AtlasMapShot teleportiert den Spieler ~20 s lang herum und laesst
@@ -968,6 +972,8 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         if (task == "summon") { DiagSummon(lp); return; }
         if (task == "dixi") { DiagDixi(lp); return; }
         if (task == "mic") { DiagMic(lp); return; }
+        if (task == "stairs") { DiagStairs(lp); return; }
+        if (task == "uptour") { DiagTour(lp); return; }
         int idx = Array.FindIndex(_secrets, s => s.Key == task.Substring(7));
         if (idx < 0)
         {

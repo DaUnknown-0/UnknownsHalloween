@@ -191,6 +191,45 @@ def props_of(v):
     return out
 
 
+def has_upper():
+    return bool(getattr(L, "UPPER_AREAS", None))
+
+
+def build_upper():
+    """Plan-Geometrie des Obergeschosses (villa_layout.UPPER_*): begehbare Flaeche, Flaeche je Bereich, Oeffnungen."""
+    areas = [(a[0], a[1], a[2], ("upper",), {"upper": a[3]}) for a in L.UPPER_AREAS]
+    geoms = {a[0]: area_geom(a, areas) for a in areas}
+    opens = [(o[0], o[1], o[2], o[3], {"upper": "open"}) for o in L.UPPER_OPENINGS]
+    walk = unary_union(list(geoms.values()) + [opening_box(o) for o in opens]).buffer(0)
+    return walk, geoms, opens
+
+
+def has_art(kind):
+    """Bild-Art (villa_art.IMAGE_PROPS) mit vorhandener Datei, alle anderen Arten immer. 18.11.: neue Arten des Obergeschosses, deren
+    GPT-Bild noch fehlt, werden weggelassen statt als grauer Block gezeichnet."""
+    if VA is None or kind not in getattr(VA, "IMAGE_PROPS", {}):
+        return True
+    return (HERE / "villa_assets" / VA.IMAGE_PROPS[kind][0]).exists()
+
+
+def upper_items():
+    """Objekte oben: (Form, Art, opaque?) wie props_of."""
+    out = [(s, k, True) for s, k in L.UPPER_OPAQUE] + [(s, k, False) for s, k in L.UPPER_GLASS]
+    out += [(s, k, None) for s, k in L.UPPER_DECOR]
+    missing = sorted({k for s, k, o in out if not has_art(k)})
+    if missing:
+        print(f"NOTE [upper] without art, left out: {missing}")
+    return [e for e in out if has_art(e[1])]
+
+
+def upper_ground_items():
+    """Erdgeschoss bei eingeschalteter Option: neue Objekte (Dienstbotentreppe, Gelaender, zweiter Haufen) und der Ersatz der Sperre."""
+    out = [(s, k, o) for s, k, o in L.UPPER_GROUND]
+    for _kind, (s, k) in L.UPPER_GROUND_REPLACE.items():
+        out.append((s, k, None))
+    return out
+
+
 def barricades(v):
     if v != "small":
         return []
@@ -349,10 +388,13 @@ def render_props():
             uniq.setdefault((k, wshape(s)), None)
         for s, k in barricades(v):
             uniq.setdefault((k, wshape(s)), None)
+    if has_upper():
+        for s, k, _o in upper_items() + upper_ground_items():
+            uniq.setdefault((k, wshape(s)), None)
     keys = list(uniq)
     images, meta = [], []
     # gespiegelte Objekte (villa_layout.FLIP, 28.10. abends): Bild und Tauschbilder links-rechts, um die Bildmitte
-    flips = {(k, wshape(s)) for k, s in getattr(L, "FLIP", set())}
+    flips = {(k, wshape(s)) for k, s in getattr(L, "FLIP", set())} | {(k, wshape(s)) for k, s in getattr(L, "UPPER_GROUND_FLIP", set())}
     for i, (kind, ws) in enumerate(keys):
         im, wx, wy, base = draw_block(kind, ws)
         if (kind, ws) in flips:
@@ -463,10 +505,21 @@ def wall_side(p, a):
     return side if d[side] < 1.0 else "-"
 
 
-def write_console_brief(all_consoles):
+def write_console_brief(all_consoles, up=None):
     """tools/_villa/console_brief.json: jede Konsole beider Varianten mit Plan-Lage, Raum und Wandseite."""
     import json
     rows = {}
+    if up is not None:
+        for v in L.VARIANTS:
+            uv = "u" + v
+            pts = dict(L.UPPER_CONSOLES)
+            for vid, p in L.UPPER_VENTS[v].items():
+                pts[f"Vent/{vid}"] = p
+            for k, p in pts.items():
+                a = next((x for x in L.UPPER_AREAS if x[2][0] - 0.3 <= p[0] <= x[2][2] + 0.3 and x[2][1] - 0.3 <= p[1] <= x[2][3] + 0.3
+                          and x[3] is not None), None)
+                rows[f"{uv}:{k}"] = {"variant": uv, "key": k, "x": round(p[0], 2), "y": round(p[1], 2),
+                                     "room": "u_" + a[0] if a else "-", "wall": "N" if a and p[1] - a[2][1] < 1.0 else "-"}
     for v, consoles in all_consoles.items():
         pts = {k: (p[0] + OX, OY - p[1]) for k, p in consoles.items()}          # Welt -> Plan
         pts.update({"EmergencyButton": L.EMERGENCY, "SurveillanceConsole": L.SURVEILLANCE,
@@ -497,7 +550,7 @@ def render_consoles(all_consoles):
     for v in L.VARIANTS:                              # Tauschbilder der Mechaniken (render_props), je Variante
         for key, spr in PROP_VARIANT_SPRITES.items():
             sprites[(v, key)] = spr
-    names, per_variant = {}, {"small": {}, "large": {}}
+    names, per_variant = {}, {"small": {}, "large": {}, "usmall": {}, "ularge": {}}
     by_content = {}                                   # gleiche Bilder unter verschiedenen Schluesseln (Tueren) nur einmal
     for (v, key), spr in sorted(sprites.items(), key=lambda kv: (kv[0][0] != "small", kv[0][1])):
         name = key
@@ -531,6 +584,7 @@ def render_consoles(all_consoles):
     out = {}
     for v in per_variant:
         out[v] = [(key,) + entry[name] for key, (name, _s) in sorted(per_variant[v].items())]
+        # Obergeschoss: ein Schluessel, den das Erdgeschoss mit anderem Bild hat (Vent 10 im Garten), heisst oben "<key>@u<v>"
     print(f"consoles {len(keys)} sprites in {len(atlases)} atlas(es)")
     return out
 
@@ -592,9 +646,9 @@ def label_point(g, name, obst, wrapped=False):
     return best if best is not None else g.representative_point()
 
 
-def minimap(v, walk_w, rooms_w, obst_w, vents_w):
+def minimap(v, walk_w, rooms_w, obst_w, vents_w, bounds=None, fname=None, upper_band=None):
     s = 24
-    bx0, by0, bx1, by1 = L.VARIANTS[v]
+    bx0, by0, bx1, by1 = bounds or L.VARIANTS[v]
     wx0, wx1, wy0, wy1 = bx0 - OX, bx1 - OX, OY - by1, OY - by0
     img = Image.new("RGBA", (int((wx1 - wx0) * s), int((wy1 - wy0) * s)), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -627,7 +681,17 @@ def minimap(v, walk_w, rooms_w, obst_w, vents_w):
             text = min((" ".join(ws[:i]) + chr(10) + " ".join(ws[i:]) for i in range(1, len(ws))),
                        key=lambda t: max(len(x) for x in t.split(chr(10))))
         map_labels.place(d, font, text, c.x, c.y, area, s, P, (34, 20, 30, 255), labels)
-    img.save(ASSETS / f"villa_minimap_{v}.png", optimize=True)
+    if upper_band is not None:
+        # Kennzeichnung des Obergeschosses: gestrichelter Rahmen und Schild "UPPER FLOOR" (Weltmeter)
+        ux0, uy0, ux1, uy1 = upper_band
+        for k in range(int((ux1 - ux0) / 0.6)):
+            xa = ux0 + k * 0.6
+            d.line([P(xa, uy0), P(min(ux1, xa + 0.35), uy0)], fill=(226, 214, 232, 200), width=3)
+            d.line([P(xa, uy1), P(min(ux1, xa + 0.35), uy1)], fill=(226, 214, 232, 200), width=3)
+        tx, ty = P((ux0 + ux1) / 2, uy0 - 0.9)
+        d.text((tx, ty), "UPPER FLOOR", font=font, fill=(226, 214, 232, 255), anchor="mm", stroke_width=3, stroke_fill=(34, 20, 30, 255))
+        labels.append(((ux0 + ux1) / 2, uy0 - 0.9, 3.2, 0.55))
+    img.save(ASSETS / (fname or f"villa_minimap_{v}.png"), optimize=True)
     return labels
 
 
@@ -653,14 +717,14 @@ def rings_of(g):
 PROP_TOPS = {}
 
 
-def lit_tops(v, shadow, walk_w, items, props):
+def lit_tops(v, shadow, walk_w, items, props, extra=()):
     """Obere Teile von Objekt-Sprites, die ueber den Wandstreifen hinaus ins Leere (ausserhalb aller Bereiche) ragen, kommen mit
     in die Sichtflaeche: dahinter ist nichts zu sehen, das Moebel wird aber nicht mehr vom Wandschatten abgeschnitten (28.10.,
     Feedback "Schatten oben weg"). Ragt ein Sprite in einen anderen Raum, bleibt es beim Schatten (Sicht durch die Wand);
     das meldet der Generator, dort hilft nur ein niedrigeres Bild."""
     others = walk_w.buffer(0.35)
     add = []
-    for s, k, _o in items:
+    for s, k, _o in list(items) + list(extra):
         kind, page, x, y, ww, hh, pwx, pwy, base, fx0, fx1 = props[(k, wshape(s))]
         top = box(pwx, base + 0.05, pwx + ww / PROP_PPM, pwy + hh / PROP_PPM)
         if top.is_empty or top.area < 1e-4:
@@ -726,7 +790,9 @@ def emit(v, walk_w, rooms_w, opens, tiles, props, consoles, labels, console_spri
         strips.append(st)
     shadow = unary_union([walk_w] + strips + thick_w).buffer(0)
     items = props_of(v)
-    shadow = lit_tops(v, shadow, walk_w, items, props)
+    # 17.11.: die Dienstbotentreppe (nur mit Obergeschoss) ragt durch die Kuechen-Nordwand; ihr oberes Stueck gehoert in beiden
+    # Faellen zur Sichtflaeche (ohne Obergeschoss ist dort nur Leerraum)
+    shadow = lit_tops(v, shadow, walk_w, items, props, extra=upper_ground_items() if has_upper() else ())
     opaque = [W(shape(L.hit_shape(s, k))) for s, k, o in items if o is True]
     glass = [W(shape(L.hit_shape(s, k))) for s, k, o in items if o is False]
     edges = unary_union([LineString(r + [r[0]]) for r in rings_of(walk_w)])
@@ -904,13 +970,231 @@ def main(argv):
         labels = minimap(v, walk_w, rooms_w, obstacles_w, [wp(p) for p in L.VENTS[v].values()])
         data[v] = (walk_w, rooms_w, opens, consoles, labels)
         preview(v, walk_w, consoles, obstacles_w)
-    write_console_brief({v: d[3] for v, d in data.items()})
+    up = upper_prepare(tiles) if has_upper() else None
+    write_console_brief({v: d[3] for v, d in data.items()}, up)
     sprites = render_consoles({v: d[3] for v, d in data.items()})
     for v, (walk_w, rooms_w, opens, consoles, labels) in data.items():
         emit(v, walk_w, rooms_w, opens, tiles, props, consoles, labels, sprites.get(v, []))
+    if up is not None:
+        emit_upper(up, data, props, sprites)
     copy_buttons()
     for v, far, far_pt, unreached in report:
         print(f"[{v}] farthest walk {far:.1f} m = {far / SPEED:.1f} s at {far_pt[0]:.1f}/{far_pt[1]:.1f}, unreached cells {unreached}")
+
+
+# ------------------------------------------------------------------ Obergeschoss (17.11., Villa/VillaUpper.g.cs)
+
+def upper_prepare(tiles):
+    """Geometrie, Bodenkacheln (Indizes hinter denen des Erdgeschosses) und Raeume des Obergeschosses."""
+    walk, geoms, opens = build_upper()
+    walk_w = W(walk)
+    rooms_w = {}
+    for a in L.UPPER_AREAS:
+        if a[3]:
+            g = W(geoms[a[0]])
+            if g.geom_type != "Polygon":
+                g = max(geom_parts(g), key=lambda q: q.area)
+            rooms_w[a[0]] = (a[1], a[3], g)
+    ux0, uy0, ux1, uy1 = L.UPPER_BOUNDS
+    try:
+        import villa_floor_upper as VFU
+        img = VFU.render(FLOOR_PPM).convert("RGB")
+    except Exception as e:      # noqa: BLE001
+        import traceback
+        traceback.print_exc()
+        print(f"WARN villa_floor_upper.render failed ({e}) - graybox upper floor")
+        img = Image.new("RGB", (int((ux1 - ux0) * FLOOR_PPM), int((uy1 - uy0) * FLOOR_PPM)), VOID)
+        d = ImageDraw.Draw(img)
+        for p in geom_parts(affinity.translate(walk, -ux0, -uy0)):
+            d.polygon([(x * FLOOR_PPM, y * FLOOR_PPM) for x, y in p.exterior.coords], fill=(150, 130, 110))
+    img.save(PREVIEW / "floor_upper_preview.jpg", quality=85)
+    utiles = []
+    i = len(tiles)
+    for r in range(len(L.UPPER_TILE_Y) - 1):
+        for c in range(len(L.UPPER_TILE_X) - 1):
+            px0, px1, py0, py1 = L.UPPER_TILE_X[c], L.UPPER_TILE_X[c + 1], L.UPPER_TILE_Y[r], L.UPPER_TILE_Y[r + 1]
+            x0, y0 = int(round((px0 - ux0) * FLOOR_PPM)), int(round((py0 - uy0) * FLOOR_PPM))
+            w4 = (int(round((px1 - ux0) * FLOOR_PPM)) - x0) // 4 * 4
+            h4 = (int(round((py1 - uy0) * FLOOR_PPM)) - y0) // 4 * 4
+            img.crop((x0, y0, x0 + w4, y0 + h4)).save(ASSETS / f"villa_floor_{i}.jpg", quality=85)
+            utiles.append((i, px0 - OX, OY - (py0 + h4 / FLOOR_PPM), w4, h4, (px0, py0, px1, py1)))
+            i += 1
+    print(f"upper floor {img.width}x{img.height} in {len(utiles)} tiles")
+    return dict(walk=walk, walk_w=walk_w, geoms=geoms, opens=opens, rooms_w=rooms_w, tiles=utiles, items=upper_items())
+
+
+def _idx(items, kind, shp, flag):
+    """Index eines Objekts (Art + Form) in der Kollisionsliste (flag True = Opaque, False = Glass) bzw. in allen (flag None)."""
+    n = 0
+    for s, k, o in items:
+        if flag is not None and o is not flag:
+            continue
+        if k == kind and s == shp:
+            return n
+        n += 1
+    return -1
+
+
+def emit_upper(up, data, props, sprites):
+    walk_w, rooms_w = up["walk_w"], up["rooms_w"]
+    ux0, uy0, ux1, uy1 = L.UPPER_BOUNDS
+    full = box(ux0 - OX - 5, OY - uy1 - 5, ux1 - OX + 5, OY - uy0 + 5)
+    solid = full.difference(walk_w)
+    move = walk_w.difference(affinity.translate(solid, 0, -0.3)).buffer(0)
+    zones = [g for _n, _s, g in rooms_w.values()] + \
+        [g for g in geom_parts(walk_w.difference(unary_union([g for _n, _s, g in rooms_w.values()])).buffer(0)) if g.area > 0.05]
+    strips = []
+    for i, z in enumerate(zones):
+        others = unary_union([o for j, o in enumerate(zones) if j != i])
+        st = affinity.translate(z, 0, 0.45).difference(z)
+        if not others.is_empty:
+            st = st.difference(others.buffer(0.06))
+        strips.append(st)
+    shadow = unary_union([walk_w] + strips).buffer(0)
+    items = up["items"]
+    shadow = lit_tops("upper", shadow, walk_w, items, props)
+    gitems = [(s, k, o) for s, k, o in L.UPPER_GROUND]
+    coll = items + gitems
+    opaque = [W(shape(L.hit_shape(s, k))) for s, k, o in coll if o is True]
+    glass = [W(shape(L.hit_shape(s, k))) for s, k, o in coll if o is False]
+    edges = unary_union([LineString(r + [r[0]]) for r in rings_of(walk_w)])
+    casts = [p.distance(edges) > 0.08 for p in opaque]
+    room_u = unary_union([g for _n, _s, g in rooms_w.values()])
+    halls = [g for g in geom_parts(walk_w.difference(room_u).buffer(0)) if g.area > 1.0]
+    sort_base = getattr(L, "UPPER_SORT_BASE", {})
+    my_props = []
+    for s, k, _o in items + gitems:
+        t = props[(k, wshape(s))]
+        if k in sort_base:
+            t = t[:8] + (OY - sort_base[k],) + t[9:]
+        my_props.append(t)
+    rkind = next(iter(L.UPPER_GROUND_REPLACE))
+    rs, rk = L.UPPER_GROUND_REPLACE[rkind]
+    replace_prop = props[(rk, wshape(rs))]
+
+    Ls = []
+    a = Ls.append
+    a("// Unknown's Halloween - Copyright (C) 2026 DaUnknown-0")
+    a("// Licensed under GPL-3.0-or-later. See LICENSE for details.")
+    a("//")
+    a("// AUTOMATISCH ERZEUGT von tools/gen_villa.py aus tools/villa_layout.py (UPPER_*) - NICHT VON HAND AENDERN.")
+    a("// Hollowmere Manor, Obergeschoss (Host-Option 1970) und die Aenderungen am Erdgeschoss, die es mitbringt (Weltmeter).")
+    a("// HollowmereMap.WithUpper fuegt das in VillaSmall/VillaLarge ein.")
+    a("")
+    a("using System.Collections.Generic;")
+    a("using UnityEngine;")
+    a("using UnknownsAtlas;")
+    a("")
+    a("namespace UnknownsHalloween;")
+    a("")
+    a("internal static class VillaUpper")
+    a("{")
+    for name, g in (("Walls", move), ("ShadowWalls", shadow)):
+        a(f"    public static readonly Vector2[][] {name} =\n    {{")
+        for r in rings_of(g):
+            a(f"        {chain(r)},")
+        a("    };")
+    a("    public static readonly Vector2[][] Opaque =\n    {")
+    for p in opaque:
+        a(f"        {chain(list(p.exterior.coords)[:-1])},")
+    a("    };")
+    a("    public static readonly bool[] OpaqueCastsShadow = { " + ", ".join("true" if c else "false" for c in casts) + " };")
+    a("    public static readonly Vector2[][] Glass =\n    {")
+    for p in glass:
+        a(f"        {chain(list(p.exterior.coords)[:-1])},")
+    a("    };")
+    a("    public static readonly (string Key, string Name, SystemTypes Room, Vector2[] Area)[] Rooms =\n    {")
+    for key, (name, sysname, g) in rooms_w.items():
+        a(f"        (\"{key}\", \"{name}\", SystemTypes.{sysname}, {chain(list(g.exterior.coords)[:-1])}),")
+    a("    };")
+    a("    public static readonly Vector2[][] Hallways =\n    {")
+    for h in halls:
+        a(f"        {chain(list(h.exterior.coords)[:-1])},")
+    a("    };")
+    a("    public static readonly (int Index, float WorldX, float WorldY, int W, int H)[] FloorTiles =\n    {")
+    for i, twx, twy, tw, th, _r in up["tiles"]:
+        a(f"        ({i}, {twx:.4f}f, {twy:.4f}f, {tw}, {th}),")
+    a("    };")
+    a("    public static readonly (string Kind, int Atlas, int X, int Y, int W, int H, float WorldX, float WorldY, float BaseY, float FootX0, float FootX1)[] Props =\n    {")
+    for kind, page, x, y, ww, hh, pwx, pwy, base, fx0, fx1 in my_props:
+        a(f"        (\"{kind}\", {page}, {x}, {y}, {ww}, {hh}, {pwx:.3f}f, {pwy:.3f}f, {base:.3f}f, {fx0:.3f}f, {fx1:.3f}f),")
+    a("    };")
+    a("    /// <summary>Index in Props -> Welt-y, ab der das Bild ueber dem Sichtschatten liegt (beim Zusammenfuegen verschoben).</summary>")
+    a("    public static readonly Dictionary<int, float> PropTops = new()\n    {")
+    for i, y in sorted(PROP_TOPS.get("upper", {}).items()):
+        a(f"        [{i}] = {y:.3f}f,")
+    a("    };")
+    for v, nm in (("usmall", "Small"), ("ularge", "Large")):
+        a(f"    public static readonly (string Key, int Atlas, int X, int Y, int W, int H, float PivotX, float PivotY)[] {nm}ConsoleSprites =\n    {{")
+        for key, page, x, y, ww, hh, px, py in sprites.get(v, []):
+            a(f"        (\"{key}\", {page}, {x}, {y}, {ww}, {hh}, {px:.4f}f, {py:.4f}f),")
+        a("    };")
+    a("")
+    a("    public static readonly Dictionary<string, Vector2> Consoles = new()\n    {")
+    for k, p in sorted(L.UPPER_CONSOLES.items()):
+        a(f"        [\"{k}\"] = {v2(wp(p))},")
+    a("    };")
+    a("    /// <summary>Ersatz der Treppensperre (gleicher Prop-Index): Bretterhaufen links der Treppe.</summary>")
+    kind, page, x, y, ww, hh, pwx, pwy, base, fx0, fx1 = replace_prop
+    a("    public static readonly (string Kind, int Atlas, int X, int Y, int W, int H, float WorldX, float WorldY, float BaseY, float FootX0, float FootX1) ReplaceProp =")
+    a(f"        (\"{kind}\", {page}, {x}, {y}, {ww}, {hh}, {pwx:.3f}f, {pwy:.3f}f, {base:.3f}f, {fx0:.3f}f, {fx1:.3f}f);")
+    a(f"    public const float FreitreppeBaseY = {OY - sort_base.get('freitreppe', 8.2):.3f}f;")
+    for v, nm in (("small", "Small"), ("large", "Large")):
+        g_walk, g_rooms, _g_opens, _g_cons, _lab = data[v]
+        gitems_v = props_of(v)
+        drop = dict(L.UPPER_GROUND_DROP)
+        drop_o = [_idx(gitems_v, k, sh, True) for k, sh in L.UPPER_GROUND_DROP]
+        drop_g = [_idx(gitems_v, k, sh, False) for k, sh in L.UPPER_GROUND_DROP]
+        p_sperre = _idx(gitems_v, "treppensperre", drop["treppensperre"], None)
+        p_treppe = _idx(gitems_v, "freitreppe", drop["freitreppe"], None)
+        a(f"    public static readonly int[] {nm}DropOpaque = {{ " + ", ".join(str(i) for i in drop_o if i >= 0) + " };")
+        a(f"    public static readonly int[] {nm}DropGlass = {{ " + ", ".join(str(i) for i in drop_g if i >= 0) + " };")
+        a(f"    public const int {nm}SperreProp = {p_sperre}, {nm}TreppeProp = {p_treppe};")
+        a(f"    public static readonly Dictionary<int, Vector2> {nm}Vents = new()\n    {{")
+        for vid, p in L.UPPER_VENTS[v].items():
+            a(f"        [{vid}] = {v2(wp(p))},")
+        a("    };")
+        a(f"    public static readonly int[][] {nm}VentNetworks =\n    {{")
+        for net in L.UPPER_VENT_NETS[v]:
+            a("        new[] { " + ", ".join(map(str, net)) + " },")
+        a("    };")
+        ci, cp = L.UPPER_CAMERA[v]
+        a(f"    public const int {nm}CameraIndex = {ci};")
+        a(f"    public static readonly Vector2 {nm}CameraPos = {v2(wp(cp))};")
+        bx0, by0, bx1, by1 = L.VARIANTS[v]
+        pb = (min(bx0, ux0), min(by0, uy0), max(bx1, ux1), max(by1, uy1))
+        comb_walk = unary_union([g_walk, walk_w]).buffer(0)
+        comb_rooms = dict(g_rooms)
+        comb_rooms.update({"u_" + k: val for k, val in rooms_w.items()})
+        obst = [W(shape(L.hit_shape(s, k))) for s, k, o in props_of(v) + items if o is not None]
+        vents = [wp(p) for p in L.VENTS[v].values()] + [wp(p) for p in L.UPPER_VENTS[v].values()]
+        labels = minimap(v, comb_walk, comb_rooms, obst, vents, bounds=pb, fname=f"villa_minimap_{v}_up.png", upper_band=walk_w.bounds)
+        a(f"    public const float {nm}MinX = {pb[0] - OX:.2f}f, {nm}MinY = {OY - pb[3]:.2f}f, {nm}MaxX = {pb[2] - OX:.2f}f, {nm}MaxY = {OY - pb[1]:.2f}f;")
+        a(f"    public static readonly (float X, float Y, float HalfW, float HalfH)[] {nm}MapLabels =\n    {{")
+        for lx, ly, hw, hh in labels:
+            a(f"        ({lx:.3f}f, {ly:.3f}f, {hw:.3f}f, {hh:.3f}f),")
+        a("    };")
+    a("    /// <summary>Treppen ohne Knopf: x-Spanne, unten Ausloese-y (nach Norden) und Ankunft-y, oben Ausloese-y (nach Sueden) und Ankunft-y.</summary>")
+    a("    public static readonly (string Key, float X0, float X1, float DownTrigger, float DownArrive, float UpTrigger, float UpArrive)[] Stairs =\n    {")
+    for key, (x0, x1), gt, ga, ut, ua, _well in L.UPPER_STAIRS:
+        a(f"        (\"{key}\", {x0 - OX:.3f}f, {x1 - OX:.3f}f, {OY - gt:.3f}f, {OY - ga:.3f}f, {OY - ut:.3f}f, {OY - ua:.3f}f),")
+    a("    };")
+    a("    public static readonly string[] DarkRooms = { " + ", ".join(f"\"{k}\"" for k in sorted(L.UPPER_DARK)) + " };")
+    a("    public static readonly string[] NoFadeKinds = { " + ", ".join(f"\"{k}\"" for k in sorted(sort_base)) + " };")
+    a("}")
+    (OUT_CS / "VillaUpper.g.cs").write_text("\n".join(Ls) + "\n", encoding="utf-8")
+    free = walk_w.difference(unary_union([W(shape(L.hit_shape(s, k))) for s, k, o in items if o is not None]).buffer(0.25))
+    for k, p in list(L.UPPER_CONSOLES.items()) + [(f"Vent{i}", p) for v in L.VARIANTS for i, p in L.UPPER_VENTS[v].items()]:
+        dd = free.distance(Point(wp(p)))
+        if dd > 0.6:
+            print(f"WARN [upper] {k} at {p} not reachable ({dd:.2f} m)")
+    for key, (x0, x1), gt, ga, ut, ua, _w in L.UPPER_STAIRS:
+        for y in (ua, ut + 0.2):
+            if not walk_w.buffer(-0.25).contains(Point(wp(((x0 + x1) / 2, y)))):
+                print(f"WARN [upper] stairs {key}: point y {y} not on free floor")
+    far, far_pt, unreached = walk_time(walk_w, wp((17.0, L.UPPER_STAIRS[0][5])))
+    print(f"[upper] props {len(my_props)}, opaque {len(opaque)}, glass {len(glass)}, rooms {len(rooms_w)}, hallways {len(halls)}, "
+          f"farthest walk from the grand stairs {far:.1f} m = {far / SPEED:.1f} s at {far_pt[0]:.1f}/{far_pt[1]:.1f}, unreached {unreached}")
 
 
 def copy_buttons():

@@ -46,6 +46,7 @@ STYLE = {  # Wandstirnseite ueber dem Raum (Nordwand)
     "crypt": "stein", "greenhouse": "glashaus",
 }
 HOUSE = box(-0.3, -0.3, 34.3, 24.3)
+OUTER_NORTH_Y = 0.6        # Nordwaende bis zu diesem y sind Aussenwaende (hohe Stirnseite); villa_floor_upper setzt es um
 WALL_TOP = (36, 26, 32)
 HEDGE_TOP = (26, 46, 32)
 
@@ -177,7 +178,7 @@ def faces(C, walk, geoms):
                     hmax = 1.0
                 else:
                     style = STYLE.get(room, "tapete")
-                    hmax = 0.4 if y > 0.6 else 0.9                              # Innenwand = Wandmasse
+                    hmax = 0.4 if y > OUTER_NORTH_Y else 0.9                    # Innenwand = Wandmasse
                     for tb in getattr(L, "THICK_WALLS", []):                     # dickere Wand: Flaeche so hoch wie die Masse
                         if abs(y - tb[3]) < 0.05 and xb > tb[0] and xa < tb[2]:
                             hmax = max(hmax, tb[3] - tb[1] + L.WALL / 2)
@@ -415,7 +416,7 @@ def decorate(C, walk, geoms, opens, rnd):
     # Teppiche zuerst (gehoeren zum Boden)
     rug(C, 17.0, 4.3, 2.3, 1.6, ppm)                                          # Seance-Tisch
     runner(C, 23.7, 8.6, 25.3, 23.6, ppm)                                     # Portraetgalerie
-    rug(C, 31.0, 16.2, 1.9, 1.1, ppm)                                         # Kaminzimmer vor dem Kamin
+    rug(C, 31.65, 15.85, 2.0, 1.0, ppm)                                       # Kaminzimmer vor dem Kamin (17.11. unter Tisch und Sesseln)
     d = C.draw()
     # Filmset in der Halle: Dollyschiene unter der Kamera, Kabel zum Scheinwerfer, Tape-Marken
     neg = lambda pts: [(x, -y) for x, y in pts]

@@ -41,7 +41,8 @@ FOLDERS = {
 # Gerenderte Vorspanne (Assets/Cinematics/_common/make_pack.py, Format HWP1): Paketname -> (Namenspraefix, Datei).
 # Eigener Paketname ohne "villa_", damit die Karte nicht auf den grossen Film wartet (HollowmereMap: WhenReady("villa_")).
 CINE_PACKS = {
-    "cine_villa": ("villa_intro/", ROOT.parent / "Assets" / "Cinematics" / "manor" / "manor_intro.cine"),
+    # 17.11.: Fassung mit dem neuen Ende (zweite Etage), Assets/Cinematics/manor/reveal/assemble.py
+    "cine_villa": ("villa_intro/", ROOT.parent / "Assets" / "Cinematics" / "manor_etage" / "manor_etage_intro.cine"),
 }
 
 # Quellbilder der .atx (pack_textures.py-Eingang) werden nie eingebettet und nicht ausgeliefert

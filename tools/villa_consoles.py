@@ -342,6 +342,11 @@ IMAGE_CONSOLES = {
     # 05.11. (GPT-Bogen 24): vollstaendiger Admin-Tisch (Feedback 29.10. "Hier fehlt ein Stueck Tisch"), Futtereimer an der Riesenpflanze
     "AdminTable": ("villa_admintisch.png", 1.3),
     "FeedPlant": ("villa_futtereimer.png", 0.8),
+    # 17.11.: Obergeschoss, Airship-Reiter (GPT-Bogen 26)
+    "SortRecords": ("villa_sortrecords.png", 1.45),       # Attic: Schreibtisch mit Schubfaechern und Briefen
+    "DressMannequin": ("villa_dressmannequin.png", 1.9),  # Sewing Room: Schneiderpuppe im Brautkleid
+    "DevelopPhotos": ("villa_developphotos.png", 1.4),    # Darkroom: Entwicklertisch mit Rotlicht
+    "RewindTapes": ("villa_rewindtapes.png", 1.5),        # Master Bedroom: Geisterkamera und Videorekorder
 }
 
 
@@ -375,6 +380,9 @@ def _render_all(ppm, brief):
                 out[(v, f"{key}/{k}")] = fr
             continue
         img_name = key if key in IMAGE_CONSOLES else (f"{name}@{room}" if f"{name}@{room}" in IMAGE_CONSOLES else name)
+        if img_name in IMAGE_CONSOLES and not os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), "villa_assets", IMAGE_CONSOLES[img_name][0])):
+            print(f"note: console image {IMAGE_CONSOLES[img_name][0]} missing, {key} keeps the default motif")
+            img_name = None
         if img_name in IMAGE_CONSOLES:
             spr = image_console(img_name, ppm)
         elif key == "EmergencyButton":
