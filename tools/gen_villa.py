@@ -1174,10 +1174,11 @@ def emit_upper(up, data, props, sprites):
         for lx, ly, hw, hh in labels:
             a(f"        ({lx:.3f}f, {ly:.3f}f, {hw:.3f}f, {hh:.3f}f),")
         a("    };")
-    a("    /// <summary>Treppen ohne Knopf: x-Spanne, unten Ausloese-y (nach Norden) und Ankunft-y, oben Ausloese-y (nach Sueden) und Ankunft-y.</summary>")
-    a("    public static readonly (string Key, float X0, float X1, float DownTrigger, float DownArrive, float UpTrigger, float UpArrive)[] Stairs =\n    {")
-    for key, (x0, x1), gt, ga, ut, ua, _well in L.UPPER_STAIRS:
-        a(f"        (\"{key}\", {x0 - OX:.3f}f, {x1 - OX:.3f}f, {OY - gt:.3f}f, {OY - ga:.3f}f, {OY - ut:.3f}f, {OY - ua:.3f}f),")
+    a("    /// <summary>Treppen ohne Knopf: x-Spanne unten, unten Ausloese-y (nach Norden) und Ankunft-y, oben Ausloese-y (nach Sueden) und")
+    a("    /// Ankunft-y, x-Spanne oben (Spieler-Mittelpunkt zwischen den Gelaendern; der Wechsel rechnet die Lage von Spanne zu Spanne um).</summary>")
+    a("    public static readonly (string Key, float X0, float X1, float DownTrigger, float DownArrive, float UpTrigger, float UpArrive, float TopX0, float TopX1)[] Stairs =\n    {")
+    for key, (x0, x1), gt, ga, ut, ua, _well, (tx0, tx1) in L.UPPER_STAIRS:
+        a(f"        (\"{key}\", {x0 - OX:.3f}f, {x1 - OX:.3f}f, {OY - gt:.3f}f, {OY - ga:.3f}f, {OY - ut:.3f}f, {OY - ua:.3f}f, {tx0 - OX:.3f}f, {tx1 - OX:.3f}f),")
     a("    };")
     a("    public static readonly string[] DarkRooms = { " + ", ".join(f"\"{k}\"" for k in sorted(L.UPPER_DARK)) + " };")
     a("    public static readonly string[] NoFadeKinds = { " + ", ".join(f"\"{k}\"" for k in sorted(sort_base)) + " };")
@@ -1188,10 +1189,12 @@ def emit_upper(up, data, props, sprites):
         dd = free.distance(Point(wp(p)))
         if dd > 0.6:
             print(f"WARN [upper] {k} at {p} not reachable ({dd:.2f} m)")
-    for key, (x0, x1), gt, ga, ut, ua, _w in L.UPPER_STAIRS:
-        for y in (ua, ut + 0.2):
-            if not walk_w.buffer(-0.25).contains(Point(wp(((x0 + x1) / 2, y)))):
-                print(f"WARN [upper] stairs {key}: point y {y} not on free floor")
+    upfree = walk_w.difference(unary_union([W(shape(L.hit_shape(s, k))) for s, k, o in items if o is not None]).buffer(0.2))
+    for key, (x0, x1), gt, ga, ut, ua, _w, (tx0, tx1) in L.UPPER_STAIRS:
+        for y in (ua, ut + 0.2):          # oben: Ankunfts- und Ausloeselinie ueber die ganze Spanne frei
+            ln = LineString([wp((tx0, y)), wp((tx1, y))])
+            if ln.intersection(upfree).length < ln.length * 0.98:
+                print(f"WARN [upper] stairs {key}: line y {y} over {tx0}..{tx1} not on free floor")
     far, far_pt, unreached = walk_time(walk_w, wp((17.0, L.UPPER_STAIRS[0][5])))
     print(f"[upper] props {len(my_props)}, opaque {len(opaque)}, glass {len(glass)}, rooms {len(rooms_w)}, hallways {len(halls)}, "
           f"farthest walk from the grand stairs {far:.1f} m = {far / SPEED:.1f} s at {far_pt[0]:.1f}/{far_pt[1]:.1f}, unreached {unreached}")

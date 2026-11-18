@@ -55,6 +55,7 @@ internal static class HollowmereMap
 
         HollowmereIntro.Init();
         HollowmereWorld.Init();
+        HollowmereUpperTasks.Init();
 
         // Floor, props, consoles, minigames, intro and eject art come from the asset packages (HalloweenAssets): the map
         // joins Atlas only once they are there, right away on a normal start, otherwise as soon as the download is done.
@@ -109,6 +110,9 @@ internal static class HollowmereMap
         (TaskTypes.DevelopPhotos, 4, "Cockpit/DevelopPhotos/0", SystemTypes.Cockpit),          // Darkroom
         (TaskTypes.DressMannequin, 4, "Armory/DressMannequin/0", SystemTypes.Armory),          // Sewing Room
         (TaskTypes.RewindTapes, 4, "Office/RewindTapes/0", SystemTypes.Office),                // Master Bedroom
+        // 18.11.: zwei weitere Aufgaben oben (Kinderstube, Bad), wieder hinten angehaengt
+        (TaskTypes.PutAwayRifles, 4, "Specimens/PutAwayRifles/0", SystemTypes.Specimens),     // Nursery
+        (TaskTypes.StartFans, 4, "Brig/StartFans/0", SystemTypes.Brig),                        // Bathroom
     };
 
     private static AtlasMapDef Make()
@@ -411,5 +415,7 @@ internal static class HollowmereMap
         { TaskTypes.DevelopPhotos, "Develop the Set Photos" },
         { TaskTypes.DressMannequin, "Dress the Mannequin" },
         { TaskTypes.RewindTapes, "Rewind the Ghost Tapes" },
+        { TaskTypes.PutAwayRifles, "Put Away the Toys" },
+        { TaskTypes.StartFans, "Drain the Bloody Bath" },
     };
 }

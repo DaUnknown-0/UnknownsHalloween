@@ -90,7 +90,7 @@ def render(ppm):
         FM.rug(C, 7.0 - ux0, -9.2 - uy0, 1.6, 0.9, ppm)
         FM.rug(C, 17.0 - ux0, -9.9 - uy0, 2.0, 0.9, ppm)            # Upper Landing
         FM.rug(C, 28.0 - ux0, -18.7 - uy0, 1.5, 0.8, ppm)           # Sewing Room
-        C.fill_tile(VF.material_tile("teppich", ppm, seed=23), box(20.0 - ux0, -19.9 - uy0, 21.4 - ux0, -19.3 - uy0))   # Badvorleger
+        C.fill_tile(VF.material_tile("teppich", ppm, seed=23), box(19.7 - ux0, -20.75 - uy0, 21.1 - ux0, -20.2 - uy0))   # Badvorleger vor der Wanne (18.11.)
         # Treppenschaechte
         for st in L.UPPER_STAIRS:
             x0, y0, x1, y1 = st[6]

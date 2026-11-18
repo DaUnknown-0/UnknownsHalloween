@@ -8,7 +8,7 @@ namespace UnknownsHalloween;
 
 internal static class HalloweenAssetCatalog
 {
-    public const string Tag = "v37";
+    public const string Tag = "v38";
 
     public static readonly (string Name, long Size, string Sha256)[] Files =
     {
@@ -53,6 +53,6 @@ internal static class HalloweenAssetCatalog
         ("hats_hw_weepingangel.hwp", 3150038L, "6f1e216c80bf61496093da11b6cfaebc3e8e7dcdb200b02d52ec39b28c10ba40"),
         ("hats_hw_xenomorph.hwp", 2332926L, "4dda2a0e893282a9a9089a026cd1b817c6901e0a1356aea8dd99438a90ca5417"),
         ("villa_eject.hwp", 3962135L, "bbfcf687e6c3f242c038ef7bc79562cbef0510f440a13228a6586057e76a34ab"),
-        ("villa_map.hwp", 29361160L, "fc030f06eca808e0f1541c4023473dfd3e079f3d750b0fb4474beb66b70dc6e3"),
+        ("villa_map.hwp", 31273975L, "0e3756ca516b356a8964bf7a7a0f90d9b4f3da203b0e9fe5d088ea85247a76bb"),
     };
 }

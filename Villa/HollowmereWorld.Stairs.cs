@@ -20,16 +20,21 @@ namespace UnknownsHalloween;
 
 internal sealed partial class HollowmereWorld
 {
-    private (string Key, float X0, float X1, float DownTrigger, float DownArrive, float UpTrigger, float UpArrive)[] _stairs =
-        Array.Empty<(string, float, float, float, float, float, float)>();
+    private (string Key, float X0, float X1, float DownTrigger, float DownArrive, float UpTrigger, float UpArrive, float TopX0, float TopX1)[] _stairs =
+        Array.Empty<(string, float, float, float, float, float, float, float, float)>();
     private Vector2 _stairPrev;
     private bool _stairHasPrev;
     private float _stairWaitUntil;
     private int _stairUses;
 
     /// <summary>Treppen dieser Runde (nur mit Obergeschoss, HollowmereMap.WithUpper).</summary>
-    internal void SetStairs((string, float, float, float, float, float, float)[] stairs)
-        => _stairs = stairs ?? Array.Empty<(string, float, float, float, float, float, float)>();
+    internal void SetStairs((string, float, float, float, float, float, float, float, float)[] stairs)
+        => _stairs = stairs ?? Array.Empty<(string, float, float, float, float, float, float, float, float)>();
+
+    /// <summary>Lage quer zur Treppe von einer Spanne auf die andere umrechnen (Hitbox-Durchgang 18.11.: unten liegt die Treppe
+    /// 1,8 m breit zwischen den Gelaendern, oben ist der Schacht 4 m breit; x gleich lassen setzte Spieler unten ins Gelaender).</summary>
+    private static float MapAcross(float x, float a0, float a1, float b0, float b1)
+        => Mathf.Lerp(b0, b1, Mathf.InverseLerp(a0, a1, x));
 
     private void StairsReset() { _stairHasPrev = false; _stairWaitUntil = 0f; _stairUses = 0; _diagWalk = 0; }
 
@@ -52,17 +57,18 @@ internal sealed partial class HollowmereWorld
         if (Time.time < _stairWaitUntil) return;
         foreach (var s in _stairs)
         {
-            if (pos.x < s.X0 || pos.x > s.X1) continue;
-            // unten auf den Stufen nach Norden ueber die Linie (Welt: y waechst nach Norden)
-            if (prev.y < s.DownTrigger && pos.y >= s.DownTrigger && pos.y < s.DownTrigger + 1.5f)
+            // unten auf den Stufen nach Norden ueber die Linie (Welt: y waechst nach Norden); Spannen mit 0,1 m Spiel
+            if (pos.x >= s.X0 - 0.1f && pos.x <= s.X1 + 0.1f
+                && prev.y < s.DownTrigger && pos.y >= s.DownTrigger && pos.y < s.DownTrigger + 1.5f)
             {
-                Climb(lp, new Vector2(pos.x, s.UpArrive), s.Key, "up");
+                Climb(lp, new Vector2(MapAcross(pos.x, s.X0, s.X1, s.TopX0, s.TopX1), s.UpArrive), s.Key, "up");
                 return;
             }
             // oben im Treppenschacht nach Sueden ueber die Linie
-            if (prev.y > s.UpTrigger && pos.y <= s.UpTrigger && pos.y > s.UpTrigger - 1.5f)
+            if (pos.x >= s.TopX0 - 0.1f && pos.x <= s.TopX1 + 0.1f
+                && prev.y > s.UpTrigger && pos.y <= s.UpTrigger && pos.y > s.UpTrigger - 1.5f)
             {
-                Climb(lp, new Vector2(pos.x, s.DownArrive), s.Key, "down");
+                Climb(lp, new Vector2(MapAcross(pos.x, s.TopX0, s.TopX1, s.X0, s.X1), s.DownArrive), s.Key, "down");
                 return;
             }
         }
@@ -81,6 +87,7 @@ internal sealed partial class HollowmereWorld
         _stairPrev = dest;
         _stairWaitUntil = Time.time + 0.35f;
         _diagWalk = 0;                      // Autotest: am anderen Ende stehen bleiben
+        WalkTarget = null;                  // Autotest mit Physik (UpperDiag): nicht gleich wieder zurueck laufen
         _stairUses++;
         float vol = 0.35f;
         AtlasMaps.Sfx("creak", vol);

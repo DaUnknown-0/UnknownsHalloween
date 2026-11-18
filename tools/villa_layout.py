@@ -578,11 +578,14 @@ UPPER_OPENINGS = [   # (Achse, Lage, von, bis), alles offen
     ("x", 24, -20.0, -18.0),     # Bathroom - Sewing
 ]
 
-# Treppen: (Schluessel, x-Spanne auf der Treppe, unten: Ausloese-y (nach Norden ueberschreiten), Ankunft-y unten,
-#           oben: Ausloese-y (nach Sueden ueberschreiten), Ankunft-y oben, Treppenschacht oben (x0, y0, x1, y1)) in Plan-Metern
+# Treppen: (Schluessel, x-Spanne auf der Treppe unten, unten: Ausloese-y (nach Norden ueberschreiten), Ankunft-y unten,
+#           oben: Ausloese-y (nach Sueden ueberschreiten), Ankunft-y oben, Treppenschacht oben (x0, y0, x1, y1),
+#           x-Spanne im Schacht oben) in Plan-Metern. Die Spannen sind die Lagen des Spieler-Mittelpunkts zwischen den
+#           Gelaendern; beim Wechsel wird die Lage quer zur Treppe von der einen Spanne auf die andere umgerechnet
+#           (Hitbox-Durchgang 18.11.: oben ist der Schacht 4 m breit, unten die Treppe zwischen den Gelaendern nur 1,8 m).
 UPPER_STAIRS = [
-    ("grand", (15.35, 18.65), 9.45, 10.25, -6.95, -8.4, (15.0, -7.8, 19.0, -6.0)),
-    ("servants", (5.2, 6.4), 1.2, 1.95, -6.95, -8.4, (5.0, -7.8, 6.6, -6.0)),
+    ("grand", (16.3, 17.7), 9.45, 10.25, -6.95, -8.4, (15.0, -7.8, 19.0, -6.0), (15.17, 18.83)),
+    ("servants", (5.42, 6.43), 1.2, 1.95, -6.95, -8.4, (5.0, -7.8, 6.6, -6.0), (5.17, 6.43)),
 ]
 
 # Objekte im Obergeschoss (Form, Art); Bild-Arten aus den GPT-Boegen A/B (villa_art.IMAGE_PROPS)
@@ -605,7 +608,6 @@ UPPER_GLASS = [
     (("circle", 22.6, -6.7, 0.25), "kandelaber"),
     # Nursery
     (("rect", 2.4, -11.8, 3.6, -11.1), "wiege"),
-    (("rect", 4.2, -11.8, 5.3, -11.2), "spielzeugkiste"),
     (("rect", 7.2, -9.6, 8.4, -9.0), "schaukelpferd"),
     (("rect", 2.4, -7.5, 3.0, -6.9), "puppenstuhl"),
     (("rect", 9.8, -7.4, 10.6, -6.5), "schaukelstuhl"),
@@ -616,7 +618,6 @@ UPPER_GLASS = [
     (("circle", 2.6, -17.5, 0.25), "kandelaber"),
     # Darkroom (nur Konsole und Fotoleinen)
     # Bathroom
-    (("rect", 19.4, -21.8, 21.4, -20.9), "badewanne"),
     (("rect", 22.4, -21.8, 23.6, -21.35), "waschtisch"),
     (("rect", 23.1, -16.9, 23.75, -16.2), "toilette"),
     # Sewing Room
@@ -635,14 +636,45 @@ UPPER_GLASS = [
 UPPER_DECOR = [
     (("rect", 6.0, -11.82, 7.4, -11.8), "spielzeugregal"),         # Nursery, Nordwand
     (("rect", 10.6, -21.82, 11.8, -21.8), "familienportrait"),     # Attic, Nordwand
-    (("rect", 7.6, -18.0, 8.3, -17.5), "umgestuerzter_stuhl"),     # Attic
     (("rect", 13.4, -21.82, 15.2, -21.8), "fotoleine"),            # Darkroom, Nordwand
     (("rect", 16.9, -21.82, 18.6, -21.8), "fotoleine"),
 ]
 HITBOX.update({
     ("himmelbett", ("rect", 24.0, -11.8, 26.6, -9.4)): ("rect", 24.1, -11.8, 26.5, -9.5),
     ("schaukelpferd", ("rect", 7.2, -9.6, 8.4, -9.0)): ("rect", 7.3, -9.3, 8.3, -9.0),
-    ("vogelkaefig", ("circle", 12.75, -6.9, 0.3)): ("circle", 12.75, -6.85, 0.22),
+    ("vogelkaefig", ("circle", 12.75, -6.9, 0.3)): ("rect", 12.1, -7.07, 12.97, -6.63),   # 18.11.: bis zur Westwand (0,33 m Spalt war begehbar)
+})
+# Hitbox-Durchgang 18.11. (Audits/2026-11-18/hitbox, Kollision gegen den deckenden Fuss der GPT-Bilder): Kollision auf den sichtbaren
+# Fuss, an der Wand bis zur Wand gefuellt, Luecken hinter Moebeln geschlossen
+HITBOX.update({
+    ("himmelbett", ("rect", 24.0, -11.8, 26.6, -9.4)): ("rect", 24.22, -11.8, 26.38, -9.5),
+    ("koffer", ("rect", 2.4, -21.8, 4.0, -20.9)): ("rect", 2.52, -21.8, 3.88, -20.9),
+    ("kisten", ("rect", 8.8, -21.8, 10.2, -21.0)): ("rect", 8.52, -21.8, 10.48, -21.0),
+    ("naehtisch", ("rect", 27.6, -21.8, 29.2, -21.1)): ("rect", 27.78, -21.8, 29.03, -21.1),
+    ("kinderbett", ("rect", 2.3, -10.4, 3.5, -8.9)): ("rect", 2.3, -10.4, 3.4, -8.9),
+    ("schneiderpuppe", ("circle", 5.2, -19.8, 0.3)): ("ellipse", 5.2, -19.8, 0.2, 0.12),      # nur der Staender
+    ("schneiderpuppe", ("circle", 26.4, -18.6, 0.3)): ("ellipse", 26.4, -18.6, 0.2, 0.12),
+    ("schneiderpuppe", ("circle", 27.6, -18.2, 0.3)): ("ellipse", 27.6, -18.2, 0.2, 0.12),
+    ("waschzuber", ("circle", 20.4, -17.2, 0.4)): ("ellipse", 20.4, -17.3, 0.4, 0.3),
+    ("kleiderstange", ("rect", 24.3, -16.9, 25.9, -16.5)): ("rect", 24.2, -16.75, 25.75, -16.2),     # bis zur Westwand
+    ("kandelaber", ("circle", 21.4, -6.8, 0.25)): ("circle", 21.4, -6.6, 0.23),                # Sockel liegt 0,2 m suedlicher
+    ("kandelaber", ("circle", 22.6, -6.7, 0.25)): ("circle", 22.6, -6.5, 0.23),
+    ("kandelaber", ("circle", 2.6, -17.5, 0.25)): ("circle", 2.6, -17.3, 0.23),
+    ("kandelaber", ("circle", 31.4, -18.3, 0.25)): ("circle", 31.4, -18.1, 0.23),
+    ("kandelaber", ("circle", 2.6, -12.55, 0.25)): ("circle", 2.6, -12.35, 0.23),
+    ("kandelaber", ("circle", 31.4, -12.55, 0.25)): ("circle", 31.4, -12.35, 0.23),
+    ("toilette", ("rect", 23.1, -16.9, 23.75, -16.2)): ("rect", 23.1, -17.05, 23.9, -16.2),    # bis zum Handtuchhalter und zur Wand
+    ("handtuchhalter", ("rect", 23.3, -17.75, 23.75, -17.05)): ("rect", 23.0, -17.75, 23.9, -17.05),
+    ("duschvorhang", ("rect", 19.4, -19.1, 21.0, -18.4)): ("rect", 19.0, -19.1, 21.0, -18.4), # bis zur Westwand gefuellt
+    ("spiegel_tuch", ("rect", 2.3, -20.3, 2.9, -19.5)): ("rect", 2.0, -20.9, 3.2, -19.5),     # bis zur Wand und zu den Koffern
+    ("frisierkommode", ("rect", 31.1, -9.8, 31.8, -8.6)): ("rect", 30.82, -9.8, 31.9, -8.6),
+    ("hutstaender", ("rect", 28.3, -7.1, 28.8, -6.6)): ("rect", 28.2, -7.1, 28.95, -6.6),
+    ("hutstaender", ("rect", 25.0, -14.75, 25.5, -14.35)): ("rect", 24.88, -14.75, 25.7, -14.35),
+    ("ruestung", ("rect", 20.1, -7.05, 20.7, -6.45)): ("rect", 19.97, -7.05, 20.93, -6.45),
+    ("chemikalienregal", ("rect", 18.2, -20.2, 18.8, -18.6)): ("rect", 17.9, -20.2, 18.9, -18.6),
+    ("kleiderschrank", ("rect", 27.55, -11.8, 28.7, -11.25)): ("rect", 27.42, -11.8, 28.85, -11.25),
+    ("standspiegel", ("rect", 31.2, -16.4, 31.7, -15.7)): ("rect", 31.2, -16.4, 31.9, -15.7),
+    ("umgestuerzter_stuhl", ("rect", 7.6, -18.0, 8.3, -17.5)): ("rect", 7.5, -17.85, 8.45, -17.5),
 })
 
 # Aufgaben (Atlas-Reiter aus Airship, HollowmereMap.BorrowedUpper) und Spielpunkte oben
@@ -651,6 +683,9 @@ UPPER_CONSOLES = {
     "Cockpit/DevelopPhotos/0": (16.0, -21.35),       # Darkroom, Entwicklertisch mit Rotlicht
     "Armory/DressMannequin/0": (25.6, -21.3),        # Sewing Room, Schneiderpuppe im Brautkleid
     "Office/RewindTapes/0": (27.6, -7.0),            # Master Bedroom, Geisterkamera vor dem Bett
+    # 18.11. (Teil 2, eigene Minispiele): zwei weitere Aufgaben, die Moebel selbst sind die Konsolen
+    "Specimens/PutAwayRifles/0": (4.75, -11.25),     # Nursery: Spielzeugkiste an der Nordwand ("Put Away the Toys")
+    "Brig/StartFans/0": (20.4, -20.95),              # Bathroom: Badewanne mit rotem Wasser ("Drain the Bloody Bath")
 }
 UPPER_VENTS = {"small": {4: (31.0, -7.0), 10: (3.0, -16.0)}, "large": {4: (31.0, -7.0)}}
 UPPER_VENT_NETS = {"small": [[0, 1, 2, 10], [3, 5, 6], [7, 8, 9, 4]],
@@ -662,10 +697,10 @@ UPPER_GROUND_DROP = [("freitreppe", ("rect", 15.0, 8.2, 19.0, 10.4)), ("treppens
 UPPER_GROUND_REPLACE = {"treppensperre": (("rect", 13.6, 10.2, 15.0, 10.9), "treppensperre_reste")}
 UPPER_GROUND = [   # (Form, Art, Kollision: True = blickdicht, False = nur Weg, None = keine)
     (("rect", 19.0, 10.2, 20.4, 10.9), "treppensperre_reste", None),     # zweiter Haufen rechts (gespiegelt)
-    (("rect", 14.95, 8.8, 15.3, 10.45), "unsichtbar", False),    # Gelaender der Freitreppe
-    (("rect", 18.7, 8.8, 19.05, 10.45), "unsichtbar", False),
+    (("rect", 15.35, 8.8, 16.1, 10.2), "unsichtbar", False),     # Gelaender der Freitreppe (18.11.: auf Pfosten und Handlauf)
+    (("rect", 17.9, 8.8, 18.65, 10.2), "unsichtbar", False),
     (("rect", 5.0, 0.2, 6.6, 2.1), "dienstbotentreppe", None),
-    (("rect", 4.75, 0.2, 5.0, 2.1), "unsichtbar", False),        # Gelaender der Dienstbotentreppe (Westseite)
+    (("rect", 4.95, 0.2, 5.2, 2.1), "unsichtbar", False),        # Gelaender der Dienstbotentreppe (Westseite, 18.11. auf den Pfosten)
 ]
 UPPER_GROUND_FLIP = {("treppensperre_reste", ("rect", 19.0, 10.2, 20.4, 10.9))}
 # Standlinie fuer die Tiefe (Plan-y): wer auf den Stufen steht, ist vor der Treppe zu sehen
@@ -702,7 +737,7 @@ UPPER_GLASS += [
     (("rect", 13.3, -17.6, 14.2, -16.8), "vergroesserer"),
     (("rect", 18.2, -20.2, 18.8, -18.6), "chemikalienregal"),
     # Bathroom
-    (("rect", 19.4, -19.7, 21.0, -19.0), "duschvorhang"),
+    (("rect", 19.4, -19.1, 21.0, -18.4), "duschvorhang"),     # 18.11.: 0,6 m suedlicher, vor der Wanne (Aufgabe) bleibt 1 m Platz
     (("rect", 23.3, -17.75, 23.75, -17.05), "handtuchhalter"),
     (("circle", 20.4, -17.2, 0.4), "waschzuber"),
     # Sewing Room
@@ -710,6 +745,9 @@ UPPER_GLASS += [
     (("circle", 27.6, -18.2, 0.3), "schneiderpuppe"),
     (("rect", 24.3, -16.9, 25.9, -16.5), "kleiderstange"),
     (("rect", 30.6, -19.8, 31.6, -19.4), "perueckenkoepfe"),
+    # Hitbox-Durchgang 18.11.: frueher Deko ohne Kollision, man lief durch den Stuhl und den Koffer
+    (("rect", 7.6, -18.0, 8.3, -17.5), "umgestuerzter_stuhl"),     # Attic
+    (("rect", 7.4, -16.4, 8.3, -15.9), "koffer_offen"),            # Attic
 ]
 UPPER_DECOR += [
     # Wandschmuck an den Seitenwaenden (Frontbild wie die Gemaelde der Galerie) und an den Nordwaenden
@@ -730,7 +768,6 @@ UPPER_DECOR += [
     (("rect", 8.6, -8.3, 9.6, -7.9), "spielzeug_boden"),           # Nursery
     (("rect", 28.2, -9.6, 29.0, -9.2), "kleiderhaufen"),           # Master Bedroom
     (("rect", 26.9, -8.6, 27.2, -8.4), "kinderschuh"),             # Master Bedroom, vor dem Bett
-    (("rect", 7.4, -16.4, 8.3, -15.9), "koffer_offen"),            # Attic
     (("rect", 9.5, -19.6, 10.0, -19.3), "zerbrochene_urne"),       # Attic
     (("rect", 29.4, -17.6, 30.4, -17.1), "stoffballen_boden"),     # Sewing Room
     (("rect", 13.6, -14.0, 14.0, -13.7), "rauchendes_buch"),       # Flur: rauchendes Buch am Boden

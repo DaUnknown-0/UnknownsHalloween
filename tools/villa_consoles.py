@@ -347,6 +347,9 @@ IMAGE_CONSOLES = {
     "DressMannequin": ("villa_dressmannequin.png", 1.9),  # Sewing Room: Schneiderpuppe im Brautkleid
     "DevelopPhotos": ("villa_developphotos.png", 1.4),    # Darkroom: Entwicklertisch mit Rotlicht
     "RewindTapes": ("villa_rewindtapes.png", 1.5),        # Master Bedroom: Geisterkamera und Videorekorder
+    # 18.11.: eigene Minispiele oben, Spielzeugkiste und Badewanne (bisher Moebel ohne Aufgabe) werden Konsolen
+    "PutAwayRifles": ("villa_spielzeugkiste.png", 0.95),  # Nursery: Spielzeug wegraeumen
+    "StartFans": ("villa_badewanne.png", 1.3),            # Bathroom: Wanne ablassen und schrubben
 }
 
 

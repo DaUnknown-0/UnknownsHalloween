@@ -365,6 +365,8 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         ClockTick(dt);
         CandleTick(dt);
         try { StairsTick(); } catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} stairs: {e.Message}"); }
+        // eigene Minispiele der Aufgaben oben (18.11.), nur mit Obergeschoss
+        if (_stairs.Length > 0) try { HollowmereUpperTasks.Tick(); } catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} upper tasks: {e.Message}"); }
         if (_passing) { PassTick(dt); return; }
         DiagTick();
         if (OfferSecrets()) return;
@@ -487,6 +489,8 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         _shut.Clear();
         RitualDestroy();
         AngelMoveDestroy();
+        HollowmereUpperTasks.Reset();
+        WalkTarget = null;
     }
 
     // ------------------------------------------------------------------ Durchgang
@@ -943,6 +947,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             else if (p == "mic") _diagTasks.Add("mic");            // 05.11.: Funk-Kodierung und Mikrofon (RadioMic.cs)
             else if (p == "stairs") _diagTasks.Add("stairs");      // 17.11.: Treppen ins Obergeschoss hoch und runter (Stairs.cs)
             else if (p == "uptour") _diagTasks.Add("uptour");      // 18.11.: Rundgang mit Fotos durch alle Raeume oben (Stairs.cs)
+            else if (p is "upprobe" or "upwalk" or "stairedge" or "uptasks") _diagTasks.Add(p);   // 18.11. abends: UpperDiag.cs
         }
         if (_diagTasks.Count == 0) return;
         // erst nach den Ansichtsfotos von Atlas (AtlasMapShot teleportiert den Spieler ~20 s lang herum und laesst
@@ -974,6 +979,10 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         if (task == "mic") { DiagMic(lp); return; }
         if (task == "stairs") { DiagStairs(lp); return; }
         if (task == "uptour") { DiagTour(lp); return; }
+        if (task == "upprobe") { DiagProbe(lp); return; }
+        if (task == "upwalk") { DiagWalk(lp); return; }
+        if (task == "stairedge") { DiagStairEdge(lp); return; }
+        if (task == "uptasks") { DiagUpTasks(lp); return; }
         int idx = Array.FindIndex(_secrets, s => s.Key == task.Substring(7));
         if (idx < 0)
         {
