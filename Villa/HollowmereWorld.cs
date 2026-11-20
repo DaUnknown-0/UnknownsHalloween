@@ -523,7 +523,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         if (!_snapped && _passT >= SnapAt)
         {
             _snapped = true;
-            try { lp.NetTransform.RpcSnapTo(_passTo); }
+            try { lp.NetTransform.RpcSnapTo(_passTo - (lp.GetTruePosition() - (Vector2)lp.transform.position)); }
             catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} snap failed: {e.Message}"); }
         }
         if (_passT >= PassSecs) EndPass(false);

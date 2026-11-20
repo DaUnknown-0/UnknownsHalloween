@@ -80,7 +80,7 @@ OPENINGS = [
     ("y", 14, 2.0, 4.5, {"small": "open", "large": "open"}),                                    # Boiler - Library
     ("y", 19, 3.0, 5.5, {"small": ("door", "Cafeteria"), "large": "open"}),                     # Library - Chapel (klein: Tuer statt Halle-Vestibuel)
     ("x", 23, 10.25, 12.75, {"small": ("door", "Cafeteria"), "large": ("door", "Cafeteria")}), # Hall - Gallery
-    ("y", 20, 11.75, 14.25, {"small": ("door", "Security"), "large": ("door", "Security")}),   # Hall - Booth
+    ("y", 20, 11.5, 14.5, {"small": ("door", "Security"), "large": ("door", "Security")}),   # Hall - Booth
     ("x", 15, 21.5, 23.5, {"small": "open", "large": "open"}),                                  # Booth - Hall (Suedarm)
     ("x", 19, 21.5, 23.5, {"small": "open", "large": "open"}),                                  # Hall (Suedarm) - Makeup
     ("x", 23, 21.0, 23.5, {"small": ("door", "MedBay"), "large": ("door", "MedBay")}),         # Makeup - Gallery
@@ -91,7 +91,7 @@ OPENINGS = [
     ("y", 18, 27.0, 29.5, {"small": "open", "large": "open"}),                                  # Fireplace - Study
     # Aussen (nur gross; in "small" verrammelt, siehe BARRICADES)
     ("y", 24, 15.75, 18.25, {"large": ("door", "Cafeteria")}),                                  # Hall (Suedarm) - Driveway (Haustuer)
-    ("x", 34, 14.5, 16.5, {"large": "open"}),                                                   # Fireplace - Terrace (Terrassentuer)
+    ("x", 34, 14.25, 16.75, {"large": "open"}),                                                   # Fireplace - Terrace (Terrassentuer)
     ("y", 24, 3.0, 5.5, {"large": ("door", "UpperEngine")}),                                    # Chapel - Crew Camp (Hintertuer)
     ("x", 12, 26.5, 29.0, {"large": ("door", "UpperEngine")}),                                  # Driveway - Crew Camp
     ("x", 24, 26.5, 29.5, {"large": "open"}),                                                   # Driveway - Fountain Court
@@ -108,11 +108,11 @@ DOOR_KIND = {("x", 40, 6.25): "iron", ("y", 26, 37): "iron", ("y", 28, 47): "iro
              ("y", 24, 17): "heavy", ("y", 24, 4.25): "heavy"}
 
 # Aussenoeffnungen des Hauses, die in "small" verrammelt sind (Bretter vor der Tuer, Prop "barrikade")
-BARRICADES = [("y", 24, 15.75, 18.25), ("x", 34, 14.5, 16.5), ("y", 24, 3.0, 5.5)]
+BARRICADES = [("y", 24, 15.75, 18.25), ("x", 34, 14.25, 16.75), ("y", 24, 3.0, 5.5)]
 
 # ------------------------------------------------------------------ Spielpunkte (Plan-Meter)
 SPAWN = (17.0, 13.2)
-SPAWN_RADIUS = 2.0
+SPAWN_RADIUS = 1.4
 EMERGENCY = (17.0, 15.6)              # Regieklappe auf einem Tischchen mitten in der Halle
 SURVEILLANCE = (13.0, 22.8)           # Regie: vor der Monitorwand (Suedwand)
 ADMIN_TABLE = (30.2, 22.2)            # Arbeitszimmer: vor dem Schreibtisch mit dem Grundriss
@@ -163,14 +163,14 @@ FIXED_LARGE = {
     "Storage/WaterBench/0": (44.0, 7.0),                  # Pflanzen giessen, Gewaechshaus (n24)
     "UpperEngine/Campfire/0": (5.2, 29.05),               # Marshmallows am Lagerfeuer (n62)
     "UpperEngine/CampGenerator/0": (9.2, 24.95),          # Generator im Crew Camp statt in der Kueche (n67)
-    "MainHall/Catering/0": (18.8, 29.15),                 # Essen und Trinken, zwei Tische am Vorplatz (n56)
+    "MainHall/Catering/0": (18.55, 29.15),                 # Essen und Trinken, zwei Tische am Vorplatz (n56)
     "Storage/FeedPlant/0": (46.6, 5.9),                   # 05.11.: Futtereimer vor der Riesenpflanze (n23 "Fuettern")
     # 17.11.: Kueche festgeschrieben (Dienstbotentreppe in der Nordostecke)
     "LowerEngine/FuelEngineConsole/0": (3.7, 0.75),
     "LowerEngine/DivertPowerConsole/1": (0.75, 5.25),
 }
 FIXED_BOTH_EXTRA = {
-    "Security/DivertPowerConsole/1": (12.6, 21.2),       # Regie
+    "Security/DivertPowerConsole/1": (12.6, 21.55),       # Regie
     "MedBay/MedBayConsole/0": (22.5, 20.7),              # Maske, rechts vom Kunstblutregal
     "LifeSupp/DivertPowerConsole/1": (29.2, 17.45),      # Kaminzimmer, Suedwand (25.10.: in der Suedostecke lag Vent 8 in ihrer Fussflaeche)
 }
@@ -272,7 +272,7 @@ GLASS = [
     (("rect", 32.6, 11.0, 33.7, 12.6), "baer", B),
     # 17.11. (Mo: "Vor den Kamin mit Tisch und Stuehlen"): Tisch mittig vor dem Kamin, links und rechts je ein Sessel
     (("rect", 30.25, 15.35, 31.15, 16.15), "sessel", B),
-    (("rect", 32.15, 15.35, 33.05, 16.15), "sessel", B),
+    (("rect", 31.9, 15.35, 32.8, 16.15), "sessel", B),
     # Garten
     (("rect", 13.0, 29.35, 15.0, 29.65), "absperrung", L),
     (("circle", 37.0, 10.0, 0.4), "urne", L),
@@ -318,8 +318,8 @@ GLASS += [
     (("rect", 3.2, 18.2, 3.8, 18.75), "buecherstapel", B),           # Long Library, Suedwand
     (("circle", 10.4, 8.6, 0.2), "laterne", B),                      # Long Library, Nordarm
     (("rect", 5.8, 22.9, 7.8, 23.35), "zersplitterte_bank", B),      # Chapel, dritte Reihe links (rechts liegt Vent 2)
-    (("rect", 14.1, 20.4, 14.75, 21.1), "regiestuhl_director", B),   # Director's Booth
-    (("rect", 11.3, 20.5, 11.75, 21.8), "mischpult", B),             # Director's Booth, Westwand
+    (("rect", 14.35, 20.4, 15.0, 21.1), "regiestuhl_director", B),   # Director's Booth
+    (("rect", 11.15, 20.75, 11.6, 22.05), "mischpult", B),             # Director's Booth, Westwand
     (("rect", 19.3, 20.3, 19.75, 21.3), "perueckenkoepfe", B),       # Makeup, Westwand
     (("circle", 24.0, 9.3, 0.25), "buesten_saeule", B),              # Portrait Gallery
     (("rect", 25.2, 19.0, 25.8, 19.6), "ruestung", B),               # Portrait Gallery
@@ -327,7 +327,7 @@ GLASS += [
     (("rect", 28.5, 10.2, 31.3, 11.7), "billardtisch", B),           # Trophy Room
     (("circle", 31.65, 15.75, 0.42), "beistelltisch", B),            # Fireplace Room, Tisch zwischen den Sesseln (17.11. groesser, mittig vor dem Kamin)
     (("rect", 33.2, 13.9, 33.6, 14.4), "schuerhaken", B),            # Fireplace Room, neben dem Kamin
-    (("rect", 33.0, 14.0, 33.75, 14.8), "holzkorb", B),              # Fireplace Room, Ostwand
+    (("rect", 33.0, 13.75, 33.75, 14.55), "holzkorb", B),              # Fireplace Room, Ostwand
     (("rect", 26.4, 16.6, 27.2, 17.5), "schaukelstuhl", B),          # Fireplace Room
     (("rect", 26.3, 22.6, 27.4, 23.7), "aktenkisten", B),            # Study, Suedwestecke
     (("circle", 37.0, 14.0, 0.6), "gartentisch", L),                 # Terrace
@@ -382,8 +382,8 @@ GLASS += [
     (("rect", 43.3, 6.65, 44.7, 7.0), "unsichtbar", L),            # Pflanzbank
     (("circle", 5.2, 28.85, 0.45), "unsichtbar", L),               # Lagerfeuer
     (("rect", 8.75, 24.55, 9.65, 24.95), "unsichtbar", L),         # Generator
-    (("rect", 17.9, 29.3, 19.7, 29.75), "unsichtbar", L),          # Catering-Tisch
-    (("rect", 20.1, 28.95, 22.1, 29.75), "getraenketisch", L),     # n56: zweiter Tisch mit Getraenken
+    (("rect", 17.65, 29.0, 19.45, 29.45), "unsichtbar", L),          # Catering-Tisch
+    (("rect", 20.4, 28.95, 22.4, 29.75), "getraenketisch", L),     # n56: zweiter Tisch mit Getraenken
     # n57/n60: Laternenpfaehle mit Zweck: sie saeumen die Wege durch Terrasse und Brunnenhof
     (("circle", 35.0, 13.4, 0.18), "laternenpfahl", L), (("circle", 35.0, 17.6, 0.18), "laternenpfahl", L),
     (("circle", 39.3, 16.4, 0.18), "laternenpfahl", L), (("circle", 39.3, 20.3, 0.18), "laternenpfahl", L),
@@ -465,7 +465,7 @@ HITBOX = {
     ("kirchenbank", ("rect", 5.8, 21.9, 7.8, 22.35)): ("rect", 6.15, 21.9, 7.45, 22.35),
     ("kirchenbank", ("rect", 8.6, 21.9, 10.6, 22.35)): ("rect", 8.95, 21.9, 10.25, 22.35),
     ("zersplitterte_bank", ("rect", 5.8, 22.9, 7.8, 23.35)): ("rect", 6.4, 22.9, 7.5, 23.4),
-    ("mischpult", ("rect", 11.3, 20.5, 11.75, 21.8)): ("rect", 11.2, 21.4, 11.8, 22.0),
+    ("mischpult", ("rect", 11.15, 20.75, 11.6, 22.05)): ("rect", 11.05, 21.65, 11.65, 22.25),
     ("schminkspiegel", ("rect", 19.3, 20.25, 21.9, 20.7)): ("rect", 19.9, 20.25, 21.3, 20.7),
     ("gewehrschrank", ("rect", 26.5, 8.85, 28.2, 9.3)): ("rect", 26.95, 8.85, 27.75, 9.3),
     ("billardtisch", ("rect", 28.5, 10.2, 31.3, 11.7)): ("rect", 28.7, 10.2, 31.1, 11.7),
@@ -478,7 +478,7 @@ HITBOX = {
     ("kuebelpflanze", ("rect", 34.3, 7.0, 34.9, 8.0)): ("rect", 34.3, 7.4, 35.1, 8.0),
     ("kuebelpflanze", ("rect", 34.3, 22.0, 34.9, 23.0)): ("rect", 34.3, 22.4, 35.1, 23.0),
     ("absperrung", ("rect", 13.0, 29.35, 15.0, 29.65)): ("rect", 13.45, 29.35, 14.55, 29.65),
-    ("getraenketisch", ("rect", 20.1, 28.95, 22.1, 29.75)): ("rect", 20.3, 29.25, 21.9, 29.75),
+    ("getraenketisch", ("rect", 20.4, 28.95, 22.4, 29.75)): ("rect", 20.6, 29.25, 22.2, 29.75),
     ("lichtstativ", ("circle", 22.5, 25.5, 0.3)): ("ellipse", 22.37, 25.55, 0.5, 0.25),  # 08.11.: gespiegelt (FLIP), Beine westlich
     ("lichtstativ", ("circle", 15.8, 28.6, 0.3)): ("ellipse", 15.92, 28.65, 0.5, 0.25),
     ("campingtisch", ("rect", 6.0, 26.2, 7.8, 27.0)): ("rect", 6.35, 26.3, 7.45, 27.0),
@@ -584,7 +584,7 @@ UPPER_OPENINGS = [   # (Achse, Lage, von, bis), alles offen
 #           Gelaendern; beim Wechsel wird die Lage quer zur Treppe von der einen Spanne auf die andere umgerechnet
 #           (Hitbox-Durchgang 18.11.: oben ist der Schacht 4 m breit, unten die Treppe zwischen den Gelaendern nur 1,8 m).
 UPPER_STAIRS = [
-    ("grand", (16.3, 17.7), 9.45, 10.25, -6.95, -8.4, (15.0, -7.8, 19.0, -6.0), (15.17, 18.83)),
+    ("grand", (16.4, 17.6), 9.45, 10.25, -6.95, -8.4, (15.0, -7.8, 19.0, -6.0), (15.17, 18.83)),
     ("servants", (5.42, 6.43), 1.2, 1.95, -6.95, -8.4, (9.65, -7.8, 11.25, -6.0), (9.82, 11.08)),
 ]
 

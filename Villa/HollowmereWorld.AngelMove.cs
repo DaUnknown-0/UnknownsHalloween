@@ -409,6 +409,7 @@ internal sealed partial class HollowmereWorld
             for (int k = pts.Count - 1; k >= 0; k--)
             {
                 var c = pts[k];
+                if (c.x >= 12.4f && c.x <= 15.1f && c.y >= 9.3f && c.y <= 10.5f) continue; // Zugang zum Observatorium
                 if (players.Any(p => Vector2.Distance(p.GetTruePosition(), c) < 0.55f)) continue;
                 if (_slots.Any(o => o != s && Vector2.Distance(o.Pos, c) < 0.75f)) continue;
                 if (Physics2D.Linecast(s.Pos + new Vector2(0f, 0.1f), c + new Vector2(0f, 0.1f), MaskWalls).collider != null) continue;

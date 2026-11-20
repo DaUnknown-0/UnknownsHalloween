@@ -251,8 +251,9 @@ internal sealed class PhotosGame : UpperDragGame
     private const int Photos = 2;
     private const float Soak = 1.3f;
     private UpperPiece _photo;
-    private SpriteRenderer _img, _barBg, _bar;
+    private SpriteRenderer _img, _barBg, _bar, _hint;
     private int _hung, _need, _tray = -1;
+    private float _hintT;
     private float _soak, _doneT = -1f;
     private readonly List<(SpriteRenderer Sr, float T)> _swing = new();
     public override float Progress => (_hung * 4 + _need) / (float)(Photos * 4);
@@ -310,7 +311,9 @@ internal sealed class PhotosGame : UpperDragGame
             return;
         }
         var slot = Slots[_hung];
-        if (Vector2.Distance(p.Pos, slot + new Vector2(0f, -0.55f)) < 0.85f)
+        // fertig fixiert: irgendwo in die obere Haelfte (Leine) ziehen reicht. Vorher nur 0,85 um den Leinenplatz,
+        // den sah man unter der Titelleiste kaum, das Spiel wirkte nach "3. Fix" ohne Ende (User 20.11.)
+        if (Vector2.Distance(p.Pos, slot + new Vector2(0f, -0.55f)) < 0.85f || p.Pos.y > 0.35f)
         {
             p.Gone = true;
             p.Fly(slot + new Vector2(0f, -0.55f), 0.15f, () =>
@@ -343,6 +346,19 @@ internal sealed class PhotosGame : UpperDragGame
             t += dt;
             sr.transform.localEulerAngles = new Vector3(0, 0, Mathf.Sin(t * 5f) * 8f * Mathf.Exp(-t * 1.6f));
             _swing[i] = (sr, t);
+        }
+        // nach dem Fixieren: blinkende Klammer an der Leine zeigt, wohin das Foto gehoert
+        bool wantHint = _need >= 3 && _hung < Photos && _photo != null && !_photo.Gone;
+        if (wantHint && _hint == null) _hint = UpperArt.Add(Root, "task_up_photos_peg.png", Slots[_hung] + new Vector2(0f, 0.02f), 14);
+        if (_hint != null)
+        {
+            _hint.enabled = wantHint;
+            if (wantHint)
+            {
+                UpperArt.Place(_hint, Slots[_hung] + new Vector2(0f, 0.02f));
+                _hintT += dt;
+                _hint.color = new Color(1f, 1f, 1f, 0.35f + 0.35f * Mathf.Sin(_hintT * 6f));
+            }
         }
         if (_doneT >= 0f) { _doneT += dt; if (_doneT > 0.5f) Done = true; }
     }
