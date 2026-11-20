@@ -300,6 +300,7 @@ internal sealed partial class HollowmereWorld
         if (HandleDixiRpc(sub, reader)) return;                    // Sub 40
         if (HandleCurioRpc(sub, reader)) return;                   // Sub 41
         if (HandleMicRpc(sub, reader)) return;                     // Sub 42/43 (Funkmikrofon)
+        if (HandleTapeRpc(sub, reader)) return;                    // Sub 44-46 (Tonband in der Kinderstube)
         var w = _current;
         if (sub == SubRitualCandle)
         {

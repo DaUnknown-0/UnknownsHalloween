@@ -174,9 +174,8 @@ namespace UnknownsHalloween {
                 // with its own small eyes; the pasted GPT eyes of 0.1.3.30 were removed again on 2026-10-28 (User).
                 StillWalk = true, WalkFps = 12f, LiveLegs = true },
             new Costume { Key = "bvb", KillKey = null, Name = "Halloween BVB Fan", HasLegs = false, HasAccent = true },
-            // 2026-10-28 (User, Feedback-Runde Hollowmere): drei Jaeger-Kostueme fuer die Beschwoerung, von GPT gezeichnet (Ausnahme nur
-            // fuer neue Figuren). Wie der BVB-Fan nur Haare und Kleidung auf dem echten Koerper: Visor, Farbe und Gesicht des Spielers
-            // bleiben sichtbar (villa_qwen/spn_costume.py, ein Bild fuer alle Steh- und Laufbilder).
+            // Haare und Kleidung fuer die Beschwoerung. Die zwoelf Laufbilder folgen dem Crewmate-Animator.
+            // Die transparente Rueckenebene aktiviert die Laufanimation und bleibt bei HasLegs = false aktiv.
             new Costume { Key = "sam", KillKey = null, Name = "Halloween Sam", HasLegs = false },
             new Costume { Key = "dean", KillKey = null, Name = "Halloween Dean", HasLegs = false },
             new Costume { Key = "castiel", KillKey = null, Name = "Halloween Castiel", HasLegs = false },

@@ -87,7 +87,7 @@ def render(ppm):
         # Laeufer im Flur, Teppich im Schlafzimmer und in der Kinderstube
         FM.runner(C, 2.6 - ux0, -13.95 - uy0, 31.4 - ux0, -13.05 - uy0, ppm)
         FM.rug(C, 25.3 - ux0, -8.0 - uy0, 1.8, 1.0, ppm)
-        FM.rug(C, 7.0 - ux0, -9.2 - uy0, 1.6, 0.9, ppm)
+        FM.rug(C, 8.35 - ux0, -8.70 - uy0, 0.82, 0.46, ppm)
         FM.rug(C, 17.0 - ux0, -9.9 - uy0, 2.0, 0.9, ppm)            # Upper Landing
         FM.rug(C, 28.0 - ux0, -18.7 - uy0, 1.5, 0.8, ppm)           # Sewing Room
         C.fill_tile(VF.material_tile("teppich", ppm, seed=23), box(19.7 - ux0, -20.75 - uy0, 21.1 - ux0, -20.2 - uy0))   # Badvorleger vor der Wanne (18.11.)
@@ -97,7 +97,7 @@ def render(ppm):
             stairwell(C, x0 - ux0, y0 - uy0, x1 - ux0, y1 - uy0, ppm)
         # Horror: Fussspuren vom Treppenschacht ins Kinderzimmer, Blut im Bad, Kreide im Dachboden
         d = C.draw()
-        FM.footprints(d, C, [(16.2 - ux0, -8.3 - uy0), (13.5 - ux0, -9.4 - uy0), (10.6 - ux0, -9.6 - uy0), (8.0 - ux0, -8.0 - uy0)], rnd)
+        FM.footprints(d, C, [(16.2 - ux0, -8.3 - uy0), (13.5 - ux0, -9.4 - uy0), (10.9 - ux0, -9.35 - uy0), (10.45 - ux0, -8.0 - uy0)], rnd)
         FM.blood(d, C, 21.8 - ux0, -19.2 - uy0, 0.3, rnd)
         FM.blood(d, C, 26.0 - ux0, -9.2 - uy0, 0.18, rnd)
         FM.chalk_outline(d, C, 6.5 - ux0, -18.8 - uy0, 1.0, 0.7, 31)
@@ -107,7 +107,7 @@ def render(ppm):
             for (cx, cy, qx, qy) in ((x0_ + 0.2, y0_ + 0.2, 1, 1), (x1_ - 0.2, y0_ + 0.2, -1, 1), (x0_ + 0.2, y1_ - 0.2, 1, -1)):
                 VF.floor_cobweb_corner(d, C.Pw, ppm, cx - ux0, -(cy - uy0), 0.55, qx, -qy, seed=int(cx * 10 + cy))
         # Kinderstube: Kreide-Huepfspiel auf den Dielen
-        hx, hy = 9.6, -9.0
+        hx, hy = 10.13, -8.81
         for k, (dx, dy) in enumerate(((0, 0), (0, -0.5), (-0.25, -1.0), (0.25, -1.0), (0, -1.5), (-0.25, -2.0), (0.25, -2.0), (0, -2.5))):
             x_, y_ = hx + dx - ux0, hy + dy - uy0
             d.rectangle([*C.P(x_ - 0.22, y_ - 0.22), *C.P(x_ + 0.22, y_ + 0.22)], outline=(226, 222, 210, 170), width=max(1, int(0.025 * ppm)))
@@ -132,7 +132,7 @@ def render(ppm):
                   fill=rnd.choice([(170, 40, 60, 210), (60, 90, 160, 210), (210, 190, 60, 210)]), width=max(1, int(0.015 * ppm)))
         # Dachboden: Staubschleifspuren (etwas wurde zum Koffer geschleift) und Wachstropfen am Flur
         d.line([C.P(4.0 - ux0, -16.0 - uy0), C.P(6.0 - ux0, -18.0 - uy0), C.P(8.0 - ux0, -20.0 - uy0)], fill=(120, 110, 96, 90), width=max(1, int(0.35 * ppm)), joint="curve")
-        FM.blood(d, C, 6.2 - ux0, -10.6 - uy0, 0.12, rnd)
+        FM.blood(d, C, 4.8 - ux0, -10.6 - uy0, 0.12, rnd)
         FM.blood(d, C, 12.3 - ux0, -13.6 - uy0, 0.15, rnd)
         FM.ambient(C, walk)
         n = FM.faces(C, walk, geoms)

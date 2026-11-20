@@ -248,6 +248,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         _clockAt = -1f; _warned = false; _shut.Clear(); _sounds.Clear(); _strikes = 0; _lastStrike = -1f;
         _flickerUntil = _pendulumUntil = 0f;
         StairsReset();
+        TapeBuild();
         for (int i = 0; i < _secrets.Length; i++)
         {
             var s = _secrets[i];
@@ -360,6 +361,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         try { DixiTick(); } catch (Exception e) { RitualError(e); }
         try { CurioTick(); } catch (Exception e) { RitualError(e); }
         try { MicTick(); } catch (Exception e) { RitualError(e); }
+        TapeTick();
         AnimTick();
         ArmorTick();
         ClockTick(dt);
@@ -369,6 +371,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         if (_stairs.Length > 0) try { HollowmereUpperTasks.Tick(); } catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} upper tasks: {e.Message}"); }
         if (_passing) { PassTick(dt); return; }
         DiagTick();
+        if (OfferTape()) return;
         if (OfferSecrets()) return;
         OfferCandles();
     }
@@ -945,6 +948,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
             else if (p == "summon") _diagTasks.Add("summon");      // Buch lesen, blaettern, Kerzen 4-1-3-5-2 (Summon.cs)
             else if (p == "dixi") _diagTasks.Add("dixi");          // 05.11.: verstecken, Kill-Schutz, Tuer, Sperre (Dixi.cs)
             else if (p == "mic") _diagTasks.Add("mic");            // 05.11.: Funk-Kodierung und Mikrofon (RadioMic.cs)
+            else if (p == "nurserytape") _diagTasks.Add(p);
             else if (p == "stairs") _diagTasks.Add("stairs");      // 17.11.: Treppen ins Obergeschoss hoch und runter (Stairs.cs)
             else if (p == "uptour") _diagTasks.Add("uptour");      // 18.11.: Rundgang mit Fotos durch alle Raeume oben (Stairs.cs)
             else if (p is "upprobe" or "upwalk" or "stairedge" or "uptasks") _diagTasks.Add(p);   // 18.11. abends: UpperDiag.cs
@@ -977,6 +981,7 @@ internal sealed partial class HollowmereWorld : IAtlasMapWorld
         if (task == "summon") { DiagSummon(lp); return; }
         if (task == "dixi") { DiagDixi(lp); return; }
         if (task == "mic") { DiagMic(lp); return; }
+        if (task == "nurserytape") { DiagTape(lp); return; }
         if (task == "stairs") { DiagStairs(lp); return; }
         if (task == "uptour") { DiagTour(lp); return; }
         if (task == "upprobe") { DiagProbe(lp); return; }

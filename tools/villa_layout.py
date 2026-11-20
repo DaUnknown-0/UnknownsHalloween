@@ -585,8 +585,19 @@ UPPER_OPENINGS = [   # (Achse, Lage, von, bis), alles offen
 #           (Hitbox-Durchgang 18.11.: oben ist der Schacht 4 m breit, unten die Treppe zwischen den Gelaendern nur 1,8 m).
 UPPER_STAIRS = [
     ("grand", (16.3, 17.7), 9.45, 10.25, -6.95, -8.4, (15.0, -7.8, 19.0, -6.0), (15.17, 18.83)),
-    ("servants", (5.42, 6.43), 1.2, 1.95, -6.95, -8.4, (5.0, -7.8, 6.6, -6.0), (5.17, 6.43)),
+    ("servants", (5.42, 6.43), 1.2, 1.95, -6.95, -8.4, (9.65, -7.8, 11.25, -6.0), (9.82, 11.08)),
 ]
+
+# Nursery: Standlinie und sichtbarer Fuss der zehn Betten, je fuenf pro Spalte.
+NURSERY_BEDS = [
+    (("rect", x0, y, x1, round(y + 0.20, 2)), f"lazarett_{pose}{suffix}")
+    for x0, x1, suffix, poses in (
+        (2.18, 4.06, "", ("liegend", "sitzend", "halb", "sitzend", "liegend")),
+        (5.48, 7.36, "_ost", ("sitzend", "halb", "liegend", "halb", "sitzend")),
+    )
+    for y, pose in zip((-11.41, -10.17, -8.93, -7.69, -6.45), poses)
+]
+NURSERY_TAPE = ("rect", 7.86, -6.45, 8.74, -6.25)
 
 # Objekte im Obergeschoss (Form, Art); Bild-Arten aus den GPT-Boegen A/B (villa_art.IMAGE_PROPS)
 UPPER_OPAQUE = [
@@ -596,8 +607,8 @@ UPPER_GLASS = [
     # Treppenschaechte: Pfosten und Gelaender (Gelaender zeichnet der Boden, hier nur die Sperre)
     (("circle", 14.8, -7.95, 0.17), "pfosten"), (("circle", 19.2, -7.95, 0.17), "pfosten"),
     (("rect", 14.65, -7.8, 14.95, -6.2), "unsichtbar"), (("rect", 19.05, -7.8, 19.35, -6.2), "unsichtbar"),
-    (("circle", 4.8, -7.95, 0.15), "pfosten"), (("circle", 6.8, -7.95, 0.15), "pfosten"),
-    (("rect", 4.65, -7.8, 4.95, -6.2), "unsichtbar"), (("rect", 6.65, -7.8, 6.95, -6.2), "unsichtbar"),
+    (("circle", 9.45, -7.95, 0.15), "pfosten"), (("circle", 11.45, -7.95, 0.15), "pfosten"),
+    (("rect", 9.30, -7.8, 9.60, -6.2), "unsichtbar"), (("rect", 11.30, -7.8, 11.60, -6.2), "unsichtbar"),
     # Upper Landing
     (("circle", 12.75, -6.9, 0.3), "vogelkaefig"),
     (("circle", 21.4, -6.8, 0.25), "kandelaber"),
@@ -607,10 +618,8 @@ UPPER_GLASS = [
     (("rect", 26.75, -11.75, 27.4, -11.25), "nachttisch"),
     (("circle", 22.6, -6.7, 0.25), "kandelaber"),
     # Nursery
-    (("rect", 2.4, -11.8, 3.6, -11.1), "wiege"),
-    (("rect", 7.2, -9.6, 8.4, -9.0), "schaukelpferd"),
-    (("rect", 2.4, -7.5, 3.0, -6.9), "puppenstuhl"),
-    (("rect", 9.8, -7.4, 10.6, -6.5), "schaukelstuhl"),
+    *NURSERY_BEDS,
+    (NURSERY_TAPE, "nursery_tonband"),
     # Attic
     (("rect", 2.4, -21.8, 4.0, -20.9), "koffer"),
     (("rect", 8.8, -21.8, 10.2, -21.0), "kisten"),
@@ -634,14 +643,13 @@ UPPER_GLASS = [
     (("rect", 17.6, -16.6, 18.7, -15.6), "aktenkisten"),           # Darkroom
 ]
 UPPER_DECOR = [
-    (("rect", 6.0, -11.82, 7.4, -11.8), "spielzeugregal"),         # Nursery, Nordwand
+    (("rect", 4.20, -11.32, 5.34, -11.3), "gemaelde_emptychild"),  # Nursery, Nordwand ueber dem Mittelgang
     (("rect", 10.6, -21.82, 11.8, -21.8), "familienportrait"),     # Attic, Nordwand
     (("rect", 13.4, -21.82, 15.2, -21.8), "fotoleine"),            # Darkroom, Nordwand
     (("rect", 16.9, -21.82, 18.6, -21.8), "fotoleine"),
 ]
 HITBOX.update({
     ("himmelbett", ("rect", 24.0, -11.8, 26.6, -9.4)): ("rect", 24.1, -11.8, 26.5, -9.5),
-    ("schaukelpferd", ("rect", 7.2, -9.6, 8.4, -9.0)): ("rect", 7.3, -9.3, 8.3, -9.0),
     ("vogelkaefig", ("circle", 12.75, -6.9, 0.3)): ("rect", 12.1, -7.07, 12.97, -6.63),   # 18.11.: bis zur Westwand (0,33 m Spalt war begehbar)
 })
 # Hitbox-Durchgang 18.11. (Audits/2026-11-18/hitbox, Kollision gegen den deckenden Fuss der GPT-Bilder): Kollision auf den sichtbaren
@@ -651,7 +659,16 @@ HITBOX.update({
     ("koffer", ("rect", 2.4, -21.8, 4.0, -20.9)): ("rect", 2.52, -21.8, 3.88, -20.9),
     ("kisten", ("rect", 8.8, -21.8, 10.2, -21.0)): ("rect", 8.52, -21.8, 10.48, -21.0),
     ("naehtisch", ("rect", 27.6, -21.8, 29.2, -21.1)): ("rect", 27.78, -21.8, 29.03, -21.1),
-    ("kinderbett", ("rect", 2.3, -10.4, 3.5, -8.9)): ("rect", 2.3, -10.4, 3.4, -8.9),
+    **{
+        (kind, shape): (
+            "rect", 2.0 if shape[1] == 2.18 else shape[1],
+            -12.0 if shape[2] == -11.41 else shape[2],
+            shape[3], -6.0 if shape[2] == -6.45 else shape[4],
+        )
+        for shape, kind in NURSERY_BEDS
+    },
+    ("puppenhaus", ("rect", 10.75, -11.8, 11.75, -11.2)): ("rect", 10.74, -12.0, 12.0, -11.19),
+    ("nursery_tonband", NURSERY_TAPE): ("rect", 7.86, -6.45, 8.74, -6.0),
     ("schneiderpuppe", ("circle", 5.2, -19.8, 0.3)): ("ellipse", 5.2, -19.8, 0.2, 0.12),      # nur der Staender
     ("schneiderpuppe", ("circle", 26.4, -18.6, 0.3)): ("ellipse", 26.4, -18.6, 0.2, 0.12),
     ("schneiderpuppe", ("circle", 27.6, -18.2, 0.3)): ("ellipse", 27.6, -18.2, 0.2, 0.12),
@@ -684,7 +701,7 @@ UPPER_CONSOLES = {
     "Armory/DressMannequin/0": (25.6, -21.3),        # Sewing Room, Schneiderpuppe im Brautkleid
     "Office/RewindTapes/0": (27.6, -7.0),            # Master Bedroom, Geisterkamera vor dem Bett
     # 18.11. (Teil 2, eigene Minispiele): zwei weitere Aufgaben, die Moebel selbst sind die Konsolen
-    "Specimens/PutAwayRifles/0": (4.75, -11.25),     # Nursery: Spielzeugkiste an der Nordwand ("Put Away the Toys")
+    "Specimens/PutAwayRifles/0": (7.92, -11.25),     # Nursery: Spielzeugkiste rechts der Betten ("Put Away the Toys")
     "Brig/StartFans/0": (20.4, -20.95),              # Bathroom: Badewanne mit rotem Wasser ("Drain the Bloody Bath")
 }
 UPPER_VENTS = {"small": {4: (31.0, -7.0), 10: (3.0, -16.0)}, "large": {4: (31.0, -7.0)}}
@@ -719,9 +736,7 @@ UPPER_GLASS += [
     (("rect", 23.0, -7.4, 23.9, -6.8), "koffer_offen"),
     (("rect", 28.3, -7.1, 28.8, -6.6), "hutstaender"),
     # Nursery
-    (("rect", 2.3, -10.4, 3.5, -8.9), "kinderbett"),
     (("rect", 10.75, -11.8, 11.75, -11.2), "puppenhaus"),
-    (("rect", 10.9, -8.2, 11.7, -7.6), "kinderwagen"),
     # Corridor: Konsolentische und Hutstaender an der Nordwand (Oeffnungen frei)
     (("rect", 7.4, -14.8, 8.6, -14.4), "konsolentisch"),
     (("rect", 23.2, -14.8, 24.4, -14.4), "konsolentisch"),
@@ -756,7 +771,6 @@ UPPER_DECOR += [
     (("rect", 21.6, -11.6, 21.8, -11.0), "wandleuchter"),          # Upper Landing, Ostwand
     (("rect", 22.2, -7.8, 22.4, -7.2), "wandleuchter"),            # Master Bedroom, Westwand
     (("rect", 31.6, -11.0, 31.8, -10.2), "bilder_gruppe"),         # Master Bedroom, Ostwand
-    (("rect", 2.2, -8.6, 2.4, -7.9), "bilder_gruppe"),             # Nursery, Westwand
     (("rect", 2.2, -13.9, 2.4, -13.3), "wandleuchter"),            # Flur, Westende
     (("rect", 31.6, -13.9, 31.8, -13.3), "wandleuchter"),          # Flur, Ostende
     (("rect", 4.4, -21.82, 5.6, -21.8), "spinnennetz_gross"),      # Attic, Nordwand
@@ -764,8 +778,7 @@ UPPER_DECOR += [
     (("rect", 29.3, -21.82, 30.1, -21.8), "garnregal"),            # Sewing Room, Nordwand
     (("rect", 14.0, -18.9, 17.8, -18.85), "fotoleine"),            # Darkroom: Leine quer durch den Raum
     # Kleinkram am Boden
-    (("rect", 5.4, -9.9, 5.8, -9.6), "teddy"),                     # Nursery
-    (("rect", 8.6, -8.3, 9.6, -7.9), "spielzeug_boden"),           # Nursery
+    (("rect", 7.85, -8.70, 8.85, -8.30), "spielzeug_boden"),       # Nursery, auf dem kleinen Teppich
     (("rect", 28.2, -9.6, 29.0, -9.2), "kleiderhaufen"),           # Master Bedroom
     (("rect", 26.9, -8.6, 27.2, -8.4), "kinderschuh"),             # Master Bedroom, vor dem Bett
     (("rect", 9.5, -19.6, 10.0, -19.3), "zerbrochene_urne"),       # Attic

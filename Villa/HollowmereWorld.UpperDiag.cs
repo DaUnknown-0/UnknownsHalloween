@@ -101,7 +101,8 @@ internal sealed partial class HollowmereWorld
     // Rundgang oben in Plan-Metern: Raum -> Durchgang -> Raum; "*name" = Foto an diesem Punkt
     private static readonly (float X, float Y, string Shot)[] WalkRoute =
     {
-        (17.0f, -8.6f, null), (17.0f, -10.0f, "landing"), (12.0f, -9.5f, null), (10.0f, -10.3f, null), (6.5f, -10.6f, "nursery"),
+        (17.0f, -8.6f, null), (17.0f, -10.0f, "landing"), (12.0f, -9.5f, null), (9.45f, -9.5f, null),
+        (4.77f, -9.5f, "nursery"), (4.77f, -10.62f, null), (9.5f, -10.62f, null),
         (9.5f, -11.0f, null), (9.5f, -12.6f, null), (9.5f, -13.5f, "corridor_w"), (5.2f, -13.5f, null), (5.2f, -15.6f, null),
         (5.8f, -17.0f, "attic"), (8.6f, -18.6f, null), (11.0f, -19.9f, null), (12.6f, -19.0f, null), (14.6f, -19.0f, "darkroom"),
         (16.0f, -17.6f, null), (16.0f, -15.2f, null), (16.0f, -13.5f, null), (21.5f, -13.5f, "corridor_mid"), (21.5f, -15.6f, null),

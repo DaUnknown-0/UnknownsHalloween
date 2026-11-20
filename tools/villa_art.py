@@ -2414,6 +2414,14 @@ IMAGE_PROPS = {"baer": ("villa_baer.png", 3.0),
                "puppenstuhl": ("villa_puppenstuhl.png", 1.0), "vogelkaefig": ("villa_vogelkaefig.png", 1.9),
                "pfosten": ("villa_pfosten.png", 1.3),
                "familienportrait": ("villa_familienportrait.png", 0.8, 0.06),       # Wandbild, Nordwand des Dachbodens
+               "gemaelde_emptychild": ("villa_gemaelde_emptychild.png", 0.76, 0.06), # Wandbild, Nordwand der Kinderstube
+               "lazarett_liegend": ("villa_lazarett_liegend.png", 0.56),
+               "lazarett_sitzend": ("villa_lazarett_sitzend.png", 0.56),
+               "lazarett_halb": ("villa_lazarett_halb.png", 0.56),
+               "lazarett_liegend_ost": ("villa_lazarett_liegend_ost.png", 0.56),
+               "lazarett_sitzend_ost": ("villa_lazarett_sitzend_ost.png", 0.56),
+               "lazarett_halb_ost": ("villa_lazarett_halb_ost.png", 0.56),
+               "nursery_tonband": ("villa_nursery_tonband.png", 1.0),
                "fotoleine": ("villa_fotoleine.png", 0.55, 0.3),                    # Leine mit Fotos, Nordwand der Dunkelkammer
                "spielzeugregal": ("villa_spielzeugregal.png", 0.5, 0.0),           # Wandbord, Nordwand der Kinderstube
                # 18.11.: Dekoration Obergeschoss (GPT-Boegen 27/28)

@@ -682,10 +682,15 @@ internal sealed partial class HollowmereWorld
     /// <summary>Ogg ueber den NVorbis-Decoder, den Unknown's Collection mitbringt (per Reflection; fehlt er, bleibt es beim WAV).</summary>
     private static AudioClip OggClip(string file, string name)
     {
+        using var stream = File.OpenRead(file);
+        return OggClip(stream, name);
+    }
+
+    private static AudioClip OggClip(Stream stream, string name)
+    {
         var t = Type.GetType("NVorbis.VorbisReader, UnknownsCollection");
         if (t == null) return null;
-        using var fs = File.OpenRead(file);
-        var reader = Activator.CreateInstance(t, fs, false) as IDisposable;
+        var reader = Activator.CreateInstance(t, stream, false) as IDisposable;
         try
         {
             int ch = (int)t.GetProperty("Channels").GetValue(reader);
