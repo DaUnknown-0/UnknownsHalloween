@@ -146,8 +146,6 @@ public class HwUpperMinigame : Minigame
     private bool _done, _wasDown;
     private float _opened, _doneAt;
     private Vector2 _lastMouse;
-    private Controller _ctl;
-    private bool _ctlFailed;
 
     public void Awake()
     {
@@ -199,26 +197,13 @@ public class HwUpperMinigame : Minigame
         }
     }
 
-    /// <summary>Zeiger im Lokalraum: Controller des Spiels (Maus, Touch, Controller-Zeiger) wie die vanilla Minispiele, sonst Maus.</summary>
+    /// <summary>
+    /// Zeiger im Lokalraum, wie AtlasMinigame: Maus ueber Camera.main. Ein selbst angelegter Controller des Spiels lieferte
+    /// im echten Spiel keine brauchbare Position, die Minispiele liessen sich nicht bedienen (User 20.11.: "Tasks oben nicht
+    /// loesbar"); der Autotest fuhr ueber Simulate und hat das nicht gesehen.
+    /// </summary>
     private void ReadInput(out Vector2 mouse, out bool down)
     {
-        if (!_ctlFailed)
-        {
-            try
-            {
-                _ctl ??= new Controller();
-                _ctl.Update();
-                down = _ctl.AnyTouch;
-                Vector2 wp = down ? _ctl.DragPosition : _ctl.HoverPosition;
-                mouse = transform.InverseTransformPoint(new Vector3(wp.x, wp.y, transform.position.z));
-                return;
-            }
-            catch (Exception e)
-            {
-                _ctlFailed = true;
-                HalloweenPlugin.Logger.LogWarning($"{HollowmereUpperTasks.LogPrefix} Controller input failed, using the mouse: {e.Message}");
-            }
-        }
         var cam = Camera.main;
         var w = cam != null ? cam.ScreenToWorldPoint(Input.mousePosition) : Vector3.zero;
         mouse = transform.InverseTransformPoint(w);
