@@ -1078,7 +1078,7 @@ def emit_upper(up, data, props, sprites):
     a("// Licensed under GPL-3.0-or-later. See LICENSE for details.")
     a("//")
     a("// AUTOMATISCH ERZEUGT von tools/gen_villa.py aus tools/villa_layout.py (UPPER_*) - NICHT VON HAND AENDERN.")
-    a("// Hollowmere Manor, Obergeschoss (Host-Option 1970) und die Aenderungen am Erdgeschoss, die es mitbringt (Weltmeter).")
+    a("// Hollowmere Manor, Obergeschoss (Host-Option 1939) und die Aenderungen am Erdgeschoss, die es mitbringt (Weltmeter).")
     a("// HollowmereMap.WithUpper fuegt das in VillaSmall/VillaLarge ein.")
     a("")
     a("using System.Collections.Generic;")

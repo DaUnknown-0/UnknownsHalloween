@@ -539,7 +539,7 @@ def in_variant(variants, v):
     return v in variants
 
 
-# ================================================================== Obergeschoss (17.11., Host-Option 1970 "Hollowmere Upper Floor")
+# ================================================================== Obergeschoss (17.11., Host-Option 1939 "Hollowmere Upper Floor")
 # Eigene Flaeche noerdlich des Hauses (Plan-y negativ, 6 m Leerraum zur Nordwand), fuer Klein und Gross gleich. gen_villa schreibt
 # sie mit allen Aenderungen am Erdgeschoss nach Villa/VillaUpper.g.cs; HollowmereMap fuegt sie bei eingeschalteter Option zusammen.
 # Treppen ohne Knopf (HollowmereWorld.Stairs): wer auf der Treppe in Gehrichtung die Ausloeselinie ueberschreitet, steht ohne Blende am

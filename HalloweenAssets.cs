@@ -399,13 +399,21 @@ internal static class HalloweenAssets
 
     private static float _preferAt;
     private static string _preferred;
+    private static bool _noRequestedKey;   // Atlas fehlt oder ist zu alt: nicht jede Sekunde neu scheitern (Review 20.11., B-3)
 
     // The host chose a map of this plugin while its packages are still in the queue here (behind three dozen
     // costume packages): those go to the front, so the map joins Atlas and the start unblocks as early as possible.
     private static void PreferRequestedMap()
     {
+        if (_noRequestedKey) return;
         string key;
-        try { key = RequestedMapKey(); } catch { return; }       // older Atlas without RequestedKey
+        try { key = RequestedMapKey(); }
+        catch (Exception e)                                       // no Atlas, or an older Atlas without RequestedKey
+        {
+            _noRequestedKey = true;                               // the JIT failure repeats on every call, so stop asking
+            Log($"map preference off ({e.GetType().Name})");
+            return;
+        }
         if (string.IsNullOrEmpty(key)) return;
         string prefix = key + "_";
         int moved = 0;

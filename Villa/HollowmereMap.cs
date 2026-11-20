@@ -10,7 +10,7 @@
 //
 // Groesse: Host-Option 1960 (Small = nur das Haus, Large = mit Garten, Friedhof und Gruft). Atlas ruft die
 // Factory vor jedem Kartenbau neu auf, die Option gilt also ab der naechsten Runde.
-// Obergeschoss (17.11.): Host-Option 1970, fuer beide Groessen; WithUpper fuegt Villa/VillaUpper.g.cs ein (eigene Flaeche
+// Obergeschoss (17.11.): Host-Option 1939 (bis 20.11. faelschlich 1970 = Freddy-Kill-Animation), fuer beide Groessen; WithUpper fuegt Villa/VillaUpper.g.cs ein (eigene Flaeche
 // noerdlich des Hauses, Treppen ohne Knopf in HollowmereWorld.Stairs, Sperre vor der Freitreppe weg).
 
 using System;
@@ -40,7 +40,7 @@ internal static class HollowmereMap
         catch (Exception e) { HalloweenPlugin.Logger.LogError($"[Halloween/Villa] size option failed: {e}"); }
         try
         {
-            UpperFloor = CustomOption.Create(1970, CustomOption.CustomOptionType.General, "Hollowmere Upper Floor", true, null, false, null, "Hollowmere Manor");
+            UpperFloor = CustomOption.Create(1939, CustomOption.CustomOptionType.General, "Hollowmere Upper Floor", true, null, false, null, "Hollowmere Manor");
         }
         catch (Exception e) { HalloweenPlugin.Logger.LogError($"[Halloween/Villa] upper floor option failed: {e}"); }
 
@@ -155,7 +155,7 @@ internal static class HollowmereMap
         return r;
     }
 
-    /// <summary>Obergeschoss einfuegen (Option 1970): Flaeche, Raeume, Objekte, Aufgaben, Vents und eine Kamera oben; unten fallen
+    /// <summary>Obergeschoss einfuegen (Option 1939): Flaeche, Raeume, Objekte, Aufgaben, Vents und eine Kamera oben; unten fallen
     /// die Kollision der Freitreppe und die Sperre weg (Bretterhaufen seitlich), die Dienstbotentreppe kommt in die Kueche.</summary>
     private static void WithUpper(AtlasMapDef d, bool large)
     {

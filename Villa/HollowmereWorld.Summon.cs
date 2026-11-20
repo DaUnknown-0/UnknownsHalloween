@@ -323,7 +323,12 @@ internal sealed partial class HollowmereWorld
         }
     }
 
-    [HarmonyLib.HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.ReportDeadBody))]
+    // StartMeeting statt ReportDeadBody (Review 20.11., B-2): ReportDeadBody kann nach dem Prefix noch ohne Meeting
+    // zurueckkehren (Spiel vorbei, CheckTaskCompletion, Notfallknopf bei kritischer Sabotage), dann starben die
+    // Vergifteten zu frueh. Der Host ruft StartMeeting erst nach allen Pruefungen auf (RpcStartMeeting ist im Spiel in
+    // ReportDeadBody eingeinlined, ein Patch darauf griffe nie), und zwar vor dem Senden des Start-RPC: die Tode
+    // erreichen die Clients also weiter vor dem Meeting.
+    [HarmonyLib.HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.StartMeeting))]
     private static class PoisonBeforeMeetingPatch
     {
         [HarmonyLib.HarmonyPriority(HarmonyLib.Priority.Last)]

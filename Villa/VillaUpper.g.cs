@@ -2,7 +2,7 @@
 // Licensed under GPL-3.0-or-later. See LICENSE for details.
 //
 // AUTOMATISCH ERZEUGT von tools/gen_villa.py aus tools/villa_layout.py (UPPER_*) - NICHT VON HAND AENDERN.
-// Hollowmere Manor, Obergeschoss (Host-Option 1970) und die Aenderungen am Erdgeschoss, die es mitbringt (Weltmeter).
+// Hollowmere Manor, Obergeschoss (Host-Option 1939) und die Aenderungen am Erdgeschoss, die es mitbringt (Weltmeter).
 // HollowmereMap.WithUpper fuegt das in VillaSmall/VillaLarge ein.
 
 using System.Collections.Generic;

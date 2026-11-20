@@ -265,7 +265,7 @@ internal sealed partial class HollowmereWorld
                 }
                 if (_upTask == null)
                 {
-                    HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag: uptasks {type} ({kind}): not in this round (option 1970 off?) - absent");
+                    HalloweenPlugin.Logger.LogInfo($"{LogPrefix} diag: uptasks {type} ({kind}): not in this round (option 1939 off?) - absent");
                     _upAbsent++; _upTaskI++; _diagStep = 0; return;
                 }
                 Console con = null;

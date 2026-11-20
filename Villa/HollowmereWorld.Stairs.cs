@@ -3,7 +3,7 @@
 //
 // HollowmereWorld.Stairs - Treppen ins Obergeschoss ohne Knopf (17.11., User: "seamless, man laeuft einfach die Treppe hoch").
 //
-// Das Obergeschoss liegt als eigene Flaeche noerdlich des Hauses (VillaUpper.g.cs, Host-Option 1970). Jede Treppe hat unten eine
+// Das Obergeschoss liegt als eigene Flaeche noerdlich des Hauses (VillaUpper.g.cs, Host-Option 1939). Jede Treppe hat unten eine
 // Ausloeselinie auf den Stufen (nur nach Norden ueberschritten) und oben eine am Treppenschacht (nur nach Sueden). Wer sie in
 // Gehrichtung ueberschreitet, steht ohne Blende am anderen Ende, x bleibt gleich, die Kamera springt mit (FollowerCamera
 // .SnapToTarget, sonst fliegt sie ueber die Karte). Der Ankunftspunkt liegt jeweils 0,7 m hinter der Gegenlinie, damit niemand
@@ -137,7 +137,7 @@ internal sealed partial class HollowmereWorld
     {
         if (_stairs.Length == 0)
         {
-            HalloweenPlugin.Logger.LogWarning($"{LogPrefix} diag: stairs: no upper floor in this round (option 1970 off?) - FAIL");
+            HalloweenPlugin.Logger.LogWarning($"{LogPrefix} diag: stairs: no upper floor in this round (option 1939 off?) - FAIL");
             _diagTask++; _diagStep = 0; return;
         }
         if (_diagStair >= _stairs.Length) { _diagStair = 0; _diagTask++; _diagStep = 0; _diagAt = Time.time + 0.5f; return; }
