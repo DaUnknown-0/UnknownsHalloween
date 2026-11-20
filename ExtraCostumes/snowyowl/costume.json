@@ -5,5 +5,7 @@
  "stillWalk": true,
  "walkFps": 12,
  "idleFps": 6,
- "walkIntro": 4
+ "walkIntro": 4,
+ "variantGroup": "Halloween Owl",
+ "variantLabel": "Snowy"
 }

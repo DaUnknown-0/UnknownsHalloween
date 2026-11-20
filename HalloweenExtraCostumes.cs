@@ -47,6 +47,7 @@ internal static class HalloweenExtraCostumes
         public int[] Flashes;
         public string KillKey;                      // Bildschluessel der Kill-Szene (hk_<KillKey>_...), Standard: Key
         public List<AltScene> Alt;                  // weitere Szenen; eine von allen wird je Kill gewuerfelt
+        public string VariantGroup, VariantLabel;   // Varianten-Gruppe im Hut-Tab (nur mit Forgotten Fixes), z. B. "Halloween Dragon" / "Ember"
     }
 
     internal sealed class AltScene
@@ -446,7 +447,48 @@ internal static class HalloweenExtraCostumes
         d.WalkFps = Num("walkFps", 10f, 1f, 30f);
         d.IdleFps = Num("idleFps", 10f, 0.5f, 30f);
         d.WalkIntro = (int)Num("walkIntro", 0f, 0f, 16f);
+        d.VariantGroup = VariantText(Str("variantGroup"));
+        d.VariantLabel = d.VariantGroup != null ? VariantText(Str("variantLabel")) : null;
         if (e.TryGetProperty("kill", out var k) && k.ValueKind == JsonValueKind.Object) ReadKill(k, d);
         return d;
     }
+
+    // Varianten-Felder sind reine Anzeige: ungueltige Werte werden still ignoriert, das Kostuem bleibt gueltig.
+    private static string VariantText(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return null;
+        s = s.Trim();
+        return s.Length <= 40 && !s.Any(char.IsControl) && !s.Contains('<') ? s : null;
+    }
+
+    // ---------------------------------------------------------------- Varianten im Hut-Tab
+    //
+    // User 20.11.: mehrere Varianten eines Kostuems (die vier Drachen) sollen im Hut-Tab als ein Chip erscheinen, die
+    // genaue Variante waehlt man danach in einem kleinen Menue. Das Menue baut Forgotten Fixes (UsefulTORStuff.HatVariants);
+    // diese Mod meldet nur Gruppe und Beschriftung per Reflection an. Ohne Forgotten Fixes passiert nichts. Die Hut-IDs
+    // bleiben, wie sie sind (aus dem Namen), so behaelt jeder seinen ausgewaehlten Hut.
+
+    private static System.Reflection.MethodInfo _setGroup;
+    private static bool _setGroupLooked;
+
+    /// <summary>Gruppe und Beschriftung eines Online-Kostuems an Forgotten Fixes melden (null-Gruppe = keine Gruppe).</summary>
+    internal static void AnnounceVariant(string costumeName, Def d)
+    {
+        try
+        {
+            if (!_setGroupLooked)
+            {
+                _setGroupLooked = true;
+                var t = Type.GetType("UsefulTORStuff.HatVariants, UsefulTORStuff");
+                _setGroup = t?.GetMethod("SetGroup", new[] { typeof(string), typeof(string), typeof(string) });
+            }
+            if (_setGroup == null || costumeName == null) return;
+            if (d.VariantGroup == null && _announced.Remove(costumeName) == false) return;   // nie gemeldet: nichts zu loeschen
+            if (d.VariantGroup != null) _announced.Add(costumeName);
+            _setGroup.Invoke(null, new object[] { UnknownsCollection.UCHats.HatIdOf(costumeName), d.VariantGroup, d.VariantLabel });
+        }
+        catch (Exception e) { Warn($"variant group for {d.Key}: {e.Message}"); }
+    }
+
+    private static readonly HashSet<string> _announced = new(StringComparer.Ordinal);
 }

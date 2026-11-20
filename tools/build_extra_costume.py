@@ -16,7 +16,10 @@
 # costume.json (alles ausser "name" optional):
 #   {"name": "Halloween Bat", "hidesBody": true, "hasAccent": true, "stillWalk": true, "walkFps": 12, "idleFps": 6,
 #    "walkIntro": 4, "hasLegs": false, "noLiveBob": false, "minVersion": "1.0.2",
+#    "variantGroup": "Halloween Dragon", "variantLabel": "Ember",
 #    "kill": {"frames": 48, "flashes": [12, 30], "hold": 0.4, "killerLayers": false}}
+# variantGroup/variantLabel: Kostueme derselben Gruppe zeigt der Hut-Tab (mit Forgotten Fixes) als einen Chip, die genaue
+# Variante waehlt man im Menue danach; variantLabel ist ihr Name dort (Standard: der Hutname).
 
 import hashlib
 import json
@@ -80,7 +83,7 @@ def build(key):
         if meta.get(f): entry[f] = True
     for n in NUMS:
         if n in meta: entry[n] = meta[n]
-    for opt in ("minVersion", "kill"):
+    for opt in ("minVersion", "variantGroup", "variantLabel", "kill"):
         if opt in meta: entry[opt] = meta[opt]
     m = load_manifest()
     m["costumes"] = [c for c in m["costumes"] if c["key"] != key] + [entry]

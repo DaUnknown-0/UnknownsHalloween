@@ -410,6 +410,7 @@ namespace UnknownsHalloween {
                 KillerLayers = d.KillerLayers, Alt = AltScenes(d),
             };
             Costumes = Costumes.Append(c).ToArray();
+            HalloweenExtraCostumes.AnnounceVariant(c.Name, d);              // variant group in the hats tab (Forgotten Fixes)
             lock (onlineWaiting) onlineWaiting.Add(c);
             HalloweenAssets.WhenReady(d.Package, RegisterOnline);
         }
@@ -420,6 +421,7 @@ namespace UnknownsHalloween {
             c.HasLegs = d.HasLegs; c.HasAccent = d.HasAccent; c.NoLiveBob = d.NoLiveBob; c.StillWalk = d.StillWalk;
             c.WalkFps = d.WalkFps; c.IdleFps = d.IdleFps; c.WalkIntro = d.WalkIntro;
             SetKill(c, d);
+            HalloweenExtraCostumes.AnnounceVariant(c.Name, d);              // group or label may have changed (next tab open)
             if (d.Name != c.Name) HalloweenPlugin.Logger?.LogInfo($"[Halloween] online costume '{c.Key}' renamed to '{d.Name}': takes effect after a restart.");
             if (d.Package == c.Package) return;
             string old = c.Package;
