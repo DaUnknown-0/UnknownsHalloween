@@ -1,0 +1,9 @@
+{
+ "name": "Halloween Dragon Knight",
+ "hidesBody": true,
+ "hasAccent": true,
+ "stillWalk": true,
+ "walkFps": 12,
+ "idleFps": 6,
+ "walkIntro": 4
+}
