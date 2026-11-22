@@ -35,11 +35,13 @@ internal static class HalloweenExtraCostumes
     private const string ManifestName = "costumes.json";
     private const int MaxCostumes = 64;
     private const long MaxPackage = 64L * 1024 * 1024;
+    private static readonly Version HatSceneMinVersion = new(1, 1, 4, 2);
+    private static readonly Regex HatIdRx = new(@"\Ahat_[\p{L}\p{N}_.'-]{1,124}\z");
 
     /// <summary>Ein Kostuem aus der Online-Liste, geprueft.</summary>
     internal sealed class Def
     {
-        public string Key, Name, Package, Sha256;
+        public string Key, Name, Package, Sha256, ForHat;
         public long Size;
         public bool HasLegs, HasAccent, HidesBody, NoLiveBob, StillWalk, KillerLayers;
         public float WalkFps = 10f, IdleFps = 10f, KillHold;
@@ -229,12 +231,24 @@ internal static class HalloweenExtraCostumes
         }
         var defs = manifest.Costumes;
         Log($"{defs.Count} online costume(s): {string.Join(", ", defs.Select(d => d.Key))}; {manifest.Updates.Count} update package(s), {manifest.Tweaks.Count} tweak(s)");
-        foreach (var d in defs)
+        foreach (var d in defs.Where(d => d.ForHat == null))
         {
             HalloweenAssets.AddExtra(d.Package, d.Size, d.Sha256, SourceBase + d.Package, Path.Combine(Folder, d.Package));
             try { HalloweenCostumes.AddOnline(d); }
             catch (Exception e) { Warn($"{d.Key}: {e.Message}"); }
         }
+        var hatScenes = new List<Def>();
+        foreach (var d in defs.Where(d => d.ForHat != null))
+        {
+            if (HalloweenCostumes.KnowsSceneKey(d.Key))
+            {
+                Warn($"{d.Key}: hat scene key already in use, skipped");
+                continue;
+            }
+            HalloweenAssets.AddExtra(d.Package, d.Size, d.Sha256, SourceBase + d.Package, Path.Combine(Folder, d.Package));
+            hatScenes.Add(d);
+        }
+        HalloweenCostumes.SyncHatScenes(hatScenes);
         try { ApplyUpdates(manifest); }
         catch (Exception e) { Warn($"updates: {e.Message}"); }
     }
@@ -332,6 +346,11 @@ internal static class HalloweenExtraCostumes
                 if (list.Any(x => x.Key == d.Key || x.Name == d.Name || x.Package == d.Package))
                 {
                     Warn($"{d.Key}: key, name or package listed twice, skipped");
+                    continue;
+                }
+                if (d.ForHat != null && list.Any(x => x.ForHat == d.ForHat))
+                {
+                    Warn($"{d.Key}: hat '{d.ForHat}' already has a scene, skipped");
                     continue;
                 }
                 list.Add(d);
@@ -433,6 +452,15 @@ internal static class HalloweenExtraCostumes
             Log($"{d.Key} needs Unknown's Halloween {min} or newer, skipped");
             return null;
         }
+        if (e.TryGetProperty("forHat", out var hat))
+        {
+            d.ForHat = hat.ValueKind == JsonValueKind.String ? hat.GetString() : null;
+            if (d.ForHat == null || !HatIdRx.IsMatch(d.ForHat))
+                throw new FormatException($"{d.Key}: bad forHat product ID");
+            if (min == null || !Version.TryParse(min, out var hatMin) || hatMin < HatSceneMinVersion)
+                throw new FormatException($"{d.Key}: forHat requires minVersion {HatSceneMinVersion} or newer");
+            d.Name ??= d.ForHat.Substring(4).Replace('_', ' ');
+        }
         if (d.Name == null || d.Name.Length < 3 || d.Name.Length > 40 || d.Name.Any(char.IsControl) || d.Name.Contains('<'))
             throw new FormatException($"{d.Key}: bad name");
         if (d.Package == null || !PackRx.IsMatch(d.Package)) throw new FormatException($"{d.Key}: bad package name");
@@ -450,6 +478,8 @@ internal static class HalloweenExtraCostumes
         d.VariantGroup = VariantText(Str("variantGroup"));
         d.VariantLabel = d.VariantGroup != null ? VariantText(Str("variantLabel")) : null;
         if (e.TryGetProperty("kill", out var k) && k.ValueKind == JsonValueKind.Object) ReadKill(k, d);
+        if (d.ForHat != null && (d.KillFrames <= 0 || (d.KillKey != null && d.KillKey != d.Key) || d.Alt?.Count > 0))
+            throw new FormatException($"{d.Key}: forHat requires a single kill scene with the entry's key");
         return d;
     }
 

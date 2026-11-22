@@ -257,6 +257,7 @@ namespace UnknownsHalloween {
 
         private static readonly Dictionary<string, Costume> ByHatName = new();
         private static readonly Dictionary<string, Costume> ByHatId = new();
+        private static readonly Dictionary<string, Costume> HatScenes = new(StringComparer.Ordinal);
 
         /// <summary>Kostuem-Schluessel ("sadako", "xeno" ...) zu einer Hut-Id, sonst null (Rauswurf-Sonderszenen).</summary>
         internal static string CostumeKeyOfHat(string hatId) =>
@@ -394,6 +395,28 @@ namespace UnknownsHalloween {
 
         internal static bool KnowsCostume(string key, string name) =>
             Costumes.Any(c => c.Key == key || c.Name == name || (c.KillKey != null && c.KillKey == key));
+
+        internal static bool KnowsSceneKey(string key) => Standalone.Any(s => s.Key == key)
+            || Costumes.Any(c => c.Key == key || c.KillKey == key || c.Alt?.Any(s => s.Key == key) == true);
+
+        internal static void SyncHatScenes(IEnumerable<HalloweenExtraCostumes.Def> defs) {
+            var previous = HatScenes.Values.ToArray();
+            HatScenes.Clear();
+            foreach (var d in defs) {
+                HatScenes.Add(d.ForHat, new Costume {
+                    Key = d.Key, Name = d.Name, Package = d.Package, KillKey = d.Key,
+                    KillFrames = d.KillFrames, Flashes = d.Flashes, KillHold = d.KillHold, KillerLayers = d.KillerLayers,
+                });
+            }
+            var packages = HatScenes.Values.Select(c => c.Package).ToHashSet();
+            foreach (var c in previous) {
+                mainScene.Remove(c);
+                if (!packages.Contains(c.Package)) HalloweenAssets.RemoveExtra(c.Package);
+            }
+        }
+
+        private static bool HatSceneReady(Costume c) => HalloweenAssets.PackageReady(c.Package)
+            && HalloweenAssets.PackageFiles(c.Package).Contains($"hats.hk_{c.KillKey}_back_01.png");
 
         internal static void AddOnline(HalloweenExtraCostumes.Def d) {
             var known = Costumes.FirstOrDefault(c => c.Online && c.Key == d.Key);
@@ -1249,9 +1272,12 @@ namespace UnknownsHalloween {
                 if (GlobalCamo()) return null;
                 var pc = killer.Object;
                 Costume c = null;
+                var drawn = pc != null && pc.cosmetics != null && pc.cosmetics.hat != null ? pc.cosmetics.hat.Hat : null;
+                string hatId = drawn != null ? drawn.ProductId : pc != null ? pc.CurrentOutfit?.HatId : killer.DefaultOutfit?.HatId;
                 if (pc != null) c = ShownCostume(pc);
-                else if (killer.DefaultOutfit != null && killer.DefaultOutfit.HatId != null) ByHatId.TryGetValue(killer.DefaultOutfit.HatId, out c);
-                return c != null && c.KillKey != null ? c : null;
+                else if (hatId != null) ByHatId.TryGetValue(hatId, out c);
+                if (c?.KillKey != null) return c;
+                return hatId != null && HatScenes.TryGetValue(hatId, out var scene) && HatSceneReady(scene) ? scene : null;
             } catch { return null; }
         }
 
@@ -1281,7 +1307,7 @@ namespace UnknownsHalloween {
             static bool Prefix([HarmonyArgument(0)] NetworkedPlayerInfo killer,
                                [HarmonyArgument(1)] NetworkedPlayerInfo victim, bool __runOriginal) {
                 try {
-                    if (!__runOriginal || !Enabled || ByHatId.Count == 0) return true;
+                    if (!__runOriginal || !Enabled || (ByHatId.Count == 0 && HatScenes.Count == 0)) return true;
                     var c = CostumeOfKiller(killer, victim);
                     if (c == null || !CostumeEnabled(c)) return true;
                     queue.Add((c, PickScene(c), ColorIdOf(victim), KillerColorIdOf(killer), Time.time + 20f));
@@ -1337,6 +1363,7 @@ namespace UnknownsHalloween {
                     list.Add($"{c.Key}random|{name}: Random");
                 }
             }
+            foreach (var c in HatScenes.Values) list.Add($"{c.KillKey}|{c.Name}");
             foreach (var s in Standalone) list.Add($"{s.Key}|{s.Label}");
             return list.ToArray();
         }
@@ -1384,10 +1411,11 @@ namespace UnknownsHalloween {
                 }
                 bool random = key.EndsWith("random", StringComparison.Ordinal);
                 if (random) key = key.Substring(0, key.Length - "random".Length);
-                var c = Costumes.Where(x => x.KillKey != null).FirstOrDefault(x => x.Key == key || x.KillKey == key
+                var c = Costumes.Concat(HatScenes.Values).Where(x => x.KillKey != null).FirstOrDefault(x => x.Key == key || x.KillKey == key
                                                      || (x.Alt != null && x.Alt.Any(s => s.Key == key))
                                                      || (key.Length >= 3 && x.Key.StartsWith(key)));
                 if (c == null) return "Unbekannt. Moeglich: " + string.Join(", ", SceneList().Select(s => s.Split('|')[0]));
+                if (HatScenes.Values.Contains(c) && !HatSceneReady(c)) return $"Szene {c.Name}: Bilder noch nicht geladen.";
                 if (HudManager.Instance == null) return "Kein HUD - erst in eine Lobby oder Runde gehen.";
                 int color = 0;
                 try { color = PlayerControl.LocalPlayer.Data.DefaultOutfit.ColorId; } catch { }

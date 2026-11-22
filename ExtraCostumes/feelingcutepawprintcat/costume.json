@@ -1,0 +1,13 @@
+{
+ "forHat": "hat_Feeling_Cute_Pawprint_Cat",
+ "minVersion": "1.1.4.2",
+ "kill": {
+  "frames": 62,
+  "flashes": [
+   25,
+   33
+  ],
+  "hold": 0,
+  "killerLayers": true
+ }
+}

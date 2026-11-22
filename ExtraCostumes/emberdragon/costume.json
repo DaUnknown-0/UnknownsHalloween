@@ -7,5 +7,14 @@
  "idleFps": 6,
  "walkIntro": 4,
  "variantGroup": "Halloween Dragon",
- "variantLabel": "Ember"
+ "variantLabel": "Ember",
+ "kill": {
+  "frames": 56,
+  "flashes": [
+   22,
+   44
+  ],
+  "hold": 0.0,
+  "killerLayers": true
+ }
 }

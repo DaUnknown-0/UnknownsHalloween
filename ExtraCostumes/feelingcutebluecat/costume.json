@@ -1,0 +1,13 @@
+{
+ "forHat": "hat_Feeling_Cute_Blue_Cat",
+ "minVersion": "1.1.4.2",
+ "kill": {
+  "frames": 46,
+  "flashes": [
+   18,
+   31
+  ],
+  "hold": 0,
+  "killerLayers": true
+ }
+}

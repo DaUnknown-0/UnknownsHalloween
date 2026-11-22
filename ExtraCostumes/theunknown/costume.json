@@ -1,0 +1,13 @@
+{
+ "forHat": "hat_The_Unknown",
+ "minVersion": "1.1.4.2",
+ "kill": {
+  "frames": 58,
+  "flashes": [
+   19,
+   30
+  ],
+  "hold": 0,
+  "killerLayers": true
+ }
+}

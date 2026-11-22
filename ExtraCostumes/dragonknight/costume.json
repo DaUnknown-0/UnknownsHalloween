@@ -7,5 +7,14 @@
  "idleFps": 6,
  "walkIntro": 4,
  "variantGroup": "Halloween Dragon",
- "variantLabel": "Knight"
+ "variantLabel": "Knight",
+ "kill": {
+  "frames": 46,
+  "flashes": [
+   14,
+   20
+  ],
+  "hold": 0.0,
+  "killerLayers": true
+ }
 }

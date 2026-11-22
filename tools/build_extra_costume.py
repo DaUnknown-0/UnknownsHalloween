@@ -13,11 +13,12 @@
 # Ergebnis: ../UnknownsHalloween-Assets/extra/extra_<key>_<sha8>.hwp und der Eintrag in extra/costumes.json. Danach im
 # Asset-Repo committen und main pushen; ein Tag ist nicht noetig. Alte Pakete des Kostuems werden geloescht.
 #
-# costume.json (alles ausser "name" optional):
+# costume.json (bei Kostuemen alles ausser "name" optional):
 #   {"name": "Halloween Bat", "hidesBody": true, "hasAccent": true, "stillWalk": true, "walkFps": 12, "idleFps": 6,
 #    "walkIntro": 4, "hasLegs": false, "noLiveBob": false, "minVersion": "1.0.2",
 #    "variantGroup": "Halloween Dragon", "variantLabel": "Ember",
 #    "kill": {"frames": 48, "flashes": [12, 30], "hold": 0.4, "killerLayers": false}}
+# Eine reine Hut-Szene enthaelt nur hk_-Bilder und braucht "forHat" und "kill". "name" ist optional.
 # variantGroup/variantLabel: Kostueme derselben Gruppe zeigt der Hut-Tab (mit Forgotten Fixes) als einen Chip, die genaue
 # Variante waehlt man im Menue danach; variantLabel ist ihr Name dort (Standard: der Hutname).
 
@@ -35,6 +36,7 @@ OUT = REPO / "extra"
 MANIFEST = OUT / "costumes.json"
 FLAGS = ["hidesBody", "hasAccent", "stillWalk", "hasLegs", "noLiveBob"]
 NUMS = ["walkFps", "idleFps", "walkIntro"]
+HAT_SCENE_MIN_VERSION = (1, 1, 4, 2)
 
 
 def load_manifest():
@@ -55,21 +57,61 @@ def drop_old(key, keep=None):
             print(f"  removed {p.name}")
 
 
+def hat_scene_meta(key, meta, files):
+    hat = meta["forHat"]
+    if not isinstance(hat, str) or not re.fullmatch(r"hat_[\w.'-]{1,124}", hat):
+        raise ValueError(f"{key}: bad forHat product ID")
+    name = meta.get("name", hat[4:].replace("_", " "))
+    if not isinstance(name, str) or not 3 <= len(name) <= 40 or "<" in name or any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in name):
+        raise ValueError(f"{key}: bad name")
+    minimum = meta.get("minVersion", ".".join(map(str, HAT_SCENE_MIN_VERSION)))
+    if not isinstance(minimum, str) or not re.fullmatch(r"[0-9]+(?:\.[0-9]+){1,3}", minimum):
+        raise ValueError(f"{key}: bad minVersion")
+    version = tuple(map(int, minimum.split(".")))
+    if version < HAT_SCENE_MIN_VERSION or any(n > 2147483647 for n in version):
+        raise ValueError(f"{key}: forHat requires minVersion 1.1.4.2 or newer")
+    kill = meta.get("kill")
+    if not isinstance(kill, dict) or kill.get("key", key) != key or kill.get("alt"):
+        raise ValueError(f"{key}: forHat requires a single kill scene with the entry's key")
+    frames = kill.get("frames")
+    if type(frames) is not int or not 1 <= frames <= 200:
+        raise ValueError(f"{key}: bad kill frame count")
+    layers = ["back", "front", "vrest", "vbody", "vshade"]
+    if kill.get("killerLayers") is True:
+        layers += ["urest", "ubody", "ushade", "orest", "obody", "oshade"]
+    expected = {f"hk_{key}_{layer}_{i:02}.png" for layer in layers for i in range(1, frames + 1)}
+    found = {p.name for p in files}
+    if expected != found:
+        raise ValueError(f"{key}: kill frames mismatch, missing {sorted(expected - found)[:5]}, extra {sorted(found - expected)[:5]}")
+    return {"name": name, "forHat": hat, "minVersion": minimum, "kill": kill}
+
+
 def build(key):
     assert re.fullmatch(r"[a-z][a-z0-9]{1,23}", key), f"bad key {key}"
     folder = SRC / key
     meta = json.loads((folder / "costume.json").read_text(encoding="utf-8"))
-    # Ohne Rueckbild schaltet TOR die hintere Hut-Ebene ab, und HalloweenCostumes animiert den Hut dann nicht (Schutz fuer
-    # Leiter- und Leichenposen): kein Laufen, keine Spielerfarbe (Fledermaus 30.10.). Die eingebauten Kostueme haben dafuer
-    # ein leeres 450x562-Bild; fehlt es, wird es hier angelegt.
-    back = folder / f"hw_{key}_back.png"
-    if not back.exists():
-        from PIL import Image
-        Image.new("RGBA", (450, 562), (0, 0, 0, 0)).save(back)
-        print(f"  {back.name}: leeres Rueckbild angelegt")
+    hat_scene = "forHat" in meta
+    if not hat_scene:
+        # TOR needs a back sprite to animate the hat. A transparent sprite keeps the back layer available.
+        back = folder / f"hw_{key}_back.png"
+        if not back.exists():
+            from PIL import Image
+            Image.new("RGBA", (450, 562), (0, 0, 0, 0)).save(back)
+            print(f"  {back.name}: leeres Rueckbild angelegt")
     files = sorted(p for p in folder.iterdir() if p.is_file() and p.suffix == ".png"
-                   and (p.name.startswith(f"hw_{key}_") or p.name.startswith(f"hk_{key}_")))
-    assert any(p.name == f"hw_{key}_1.png" for p in files), f"hw_{key}_1.png missing in {folder}"
+                   and (p.name.startswith(f"hk_{key}_") or (not hat_scene and p.name.startswith(f"hw_{key}_"))))
+    m = load_manifest()
+    other = [c for c in m["costumes"] if c["key"] != key]
+    if hat_scene:
+        entry = hat_scene_meta(key, meta, files)
+        if any(c.get("forHat") == entry["forHat"] for c in other):
+            raise ValueError(f"{key}: hat already has a kill scene in the manifest")
+    else:
+        assert any(p.name == f"hw_{key}_1.png" for p in files), f"hw_{key}_1.png missing in {folder}"
+        entry = {"name": meta["name"]}
+        entry.update({f: True for f in FLAGS if meta.get(f)})
+        for opt in NUMS + ["minVersion", "variantGroup", "variantLabel", "kill"]:
+            if opt in meta: entry[opt] = meta[opt]
     items = [("hats." + p.name, p.read_bytes()) for p in files]
     OUT.mkdir(parents=True, exist_ok=True)
     tmp = OUT / f"extra_{key}_tmp.hwp"
@@ -78,15 +120,8 @@ def build(key):
     name = f"extra_{key}_{sha[:8]}.hwp"
     tmp.replace(OUT / name)
     drop_old(key, keep=name)
-    entry = {"key": key, "name": meta["name"], "package": name, "size": len(data), "sha256": sha}
-    for f in FLAGS:
-        if meta.get(f): entry[f] = True
-    for n in NUMS:
-        if n in meta: entry[n] = meta[n]
-    for opt in ("minVersion", "variantGroup", "variantLabel", "kill"):
-        if opt in meta: entry[opt] = meta[opt]
-    m = load_manifest()
-    m["costumes"] = [c for c in m["costumes"] if c["key"] != key] + [entry]
+    entry = {"key": key, **entry, "package": name, "size": len(data), "sha256": sha}
+    m["costumes"] = other + [entry]
     save_manifest(m)
     print(f"{key}: {len(items)} Bilder, {len(data) / 1048576:.2f} MB -> extra/{name}")
 
