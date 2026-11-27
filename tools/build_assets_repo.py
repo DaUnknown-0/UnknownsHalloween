@@ -52,6 +52,8 @@ SOURCES = ["*_floor_*.jpg", "*_props_*.png", "*_consoles_*.png"]
 def pack_of(folder, name):
     stem = name.rsplit(".", 1)[0]
     if folder == "hats":
+        # Beschwoerungs-Szenen je Wesen ein Paket: zusammen ~110 MB, GitHub nimmt hoechstens 100 MB je Datei
+        if stem.startswith("hk_summon_"): return "hats_" + "_".join(stem.split("_")[:3])
         return "hats_" + "_".join(stem.split("_")[:2])          # hats_hw_freddy, hats_hk_xenobite, hats_hl_spider
     if folder == "villa":
         if name.startswith("villa_intro_"): return "villa_intro"
@@ -65,15 +67,22 @@ def pack_of(folder, name):
 
 
 def write_pack(path, items):
-    """HWP1: 'HWP1', uint32 Anzahl, je Eintrag uint16 Namenslaenge, Name (UTF-8), uint64 Offset, uint32 Laenge; dann Daten."""
+    """HWP1: 'HWP1', uint32 Anzahl, je Eintrag uint16 Namenslaenge, Name (UTF-8), uint64 Offset, uint32 Laenge; dann Daten.
+    Gleiche Dateien stehen nur einmal im Paket, ihre Eintraege zeigen auf denselben Offset (26.11.: die Beschwoerungs-
+    Szenen haben je Einstellung dieselbe Rueckebene in jedem Bild). Der Leser (HalloweenAssets) braucht dafuer nichts."""
     names = [n.encode("utf-8") for n, _ in items]
     head = 8 + sum(2 + len(n) + 12 for n in names)
     out = bytearray(b"HWP1" + struct.pack("<I", len(items)))
     off = head
+    at, blobs = {}, []
     for (n, data), nb in zip(items, names):
-        out += struct.pack("<H", len(nb)) + nb + struct.pack("<QI", off, len(data))
-        off += len(data)
-    for _, data in items:
+        key = hashlib.sha256(data).digest()
+        if key not in at:
+            at[key] = off
+            blobs.append(data)
+            off += len(data)
+        out += struct.pack("<H", len(nb)) + nb + struct.pack("<QI", at[key], len(data))
+    for data in blobs:
         out += data
     data = bytes(out)
     if not path.exists() or path.read_bytes() != data:

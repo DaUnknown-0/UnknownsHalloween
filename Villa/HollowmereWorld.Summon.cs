@@ -348,7 +348,7 @@ internal sealed partial class HollowmereWorld
         if (p == null || p.Data == null || p.Data.IsDead) return;
         SendRitual(SubSummonVictim, w => { w.Write(pid); w.Write((byte)kind); });
         NoteVictim(pid, kind);
-        GraveyardWorld.MarkVictim(pid);
+        MarkSummonVictim(pid, kind);
         try
         {
             bool freeplay = AmongUsClient.Instance != null && AmongUsClient.Instance.NetworkMode == NetworkModes.FreePlay;
@@ -449,6 +449,33 @@ internal sealed partial class HollowmereWorld
             var p = PlayerControl.AllPlayerControls.ToArray().FirstOrDefault(x => x != null && x.PlayerId == pid);
             if (p != null) CthulhuFire(p.GetTruePosition());
         }
+    }
+
+    // Kill-Szenen der Wesen (Blender, 26.11.): Dateien hk_summon_<wesen>_<ebene>_NN.png, Bildzahl, Blitze und Takt in
+    // HalloweenCostumes.Standalone. Fehlen sie (aelteres Asset-Paket), sieht das Opfer wie bisher die Pentagramm-Szene.
+    /// <summary>art wie HostKill: 0 Feuer (Diablo oder Baal), 1 Gift, 2 Geist, 4 Blitzfeuer.</summary>
+    private static string SummonSceneKey(int kind, Being being) =>
+        kind == 1 ? "mephisto" : kind == 2 ? "ghost" : kind == 4 ? "cthulhu" : being == Being.Baal ? "baal" : "diablo";
+
+    /// <summary>Alle Clients: Opfer merken (kein Vanilla-Overlay, Todesursache). Auf dem Client des Opfers die Szene des
+    /// Wesens, sonst die alte Pentagramm-Szene.</summary>
+    private void MarkSummonVictim(byte pid, int kind)
+    {
+        try
+        {
+            var lp = PlayerControl.LocalPlayer;
+            if (lp != null && lp.PlayerId == pid)
+            {
+                int color = lp.Data != null ? lp.Data.DefaultOutfit.ColorId : 0;
+                if (HalloweenCostumes.PlayNamedScene("summon_" + SummonSceneKey(kind, _being), color))
+                {
+                    GraveyardWorld.DemonVictims.Add(pid);
+                    return;
+                }
+            }
+        }
+        catch (Exception e) { HalloweenPlugin.Logger.LogWarning($"{LogPrefix} summon scene failed: {e.Message}"); }
+        GraveyardWorld.MarkVictim(pid);
     }
 
     private void MarkPoisoned(byte pid)
@@ -1145,7 +1172,7 @@ internal sealed partial class HollowmereWorld
                 if (w == null || !UCRpc.RequireHost("Hollowmere.SummonVictim")) return true;
                 if (kind == 3) w.MarkPoisoned(pid);
                 else if (kind == 5) w.PactSpent(pid);
-                else if (kind <= 4) { w.NoteVictim(pid, kind); GraveyardWorld.MarkVictim(pid); }
+                else if (kind <= 4) { w.NoteVictim(pid, kind); w.MarkSummonVictim(pid, kind); }
                 return true;
             }
             case SubBlessing:

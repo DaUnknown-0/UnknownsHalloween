@@ -84,6 +84,7 @@ internal sealed partial class HollowmereWorld
     private void GraveTick()
     {
         if (!_tasksTrimmed) { try { TrimTasks(); } catch { } }
+        if (Time.time >= _nextValveCheck) { _nextValveCheck = Time.time + 0.5f; try { OneStepValve(); } catch { } }
         if (_graveSr == null) return;
         if (_graveShown) { GraveAnimate(); return; }
         RememberFishbonePet();
@@ -126,6 +127,33 @@ internal sealed partial class HollowmereWorld
     }
 
     private static int Count(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<NormalPlayerTask> a) => a?.Length ?? 0;
+
+    private float _nextValveCheck;
+
+    /// <summary>"Release the Boiler Pressure" ist die geliehene Airship-Aufgabe Reset Breakers. Atlas kuerzt sie fuer seine Karten
+    /// auf 3 Durchgaenge (AtlasForeignTasks, User 29.10.); im Kesselraum soll ein Durchgang reichen (User 26.11.). Die Vorlagen
+    /// gelten fuer alle Clients gleich; die eigene Instanz wird zusaetzlich lokal gekuerzt, falls sie schon vor dieser Pruefung
+    /// kopiert wurde (wie HollowmereUpperTasks: nur unbegonnene Aufgaben, der Host sieht ohnehin nur den Abschluss).</summary>
+    private static void OneStepValve()
+    {
+        var ship = ShipStatus.Instance;
+        if (ship != null)
+            foreach (var arr in new[] { ship.CommonTasks, ship.ShortTasks, ship.LongTasks })
+                if (arr != null)
+                    foreach (var t in arr)
+                        if (t != null && t.TaskType == TaskTypes.ResetBreakers && t.MaxStep > 1) t.MaxStep = 1;
+        var lp = PlayerControl.LocalPlayer;
+        if (lp == null || lp.myTasks == null) return;
+        foreach (var pt in lp.myTasks)
+        {
+            if (pt == null || pt.TaskType != TaskTypes.ResetBreakers) continue;
+            var n = pt.TryCast<NormalPlayerTask>();
+            if (n == null || n.IsComplete || n.taskStep != 0 || n.MaxStep <= 1) continue;
+            n.MaxStep = 1;
+            n.ShowTaskStep = false;
+            HalloweenPlugin.Logger.LogInfo($"{LogPrefix} boiler pressure: one pass instead of several");
+        }
+    }
 
     private static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<NormalPlayerTask> WithoutAsteroids(
         Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<NormalPlayerTask> a)

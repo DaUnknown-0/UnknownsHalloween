@@ -106,6 +106,8 @@ namespace UnknownsHalloween {
             public int[] Flashes;
             public float Hold;          // seconds the last frame stays up (Costume.KillHold)
             public bool Killer;         // has the u*/o* layers (crewmate under / parts over the costume, killer's colour)
+            public float Fps = KillFps; // the summoning scenes (Blender, 2026-11-26) run at 24 fps
+            public bool Glow;           // has the soft light layer hk_<Key>_glow_NN (low resolution, drawn on top)
         }
 
         private static readonly Dictionary<Costume, KillScene> mainScene = new();
@@ -1322,12 +1324,13 @@ namespace UnknownsHalloween {
         /// <summary>Plays a cutscene without a costume behind it (Ravenhollow's demon, 2026-10-24) for the local
         /// victim: frames hk_&lt;key&gt;_back/vrest/vbody/vshade/front_NN, no killer layers. False when the frames are
         /// not there (the caller then shows nothing).</summary>
-        public static bool PlayStandaloneScene(string key, int frames, int[] flashes, float hold, int victimColor) {
+        public static bool PlayStandaloneScene(string key, int frames, int[] flashes, float hold, int victimColor, float fps = KillFps) {
             try {
                 Setup();
                 if (!HalloweenAssets.Exists(Res + $"hk_{key}_back_01.png")) return false;
                 var c = new Costume { Key = key, KillKey = key, Name = key };
-                var scene = new KillScene { Key = key, Frames = frames, Flashes = flashes, Hold = hold, Killer = false };
+                var scene = new KillScene { Key = key, Frames = frames, Flashes = flashes, Hold = hold, Killer = false, Fps = fps,
+                                            Glow = HalloweenAssets.Exists(Res + $"hk_{key}_glow_01.png") };
                 queue.Add((c, scene, victimColor, victimColor, Time.time + 20f));
                 return true;
             } catch (Exception e) {
@@ -1340,14 +1343,29 @@ namespace UnknownsHalloween {
         /// Returns a short status line. Keys: freddy, jason (slash), jasonlift, jasonrandom, xeno (tail stab),
         /// xenobite, xenomorph (random of both), ghost / ghostface. "&lt;costume&gt;random" draws like a real kill.</summary>
         // Scenes without a costume (map deaths): key, file key, frames, flashes, hold. Kept in step with
-        // GraveyardWorld.Demon* and HollowmereWorld.AngelScene*.
-        private static readonly (string Key, string Label, int Frames, int[] Flashes, float Hold)[] Standalone = {
-            ("demon", "Demon (pentagram)", 48, new[] { 22, 36 }, 0.5f),
-            ("angel_a1", "Weeping Angel: Mourning", 48, new[] { 13, 25, 37 }, 0.4f),
-            ("angel_a2", "Weeping Angel: Hooded", 48, new[] { 13, 25, 37 }, 0.4f),
-            ("angel_a3", "Weeping Angel: Cherub", 48, new[] { 13, 25, 37 }, 0.4f),
-            ("angel_a4", "Weeping Angel: Ruined", 48, new[] { 13, 25, 37 }, 0.4f),
+        // GraveyardWorld.Demon* and HollowmereWorld.AngelScene*. The summon_* scenes (Hollowmere's summoning, Blender
+        // 2026-11-26, 1280 x 800 at 24 fps) are played from here by name (PlayNamedScene). Flash frames are 0-based
+        // (ShowFrame), so one less than the Blender frame numbers in Assets/SummonKills3D/scene_*.py (S.flashes).
+        private static readonly (string Key, string Label, int Frames, int[] Flashes, float Hold, float Fps)[] Standalone = {
+            ("demon", "Demon (pentagram)", 48, new[] { 22, 36 }, 0.5f, KillFps),
+            ("angel_a1", "Weeping Angel: Mourning", 48, new[] { 13, 25, 37 }, 0.4f, KillFps),
+            ("angel_a2", "Weeping Angel: Hooded", 48, new[] { 13, 25, 37 }, 0.4f, KillFps),
+            ("angel_a3", "Weeping Angel: Cherub", 48, new[] { 13, 25, 37 }, 0.4f, KillFps),
+            ("angel_a4", "Weeping Angel: Ruined", 48, new[] { 13, 25, 37 }, 0.4f, KillFps),
+            ("summon_diablo", "Summoning: Diablo", 120, new[] { 54, 79 }, 0.6f, 24f),
+            ("summon_baal", "Summoning: Baal", 120, new[] { 63, 87 }, 0.6f, 24f),
+            ("summon_mephisto", "Summoning: Mephisto", 120, new[] { 91 }, 0.6f, 24f),
+            ("summon_cthulhu", "Summoning: Cthulhu", 120, new[] { 56, 59, 64 }, 0.6f, 24f),
+            ("summon_ghost", "Summoning: Ghost", 120, new[] { 62, 74 }, 0.6f, 24f),
         };
+
+        /// <summary>Plays one of the scenes without a costume (list above) for the local victim. False when the key is
+        /// unknown or its frames are not there.</summary>
+        internal static bool PlayNamedScene(string key, int victimColor) {
+            foreach (var s in Standalone)
+                if (s.Key == key) return PlayStandaloneScene(s.Key, s.Frames, s.Flashes ?? Array.Empty<int>(), s.Hold, victimColor, s.Fps);
+            return false;
+        }
 
         /// <summary>Every playable kill scene as "key|Label" (Role Control builds its list from this, by reflection):
         /// each costume's main scene, its alternatives, "random" for costumes with several, then the map scenes.</summary>
@@ -1406,7 +1424,7 @@ namespace UnknownsHalloween {
                     try { col = PlayerControl.LocalPlayer.Data.DefaultOutfit.ColorId; } catch { }
                     EndSequence();
                     queue.Clear();
-                    return PlayStandaloneScene(s.Key, s.Frames, s.Flashes ?? Array.Empty<int>(), s.Hold, col)
+                    return PlayStandaloneScene(s.Key, s.Frames, s.Flashes ?? Array.Empty<int>(), s.Hold, col, s.Fps)
                         ? $"Kill-Szene {s.Label} wird abgespielt." : $"Szene {s.Label}: Bilder noch nicht geladen.";
                 }
                 bool random = key.EndsWith("random", StringComparison.Ordinal);
@@ -1442,8 +1460,11 @@ namespace UnknownsHalloween {
         private static readonly List<(Costume c, KillScene scene, int victimColor, int killerColor, float expires)> queue = new();
         // Back to front. u* = the killer's crewmate under the costume, o* = its parts in front of the costume,
         // v* = the victim; each split into an untinted rest plus a body and a shade mask (split_victim.py).
-        // Scenes without killer layers (KillScene.Killer false) skip the u*/o* files entirely.
-        private static readonly string[] Layers = { "urest", "ubody", "ushade", "back", "orest", "obody", "oshade", "vrest", "vbody", "vshade", "front" };
+        // Scenes without killer layers (KillScene.Killer false) skip the u*/o* files entirely. "glow" (2026-11-26, the
+        // summoning scenes) is the soft light of fire and bloom at a quarter of the pixels on top of everything; the
+        // fit below scales it to the stage like any other layer. Only scenes with KillScene.Glow load it.
+        private static readonly string[] Layers = { "urest", "ubody", "ushade", "back", "orest", "obody", "oshade", "vrest", "vbody", "vshade", "front", "glow" };
+        private const int LayerGlow = 11;
         private static readonly int[] KillerBody = { 1, 5 }, KillerShade = { 2, 6 };
         private const int LayerBody = 8, LayerShade = 9;
         private static bool IsKillerLayer(int i) => Layers[i][0] == 'u' || Layers[i][0] == 'o';
@@ -1467,10 +1488,10 @@ namespace UnknownsHalloween {
                 bool uiBlocked = MeetingHud.Instance != null || ExileController.Instance != null;
                 if (root != null) {
                     if (uiBlocked) { EndSequence(); return; }
-                    int frame = Mathf.FloorToInt((Time.time - startTime) * KillFps);
+                    int frame = Mathf.FloorToInt((Time.time - startTime) * activeScene.Fps);
                     if (frame >= activeScene.Frames) {
                         // the last frame stays up for the scene's hold (Medusa's statue), then the overlay closes
-                        if (Time.time - startTime < activeScene.Frames / KillFps + activeScene.Hold) return;
+                        if (Time.time - startTime < activeScene.Frames / activeScene.Fps + activeScene.Hold) return;
                         EndSequence();
                         return;
                     }
@@ -1582,7 +1603,8 @@ namespace UnknownsHalloween {
         private static readonly Dictionary<KillFramePrefetch.Picture, (Texture2D tex, Sprite sprite, float fit)> picSprites = new();
 
         private static string FramePath(KillScene scene, int frame, int layer) =>
-            !scene.Killer && IsKillerLayer(layer) ? null : Res + $"hk_{scene.Key}_{Layers[layer]}_{frame + 1:00}.png";
+            (!scene.Killer && IsKillerLayer(layer)) || (!scene.Glow && layer == LayerGlow) ? null
+                : Res + $"hk_{scene.Key}_{Layers[layer]}_{frame + 1:00}.png";
 
         private static bool loggedRawError;
 
@@ -1643,8 +1665,29 @@ namespace UnknownsHalloween {
                 }
                 shownPic[i] = pic;
             }
+            EvictUnshown();
             if (band != null) band.color = Array.IndexOf(activeScene.Flashes, frame) >= 0
                 ? (HalloweenPlugin.Calm ? Color.Lerp(BandDark, BandFlash, 0.2f) : BandFlash) : BandDark;
+        }
+
+        // The costume scenes keep every picture until the end (they come back to earlier ones). A long high-resolution
+        // scene (the summoning scenes: 120 frames at 1280 x 800, 2026-11-26) would hold far over a gigabyte that way, so
+        // past a budget everything no layer shows right now goes. A picture that is needed again later decodes once more
+        // from its PNG (KillFramePrefetch keeps the file bytes), which only the rare repeat pays for.
+        private const int KeepPictures = 40;
+        private static readonly List<KillFramePrefetch.Picture> evict = new();
+
+        private static void EvictUnshown() {
+            if (picSprites.Count <= KeepPictures) return;
+            evict.Clear();
+            foreach (var p in picSprites.Keys) if (Array.IndexOf(shownPic, p) < 0) evict.Add(p);
+            foreach (var p in evict) {
+                var e = picSprites[p];
+                if (e.sprite != null) UnityEngine.Object.Destroy(e.sprite);
+                if (e.tex != null) UnityEngine.Object.Destroy(e.tex);
+                picSprites.Remove(p);
+            }
+            evict.Clear();
         }
 
         /// <summary>The "hkcrop" text chunk of a cropped kill frame: stage width/height and the top-left corner of
