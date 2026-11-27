@@ -1369,6 +1369,9 @@ namespace UnknownsHalloween {
 
         /// <summary>Every playable kill scene as "key|Label" (Role Control builds its list from this, by reflection):
         /// each costume's main scene, its alternatives, "random" for costumes with several, then the map scenes.</summary>
+        /// <summary>Hat ids of the built-in costumes (the lobby command halloween.trigger.costume picks one).</summary>
+        internal static List<string> CostumeHatIds() => Costumes.Where(c => c != null && !string.IsNullOrEmpty(c.HatId)).Select(c => c.HatId).ToList();
+
         public static string[] SceneList() {
             var list = new List<string>();
             foreach (var c in Costumes) {
